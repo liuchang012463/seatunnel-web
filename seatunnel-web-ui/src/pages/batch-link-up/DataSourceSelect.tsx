@@ -1,7 +1,10 @@
 import { FileOutlined, SendOutlined } from '@ant-design/icons';
 import { Select } from 'antd';
 import React from 'react';
-import { DATA_SOURCE_REGISTRY } from '../data-source/dataSourceRegistry';
+import {
+  DATA_SOURCE_REGISTRY,
+  TASK_TARGET_DB_TYPES,
+} from '../data-source/dataSourceRegistry';
 import DatabaseIcons from '../data-source/icon/DatabaseIcons';
 import './index.less';
 
@@ -57,6 +60,14 @@ export const generateOfflineSourceDataSourceOptions = (): DataSourceType[] => [
 /** Sink 与整库同步只展示支持写入的数据源。 */
 export const generateDataSourceOptions = (): DataSourceType[] =>
   taskRegistry().filter((item) => item.sink).map(toOption);
+
+/** 引接任务基础配置「去向」：仅人大金仓、海量。 */
+export const generateTaskTargetDataSourceOptions = (): DataSourceType[] => {
+  const allowed = new Set<string>(TASK_TARGET_DB_TYPES);
+  return taskRegistry()
+    .filter((item) => item.sink && allowed.has(item.dbType))
+    .map(toOption);
+};
 
 export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   {

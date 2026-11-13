@@ -10,6 +10,7 @@ import {
   type SetStateAction,
 } from "react";
 import { ReactFlowProvider } from "reactflow";
+import { WORKFLOW_BACK_BUTTON_CLASS } from "@/pages/common/workflow/backButtonClass";
 import { seatunnelJobDefinitionApi } from "../api";
 import { validateServerIdRange } from "../config/serverId";
 import { CheckListPopover } from "./components/CheckListPopover";
@@ -40,6 +41,7 @@ interface WorkflowProps {
 
   params: any;
   goBack: () => void;
+  goPreviousStep?: () => void;
   sourceType: any;
   setSourceType: (value: any) => void;
   targetType: any;
@@ -137,6 +139,7 @@ export default function Workflow({
   contextKey,
   params,
   goBack,
+  goPreviousStep,
   sourceType,
   targetType,
   basicConfig,
@@ -473,17 +476,26 @@ export default function Workflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                逻辑关系配置（单表实时任务）
+                逻辑关系配置（单表实时引接）
               </div>
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            {goPreviousStep ? (
+              <Button
+                type="default"
+                icon={<ArrowLeftOutlined />}
+                onClick={goPreviousStep}
+                className={WORKFLOW_BACK_BUTTON_CLASS}
+              >
+                返回上一步
+              </Button>
+            ) : null}
             <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+              type="default"
               onClick={goBack}
-              className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+              className={WORKFLOW_BACK_BUTTON_CLASS}
             >
               返回任务列表
             </Button>

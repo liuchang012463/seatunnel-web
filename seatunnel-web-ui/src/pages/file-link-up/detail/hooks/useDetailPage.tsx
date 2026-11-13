@@ -1,4 +1,4 @@
-import { history, useParams } from '@umijs/max';
+import { history, useLocation, useParams } from '@umijs/max';
 import { Form } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SourceTargetType, StepKey, SyncMode } from '@/pages/batch-link-up/detail/types';
@@ -19,14 +19,22 @@ const defaultTargetType: SourceTargetType = {
 /** 文件引接任务固定走 FILE_SYNC 模式。 */
 const FILE_SYNC_MODE: SyncMode = 'FILE_SYNC';
 
+const readStepFromSearch = (search?: string): StepKey => {
+  const step = new URLSearchParams(search || '').get('step');
+  return step === 'client' ? 'client' : 'base';
+};
+
 export default function useDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [form] = Form.useForm();
 
   const [params, setParams] = useState<any>(null);
   const [sourceType, setSourceType] = useState<SourceTargetType>(defaultSourceType);
   const [targetType, setTargetType] = useState<SourceTargetType>(defaultTargetType);
-  const [activeStep, setActiveStep] = useState<StepKey>('base');
+  const [activeStep, setActiveStep] = useState<StepKey>(() =>
+    readStepFromSearch(location.search),
+  );
 
   const [clientId, setClientId] = useState<string>();
 
@@ -38,6 +46,10 @@ export default function useDetailPage() {
 
   const [sourceDataSourceId, setSourceDataSourceId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
+
+  useEffect(() => {
+    setActiveStep(readStepFromSearch(location.search));
+  }, [location.search]);
 
   useEffect(() => {
     if (!id) return;

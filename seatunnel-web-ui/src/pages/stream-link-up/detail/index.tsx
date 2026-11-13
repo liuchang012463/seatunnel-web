@@ -96,22 +96,11 @@ const DetailPage = () => {
     : STEP_THEME.client.dotInactive;
 
   const nextText = (() => {
-    if (isBaseStep) return "下一步：客户端与连接";
-    if (mode === "GUIDE_MULTI") return "进入多表配置";
-    if (mode === "SCRIPT") return "进入脚本配置";
-    return "进入单表配置";
+    if (isBaseStep) return "下一步：引接链路配置";
+    return "进入逻辑关系配置";
   })();
 
-  const hintText = (() => {
-    if (isBaseStep) return "先完成基础信息，再选择客户端并测试来源与去向连接";
-    if (mode === "GUIDE_MULTI") {
-      return "确认客户端链接关系后，将进入多表向导配置";
-    }
-    if (mode === "SCRIPT") {
-      return "确认客户端链接关系后，将进入脚本配置";
-    }
-    return "确认客户端链接关系后，将进入单表向导配置";
-  })();
+  const hintText = "";
 
   const canGoNextFromClient =
     sourceTestStatus === "success" && targetTestStatus === "success";
@@ -203,7 +192,7 @@ const DetailPage = () => {
               >
                 2
               </span>
-              客户端与连接
+              引接链路配置
             </button>
           </div>
         </div>

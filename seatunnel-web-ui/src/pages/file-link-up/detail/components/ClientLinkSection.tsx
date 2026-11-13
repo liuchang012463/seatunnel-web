@@ -33,8 +33,8 @@ const FileTypeClientLinkSection: React.FC<Props> = (props) => {
     <CommonClientLinkSection
       {...props}
       scene="offline"
-      clientLabel="我的客户端"
-      clientPlaceholder="请选择 Zeta 客户端节点"
+      clientLabel="数据引接引擎"
+      clientPlaceholder="请选择数据引接引擎节点"
       sourceTitle="来源"
       targetTitle="去向"
       sourceCreateText="新建来源数据源"

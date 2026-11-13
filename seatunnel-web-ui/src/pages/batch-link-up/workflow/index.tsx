@@ -16,6 +16,7 @@ import {
   type SetStateAction,
 } from "react";
 import { ReactFlowProvider } from "reactflow";
+import { WORKFLOW_BACK_BUTTON_CLASS } from "@/pages/common/workflow/backButtonClass";
 import { seatunnelJobDefinitionApi } from "../api";
 import FlowCanvas from "./FlowCanvas";
 import RightConfigPanel from "./RightConfigPanel";
@@ -48,6 +49,8 @@ interface WorkflowProps {
 
   params: any;
   goBack: () => void;
+  /** 返回引接链路配置（上一步） */
+  goPreviousStep?: () => void;
   sourceType: any;
   setSourceType: (value: any) => void;
   targetType: any;
@@ -232,6 +235,7 @@ export default function Workflow({
   contextKey,
   params,
   goBack,
+  goPreviousStep,
   sourceType,
   targetType,
   basicConfig,
@@ -647,18 +651,27 @@ export default function Workflow({
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
                 {basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"
-                  ? "逻辑关系配置（单表增量微批任务）"
-                  : "逻辑关系配置（单表全量任务）"}
+                  ? "逻辑关系配置（单表增量引接）"
+                  : "逻辑关系配置（单表引接）"}
               </div>
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            {goPreviousStep ? (
+              <Button
+                type="default"
+                icon={<ArrowLeftOutlined />}
+                onClick={goPreviousStep}
+                className={WORKFLOW_BACK_BUTTON_CLASS}
+              >
+                返回上一步
+              </Button>
+            ) : null}
             <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+              type="default"
               onClick={goBack}
-              className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+              className={WORKFLOW_BACK_BUTTON_CLASS}
             >
               返回任务列表
             </Button>

@@ -11,7 +11,8 @@ import { assetExplorationStatus, isAssetExplorationDbType } from '@/utils/assetE
 interface DataSourceCardProps {
   record: DataSourceRecord;
   onEdit: (record: DataSourceRecord) => void;
-  onEditUsage: (record: DataSourceRecord) => void;
+  /** 管理页隐藏目标端后不再提供「编辑连接用途」 */
+  onEditUsage?: (record: DataSourceRecord) => void;
   onDelete: (record: DataSourceRecord) => void;
   onTestConnection: (record: DataSourceRecord) => void;
   onViewExploration: (record: DataSourceRecord) => void;
@@ -127,12 +128,16 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
               trigger={['click']}
               menu={{
                 items: [
-                  {
-                    key: 'usage',
-                    label: '编辑连接用途',
-                    disabled: isDeleting,
-                    onClick: () => onEditUsage(record),
-                  },
+                  ...(onEditUsage
+                    ? [
+                        {
+                          key: 'usage',
+                          label: '编辑连接用途',
+                          disabled: isDeleting,
+                          onClick: () => onEditUsage(record),
+                        },
+                      ]
+                    : []),
                   {
                     key: 'lifecycle',
                     label: statusActionLabel,

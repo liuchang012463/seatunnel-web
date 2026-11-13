@@ -266,7 +266,7 @@ const FileSyncSourcePanel: React.FC<FileSyncSourcePanelProps> = ({
       heroDesc={isWebUpload
         ? `${assets.length} 个文件已准备`
         : config.path || (isFileResource ? '未选择湖文件' : '未选择目录')}
-      heroTag="SOURCE"
+      heroTag="来源"
       dbType={isWebUpload ? undefined : config.dbType}
       icon={isWebUpload ? <FileOutlined /> : undefined}
       onClose={onClose}

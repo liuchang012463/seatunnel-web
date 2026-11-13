@@ -12,7 +12,6 @@ import {
   Pagination,
   Segmented,
   Spin,
-  Tabs,
   Table,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -28,11 +27,13 @@ import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
 import {
   DATA_SOURCE_CATEGORIES,
   DATA_SOURCE_REGISTRY,
+  PLANNED_DATA_SOURCE_CATEGORIES,
   filterDataSourceTypesByUsage,
   getDataSourceCategory,
 } from './dataSourceRegistry';
 import DatabaseIcons from './icon/DatabaseIcons';
 import { getDataSourceConnectionErrorMessage } from './connectionError';
+import { presentConnectionTestResult } from './connectionTestFeedback';
 import './index.less';
 import {
   checkDataSourceUsage,
@@ -67,15 +68,13 @@ const formatDateTime = (value?: string) => (value ? dayjs(value).format('YYYY-MM
 
 type DataSourceViewMode = 'card' | 'list';
 
+/** 管理页只展示源端；目标端由后台配置，用户侧不可见 */
+const MANAGEMENT_USAGE = 'SOURCE' as const;
+
 const DataSourcePage: React.FC = () => {
   const intl = useIntl();
   const location = useLocation();
   const modalRef = useRef<DataSourceModalRef>(null);
-  const usageView =
-    location.pathname.endsWith('/target-connection') ||
-    new URLSearchParams(location.search).get('usage') === 'SINK'
-      ? 'SINK'
-      : 'SOURCE';
 
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string>();
@@ -90,7 +89,6 @@ const DataSourcePage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
   const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
-  const [usageCounts, setUsageCounts] = useState<Partial<Record<'SOURCE' | 'SINK', number>>>({});
 
   const refreshUnitOptions = async () => {
     try {
@@ -129,8 +127,7 @@ const DataSourcePage: React.FC = () => {
         pageSize: pagination.pageSize,
         name: searchKeyword.trim() || undefined,
         dbTypes: selectedCategory === 'ALL' ? undefined : selectedCategoryConfig?.dbTypes || [],
-        ...(usageView === 'SOURCE' ? { sourceEnabled: true } : {}),
-        ...(usageView === 'SINK' ? { sinkEnabled: true } : {}),
+        sourceEnabled: true,
         unitId: selectedUnit || undefined,
         businessSystemId: selectedBusinessSystem || undefined,
         status: selectedStatus,
@@ -138,17 +135,15 @@ const DataSourcePage: React.FC = () => {
         ...params,
       };
 
-      if (usageView) {
-        const supportedTypes = new Set(
-          filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usageView).map((item) => item.dbType),
-        );
-        const requestedTypes = requestParams.dbTypes || DATA_SOURCE_REGISTRY.map((item) => item.dbType);
-        requestParams.dbTypes = requestedTypes.filter((dbType) => supportedTypes.has(dbType));
-        if (requestParams.dbTypes.length === 0) {
-          setDataSourceList([]);
-          setPagination((current) => ({ ...current, total: 0 }));
-          return;
-        }
+      const supportedTypes = new Set(
+        filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, MANAGEMENT_USAGE).map((item) => item.dbType),
+      );
+      const requestedTypes = requestParams.dbTypes || DATA_SOURCE_REGISTRY.map((item) => item.dbType);
+      requestParams.dbTypes = requestedTypes.filter((dbType) => supportedTypes.has(dbType));
+      if (requestParams.dbTypes.length === 0) {
+        setDataSourceList([]);
+        setPagination((current) => ({ ...current, total: 0 }));
+        return;
       }
 
       const response = await withTimeout(
@@ -175,41 +170,19 @@ const DataSourcePage: React.FC = () => {
 
   const selectedCategoryConfig = DATA_SOURCE_CATEGORIES.find((category) => category.key === selectedCategory);
 
-  const refreshUsageCounts = async () => {
-    await Promise.all(
-      (['SOURCE', 'SINK'] as const).map(async (usage) => {
-        const dbTypes = filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usage).map(
-          (item) => item.dbType,
-        );
-        if (dbTypes.length === 0) {
-          setUsageCounts((current) => ({ ...current, [usage]: 0 }));
-          return;
-        }
-
-        try {
-          const response = await fetchDataSourcePage({
-            pageNo: 1,
-            pageSize: 1,
-            dbTypes,
-            ...(usage === 'SOURCE' ? { sourceEnabled: true } : { sinkEnabled: true }),
-            excludeSystemManaged: true,
-          });
-          if (response.code !== 0) return;
-
-          const page = normalizeDataSourcePageResult(response.data);
-          setUsageCounts((current) => ({ ...current, [usage]: page.pagination.total }));
-        } catch (_) {}
-      }),
-    );
-  };
-
   useEffect(() => {
     refreshUnitOptions();
   }, []);
 
+  // 旧「目标端连接」入口与 ?usage=SINK 一律回到源端管理页，避免暴露目标端列表
   useEffect(() => {
-    refreshUsageCounts();
-  }, []);
+    const seekingTarget =
+      location.pathname.endsWith('/target-connection') ||
+      new URLSearchParams(location.search).get('usage') === 'SINK';
+    if (seekingTarget) {
+      history.replace('/data-source/source-connection');
+    }
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     refreshBusinessSystemOptions(selectedUnit);
@@ -241,7 +214,6 @@ const DataSourcePage: React.FC = () => {
     selectedUnit,
     selectedBusinessSystem,
     selectedStatus,
-    usageView,
   ]);
 
   const hasActiveFilters = Boolean(
@@ -264,25 +236,13 @@ const DataSourcePage: React.FC = () => {
   const handleRefresh = () => {
     fetchList();
     refreshUnitOptions();
-    refreshUsageCounts();
-  };
-
-  const handleUsageViewChange = (nextUsage: 'SOURCE' | 'SINK') => {
-    if (nextUsage !== usageView) {
-      setSelectedCategory('ALL');
-      setPagination((current) => ({ ...current, pageNo: 1 }));
-    }
-
-    const nextPath = nextUsage === 'SOURCE' ? '/data-source' : '/data-source?usage=SINK';
-    if (`${location.pathname}${location.search}` !== nextPath) {
-      history.push(nextPath);
-    }
   };
 
   const handleCreate = () => {
     modalRef.current?.open({
       operateType: 'CREATE' as DataSourceOperateType,
-      defaultUsage: usageView,
+      defaultUsage: MANAGEMENT_USAGE,
+      hideSinkUsage: true,
       onSuccess: handleRefresh,
     });
   };
@@ -291,15 +251,7 @@ const DataSourcePage: React.FC = () => {
     modalRef.current?.open({
       operateType: 'EDIT' as DataSourceOperateType,
       currentRecord: record,
-      onSuccess: handleRefresh,
-    });
-  };
-
-  const handleEditUsage = (record: DataSourceRecord) => {
-    modalRef.current?.open({
-      operateType: 'EDIT' as DataSourceOperateType,
-      currentRecord: record,
-      usageOnly: true,
+      hideSinkUsage: true,
       onSuccess: handleRefresh,
     });
   };
@@ -409,25 +361,40 @@ const DataSourcePage: React.FC = () => {
       return;
     }
 
+    const hideLoading = message.loading(`正在测试「${record.name || '数据源'}」连接…`, 0);
     try {
       const response = await testDataSourceConnection(record.id);
       if (response?.code !== 0 || response?.data !== true) {
-        message.error(response?.code === 0
-          ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
-          : getDataSourceConnectionErrorMessage(response));
+        const detail =
+          response?.code === 0
+            ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
+            : getDataSourceConnectionErrorMessage(response);
+        presentConnectionTestResult({
+          success: false,
+          detail,
+          dataSourceName: record.name,
+          onEdit: record.systemManaged ? undefined : () => handleEdit(record),
+        });
+        handleRefresh();
         return;
       }
 
-      message.success(
-        intl.formatMessage({
-          id: 'pages.datasource.message.connectSuccess',
-          defaultMessage: 'Connected Success',
-        }),
-      );
-
+      presentConnectionTestResult({
+        success: true,
+        detail: '卡片上的连通状态将刷新为「连通正常」。',
+        dataSourceName: record.name,
+      });
       handleRefresh();
     } catch (error) {
-      message.error(getDataSourceConnectionErrorMessage(error));
+      presentConnectionTestResult({
+        success: false,
+        detail: getDataSourceConnectionErrorMessage(error),
+        dataSourceName: record.name,
+        onEdit: record.systemManaged ? undefined : () => handleEdit(record),
+      });
+      handleRefresh();
+    } finally {
+      hideLoading();
     }
   };
 
@@ -602,12 +569,6 @@ const DataSourcePage: React.FC = () => {
             ]
           : [
               {
-                key: 'usage',
-                label: '编辑连接用途',
-                disabled: isDeleting,
-                onClick: () => handleEditUsage(record),
-              },
-              {
                 key: 'lifecycle',
                 label: statusActionLabel,
                 disabled: isDeleting,
@@ -700,37 +661,6 @@ const DataSourcePage: React.FC = () => {
               animate="visible"
               variants={PAGE_ANIMATION.sectionStagger}
             >
-              <motion.div variants={PAGE_ANIMATION.fadeUp}>
-                <Tabs
-                  className="datasource-usage-tabs"
-                  activeKey={usageView}
-                  onChange={(key) => handleUsageViewChange(key as 'SOURCE' | 'SINK')}
-                  items={[
-                    {
-                      key: 'SOURCE',
-                      label: (
-                        <span className="datasource-usage-tab-label">
-                          <span>源端连接</span>
-                          {usageCounts.SOURCE !== undefined ? (
-                            <span className="datasource-usage-tab-count">({usageCounts.SOURCE})</span>
-                          ) : null}
-                        </span>
-                      ),
-                    },
-                    {
-                      key: 'SINK',
-                      label: (
-                        <span className="datasource-usage-tab-label">
-                          <span>目标端连接</span>
-                          {usageCounts.SINK !== undefined ? (
-                            <span className="datasource-usage-tab-count">({usageCounts.SINK})</span>
-                          ) : null}
-                        </span>
-                      ),
-                    },
-                  ]}
-                />
-              </motion.div>
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
@@ -789,6 +719,19 @@ const DataSourcePage: React.FC = () => {
                       }}
                     >
                       {category.label}
+                    </Button>
+                  ))}
+                  {/* 图库/时序尚未接入连接器：展示规划分类，不可筛选 */}
+                  {PLANNED_DATA_SOURCE_CATEGORIES.map((category) => (
+                    <Button
+                      key={category.key}
+                      type="default"
+                      disabled
+                      title={category.note}
+                      className="datasource-planned-category"
+                    >
+                      {category.label}
+                      <span className="datasource-planned-category__tag">待接入</span>
                     </Button>
                   ))}
                 </div>
@@ -850,7 +793,6 @@ const DataSourcePage: React.FC = () => {
                                 key={String(record.id || record.name || `data-source-${index}`)}
                                 record={record}
                                 onEdit={handleEdit}
-                                onEditUsage={handleEditUsage}
                                 onDelete={(currentRecord) => {
                                   void handleDelete(currentRecord);
                                 }}

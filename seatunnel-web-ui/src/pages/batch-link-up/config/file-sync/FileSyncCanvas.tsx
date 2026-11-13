@@ -107,6 +107,7 @@ const FileSyncCanvasInner: React.FC<FileSyncCanvasProps> = ({
           deleteKeyCode={null}
           minZoom={0.1}
           maxZoom={1.5}
+          proOptions={{ hideAttribution: true }}
           className="react-flow-wrapper pointer-mode"
         >
           <Background gap={[14, 14]} size={2} color="#8585ad26" />

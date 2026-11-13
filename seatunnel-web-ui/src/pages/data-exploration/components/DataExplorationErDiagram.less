@@ -10,26 +10,25 @@
   color: #f4f7fb;
   background: #0f1724;
   font: 13px Inter, "Microsoft YaHei", sans-serif;
-  /* Definite row keeps the three panels constrained to the container height. */
+  /* 已去掉左侧重复选表栏：画布 + 右侧摘要 */
   grid-template-rows: minmax(0, 1fr);
-  grid-template-columns: 220px minmax(0, 1fr) 220px;
-}
-
-/* Collapsible side panels: hidden panels collapse to zero-width tracks. */
-.sidebar {
-  grid-column: 1;
+  grid-template-columns: minmax(0, 1fr) 260px;
 }
 
 .flow-wrapper {
-  grid-column: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 .detail-panel {
-  grid-column: 3;
+  grid-column: 2;
 }
 
 .er-dialog-content.is-sidebar-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 1fr) 260px;
 
   .sidebar {
     display: none;
@@ -37,7 +36,7 @@
 }
 
 .er-dialog-content.is-detail-collapsed {
-  grid-template-columns: 220px minmax(0, 1fr) 0;
+  grid-template-columns: minmax(0, 1fr) 0;
 
   .detail-panel {
     display: none;
@@ -45,7 +44,80 @@
 }
 
 .er-dialog-content.is-sidebar-collapsed.is-detail-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr) 0;
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.er-mode-banner {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2a3a52;
+  background: #121c2b;
+
+  strong {
+    color: #f4f7fb;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    color: #9db2cc;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+}
+
+.er-detail-summary {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow: auto;
+
+  p {
+    margin: 0;
+    color: #d8e8fb;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  b {
+    color: #71e4ff;
+    font-weight: 600;
+  }
+}
+
+.er-detail-hint {
+  color: #9db2cc !important;
+}
+
+.er-open-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin-top: 4px;
+  padding: 0 14px;
+  color: #0b1631;
+  font-size: 14px;
+  font-weight: 600;
+  background: #71e4ff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.er-open-detail:hover {
+  filter: brightness(1.06);
+}
+
+.er-detail-shortcut {
+  color: #8aa0b8;
+  font-size: 14px;
 }
 
 .sidebar,
@@ -249,7 +321,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  min-height: 100%;
+  min-height: 0;
   height: 100%;
   overflow: hidden;
   background: #0f1724;
@@ -257,9 +329,10 @@
 
 .flow-canvas {
   position: relative;
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 0;
   height: 100%;
-  min-height: 520px;
 }
 
 .flow-canvas > .react-flow {

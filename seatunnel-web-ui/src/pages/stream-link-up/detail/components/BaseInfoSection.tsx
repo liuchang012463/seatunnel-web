@@ -1,12 +1,12 @@
-import { Form, Input, Radio } from "antd";
+import { Form, Input, Radio } from 'antd';
 
-import ModeCard from "./ModeCard";
-import type { SyncMode } from "../types";
+import ModeCard from './ModeCard';
+import type { SyncMode } from '../types';
 import DataSourceSelect, {
-  generateDataSourceOptions,
   generateRealtimeSourceOptions,
-} from "@/pages/batch-link-up/DataSourceSelect";
-import IconRightArrow from "@/pages/batch-link-up/IconRightArrow";
+  generateTaskTargetDataSourceOptions,
+} from '@/pages/batch-link-up/DataSourceSelect';
+import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
 
 const { TextArea } = Input;
 
@@ -19,6 +19,9 @@ interface Props {
   setMode: (value: SyncMode) => void;
 }
 
+const sectionTitleClass =
+  'mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]';
+
 const BaseConfigSection: React.FC<Props> = ({
   sourceType,
   targetType,
@@ -29,15 +32,9 @@ const BaseConfigSection: React.FC<Props> = ({
 }) => {
   return (
     <div className="p-6">
-      {/* 整体卡片 */}
-      <div className="rounded-[24px] bg-white shadow-sm space-y-6">
-
-        {/* ① 数据同步方式（主视觉块） */}
-        <div className="rounded-2xl border border-[#E4E7EC] bg-[#FAFBFC] p-5">
-          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
-            数据同步方式
-          </div>
-
+      <div className="space-y-5 rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] p-5 shadow-none">
+        <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
+          <div className={sectionTitleClass}>数据同步方式</div>
           <div className="flex items-center gap-3">
             <DataSourceSelect
               value={sourceType}
@@ -47,90 +44,78 @@ const BaseConfigSection: React.FC<Props> = ({
               prefix="来源"
               width="48%"
             />
-
-            <div className="text-[color:var(--st-color-text-muted)]">
+            <div className="shrink-0 text-[color:var(--st-color-text-muted)]">
               <IconRightArrow />
             </div>
-
             <DataSourceSelect
               value={targetType}
               onChange={handleTargetChange}
-              dataSourceOptions={generateDataSourceOptions()}
+              dataSourceOptions={generateTaskTargetDataSourceOptions()}
               placeholder="请选择去向"
               prefix="去向"
               width="48%"
             />
           </div>
-        </div>
+        </section>
 
-        {/* ② 任务信息 */}
-        <div className="space-y-4">
-          <div className="text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
-            任务信息
-          </div>
-
+        <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
+          <div className={sectionTitleClass}>任务信息</div>
           <div className="grid grid-cols-1 gap-4">
             <Form.Item
               label="任务名称"
               name="jobName"
-              rules={[{ required: true, message: "请输入任务名称" }]}
+              rules={[{ required: true, message: '请输入任务名称' }]}
               className="mb-0"
+              extra="默认按来源 → 去向自动填充，可自行修改"
             >
               <Input
-                placeholder="例如：MySQL → Oracle 用户表同步"
-                className="!h-[36px] !rounded-[12px]"
+                placeholder="例如：MySQL → 人大金仓"
+                className="!h-[36px] !rounded-[4px]"
               />
             </Form.Item>
-
             <Form.Item label="任务描述" name="description" className="mb-0">
               <TextArea
                 placeholder="描述同步范围、用途、注意事项等"
                 rows={3}
-                className="!rounded-xl"
+                className="!rounded-[4px]"
               />
             </Form.Item>
           </div>
-        </div>
+        </section>
 
-        {/* ③ 配置模式 */}
-        <div>
-          <div className="mb-3 text-[14px] font-medium text-[color:var(--st-color-text-primary)]">
-            配置模式
-          </div>
-
+        <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
+          <div className={sectionTitleClass}>配置模式</div>
           <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
             <Radio.Group className="w-full">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <ModeCard
                   value="GUIDE_SINGLE"
                   current={mode}
-                  title="单表向导"
-                  desc="适合快速创建单表同步任务，配置路径更清晰。"
+                  title="单表引接"
+                  desc="一次配置一张表的同步，按页面步骤选表与字段即可，适合日常单表引接。"
                   tag="推荐"
                   onSelect={setMode}
                 />
-
                 <ModeCard
                   value="GUIDE_MULTI"
                   current={mode}
-                  title="多表向导"
-                  desc="适合批量配置多张表，统一管理同步关系。"
+                  title="多表批量引接"
+                  desc="一次勾选多张表批量配置映射，适合表多、结构相近的库表迁移。"
                   tag="批量"
                   onSelect={setMode}
                 />
-
                 <ModeCard
                   value="SCRIPT"
                   current={mode}
-                  title="脚本模式"
-                  desc="适合更复杂的同步场景，灵活度更高。"
+                  title="自定义引接"
+                  desc="直接编写或调整引接脚本，需熟悉配置语法，适合复杂转换与高级定制。"
                   tag="高级"
                   onSelect={setMode}
                 />
               </div>
             </Radio.Group>
           </Form.Item>
-        </div>
+        </section>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import {
 import { applyNodeChanges } from 'reactflow';
 import { fetchDataSourceAll } from '@/pages/data-source/service';
 import { seatunnelClientApi } from '@/pages/client/api';
+import { WORKFLOW_BACK_BUTTON_CLASS } from '@/pages/common/workflow/backButtonClass';
 import { fileUploadApi, seatunnelJobDefinitionApi } from '../../api';
 import RightConfigPanel from '../../workflow/RightConfigPanel';
 import { CheckListPopover } from '../../workflow/components/CheckListPopover';
@@ -47,6 +48,7 @@ interface FileWorkflowProps {
   contextKey: string;
   params: any;
   goBack: () => void;
+  goPreviousStep?: () => void;
   basicConfig: any;
   setBasicConfig: Dispatch<SetStateAction<any>>;
   scheduleConfig: ScheduleConfig;
@@ -258,6 +260,7 @@ export default function FileWorkflow({
   contextKey,
   params,
   goBack,
+  goPreviousStep,
   basicConfig,
   setBasicConfig,
   scheduleConfig,
@@ -696,12 +699,21 @@ export default function FileWorkflow({
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            {goPreviousStep ? (
+              <Button
+                type="default"
+                icon={<ArrowLeftOutlined />}
+                onClick={goPreviousStep}
+                className={WORKFLOW_BACK_BUTTON_CLASS}
+              >
+                返回上一步
+              </Button>
+            ) : null}
             <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+              type="default"
               onClick={goBack}
-              className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+              className={WORKFLOW_BACK_BUTTON_CLASS}
             >
               返回任务列表
             </Button>

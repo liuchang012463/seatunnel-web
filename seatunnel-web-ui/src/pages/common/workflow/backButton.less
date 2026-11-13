@@ -1,0 +1,17 @@
+/* 与详情页「返回上一页」一致，避免 Ant Design text 按钮 hover 被盖成白色 */
+.workflow-back-button.ant-btn {
+  height: 36px;
+  padding-inline: 14px;
+  color: var(--st-color-text-secondary) !important;
+  background: var(--st-color-bg-control) !important;
+  border: 1px solid var(--st-color-border) !important;
+  border-radius: var(--st-radius-md, 4px) !important;
+  box-shadow: none !important;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--st-color-text-primary) !important;
+    background: var(--st-color-bg-hover) !important;
+    border-color: var(--st-color-accent) !important;
+  }
+}

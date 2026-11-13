@@ -257,6 +257,17 @@ const FileSyncWorkflowPage: React.FC = () => {
     history.push(resolveFileSyncBackPath(location.pathname, location.search));
   };
 
+  const goPreviousStep = () => {
+    if (id) {
+      const path = location.pathname.includes('/file-link-up/')
+        ? `/sync/file-link-up/${id}/detail?step=client`
+        : `/sync/batch-link-up/${id}/detail?step=client`;
+      history.push(path);
+      return;
+    }
+    goBack();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
@@ -290,6 +301,7 @@ const FileSyncWorkflowPage: React.FC = () => {
         contextKey={workflowContextKey}
         params={params}
         goBack={goBack}
+        goPreviousStep={goPreviousStep}
         basicConfig={basicConfig}
         setBasicConfig={setBasicConfig}
         scheduleConfig={scheduleConfig}

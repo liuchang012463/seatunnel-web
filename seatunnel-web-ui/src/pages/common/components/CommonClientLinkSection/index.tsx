@@ -462,8 +462,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   setSourceTestStatus,
   setTargetTestStatus,
 
-  clientLabel = "我的客户端",
-  clientPlaceholder = "请选择 Zeta 客户端节点",
+  clientLabel = "数据引接引擎",
+  clientPlaceholder = "请选择数据引接引擎节点",
   sourceTitle = "来源",
   targetTitle = "去向",
   sourceCreateText = "新建来源数据源",
@@ -545,9 +545,9 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       setClientOptions(options);
       return options;
     } catch (error) {
-      console.error("加载客户端节点失败:", error);
+      console.error("加载数据引接引擎节点失败:", error);
       setClientOptions([]);
-      message.error("加载客户端节点失败");
+      message.error("加载数据引接引擎节点失败");
       return [];
     } finally {
       setClientLoading(false);
@@ -693,7 +693,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     ) => {
       if (!clientId) {
         if (!options?.silent) {
-          message.warning("请先选择客户端节点");
+          message.warning("请先选择数据引接引擎节点");
         }
         return false;
       }
@@ -1298,20 +1298,20 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
             </SectionCard>
 
             <SectionCard
-              title="客户端"
+              title="数据引接引擎"
               footer={
                 <Button
                   className="w-full !rounded-full"
                   onClick={() => setOpenAddModal(true)}
                 >
-                  新建客户端
+                  新建数据引接引擎
                 </Button>
               }
             >
               <div className="space-y-4">
                 <div>
                   <div className="mb-2 text-sm font-medium text-slate-700">
-                    客户端节点
+                    引擎节点
                   </div>
 
                   <Select
@@ -1335,7 +1335,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
                     当前已选择 {clientId ? "1" : "0"} 个节点
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
-                    任务会在你选择的客户端节点上进行连通性校验。
+                    数据引接引擎负责在来源与去向之间执行同步；连通性测试也会在所选引擎节点上完成。
                   </div>
                 </div>
               </div>

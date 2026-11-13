@@ -23,8 +23,8 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
             <ModeCard
               value="GUIDE_SINGLE"
               current={mode}
-              title="单表向导模式"
-              desc="适合快速创建单表同步任务，配置路径更清晰。"
+              title="单表引接"
+              desc="一次配置一张表的同步，按页面步骤选表与字段即可，适合日常单表引接。"
               tag="推荐"
               onSelect={setMode}
             />
@@ -32,18 +32,18 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
             <ModeCard
               value="GUIDE_MULTI"
               current={mode}
-              title="多表向导模式"
-              desc="适合批量配置多张表，统一管理同步关系。"
-              tag="批量配置"
+              title="多表批量引接"
+              desc="一次勾选多张表批量配置映射，适合表多、结构相近的库表迁移。"
+              tag="批量"
               onSelect={setMode}
             />
 
             <ModeCard
               value="SCRIPT"
               current={mode}
-              title="脚本模式"
-              desc="适合更复杂的同步场景，灵活度更高。"
-              tag="高级模式"
+              title="自定义引接"
+              desc="直接编写或调整引接脚本，需熟悉配置语法，适合复杂转换与高级定制。"
+              tag="高级"
               onSelect={setMode}
             />
           </div>

@@ -3,9 +3,22 @@ import {
   generateOfflineSourceDataSourceOptions,
   generateRealtimeSourceOptions,
   generateSourceDataSourceOptions,
+  generateTaskTargetDataSourceOptions,
 } from './DataSourceSelect';
 
 describe('datasource capability options', () => {
+  it('puts common domestic databases first for task selectors', () => {
+    const values = generateSourceDataSourceOptions().map((item) => item.value);
+    expect(values.slice(0, 3)).toEqual(['DAMENG', 'KINGBASE', 'VASTBASE']);
+  });
+
+  it('limits task target options to Kingbase and Vastbase', () => {
+    expect(generateTaskTargetDataSourceOptions().map((item) => item.value)).toEqual([
+      'KINGBASE',
+      'VASTBASE',
+    ]);
+  });
+
   it('shows HTTP only on supported source sides', () => {
     expect(generateSourceDataSourceOptions().some((item) => item.value === 'HTTP')).toBe(true);
     expect(generateRealtimeSourceOptions().some((item) => item.value === 'HTTP')).toBe(true);

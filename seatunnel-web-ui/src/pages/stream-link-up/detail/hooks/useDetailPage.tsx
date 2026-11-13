@@ -1,23 +1,24 @@
-import { history, useParams } from "@umijs/max";
+import { history, useLocation, useParams } from "@umijs/max";
 import { Form, message } from "antd";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getDbLabel } from "../constants";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  DEFAULT_TASK_DATASOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from "../../../data-source/dataSourceRegistry";
+import { buildDefaultJobName, getDbLabel } from "../constants";
 import type { DetailFormValues, SourceTargetType, StepKey } from "../types";
 
-const defaultSourceType: SourceTargetType = {
-  dbType: "MYSQL",
-  connectorType: "Jdbc",
-  pluginName: "JDBC-MYSQL",
-};
+const defaultSourceType: SourceTargetType = { ...DEFAULT_TASK_DATASOURCE_TYPE };
+const defaultTargetType: SourceTargetType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
-const defaultTargetType: SourceTargetType = {
-  dbType: "MYSQL",
-  connectorType: "Jdbc",
-  pluginName: "Jdbc-MYSQL",
+const readStepFromSearch = (search?: string): StepKey => {
+  const step = new URLSearchParams(search || "").get("step");
+  return step === "client" ? "client" : "base";
 };
 
 export default function useDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [form] = Form.useForm<DetailFormValues>();
 
   const [params, setParams] = useState<any>(null);
@@ -25,7 +26,9 @@ export default function useDetailPage() {
     useState<SourceTargetType>(defaultSourceType);
   const [targetType, setTargetType] =
     useState<SourceTargetType>(defaultTargetType);
-  const [activeStep, setActiveStep] = useState<StepKey>("base");
+  const [activeStep, setActiveStep] = useState<StepKey>(() =>
+    readStepFromSearch(location.search),
+  );
 
   const [sourceClientId, setSourceClientId] = useState<string>();
   const [targetClientId, setTargetClientId] = useState<string>();
@@ -43,6 +46,26 @@ export default function useDetailPage() {
   const [sourceDataSourceId, setSourceDataSourceId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
 
+  const autoJobNameRef = useRef(
+    buildDefaultJobName(defaultSourceType, defaultTargetType),
+  );
+
+  const syncAutoJobName = useCallback(
+    (nextSource: SourceTargetType, nextTarget: SourceTargetType) => {
+      const nextName = buildDefaultJobName(nextSource, nextTarget);
+      const currentName = String(form.getFieldValue("jobName") || "").trim();
+      if (!currentName || currentName === autoJobNameRef.current) {
+        form.setFieldValue("jobName", nextName);
+        autoJobNameRef.current = nextName;
+      }
+    },
+    [form],
+  );
+
+  useEffect(() => {
+    setActiveStep(readStepFromSearch(location.search));
+  }, [location.search]);
+
   useEffect(() => {
     if (!id) return;
 
@@ -52,13 +75,18 @@ export default function useDetailPage() {
     const data = JSON.parse(cache);
     setParams(data);
 
+    const nextSource = data?.sourceType || defaultSourceType;
+    const nextTarget = data?.targetType || defaultTargetType;
     if (data?.sourceType) setSourceType(data.sourceType);
     if (data?.targetType) setTargetType(data.targetType);
 
     const currentMode = data?.mode || "GUIDE_SINGLE";
+    const defaultName = buildDefaultJobName(nextSource, nextTarget);
+    const jobName = data?.jobName || defaultName;
+    autoJobNameRef.current = data?.jobName ? jobName : defaultName;
 
     form.setFieldsValue({
-      jobName: data?.jobName || '',
+      jobName,
       description: data?.description || "",
       mode: currentMode,
     });
@@ -78,23 +106,27 @@ export default function useDetailPage() {
   };
 
   const handleSourceChange = (value: string, option: any) => {
-    setSourceType({
+    const nextSourceType = {
       dbType: value,
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
-    });
+    };
+    setSourceType(nextSourceType);
     setSourceDataSourceId(undefined);
-    setSourceTestStatus('idle');
+    setSourceTestStatus("idle");
+    syncAutoJobName(nextSourceType, targetType);
   };
 
   const handleTargetChange = (value: string, option: any) => {
-    setTargetType({
+    const nextTargetType = {
       dbType: value,
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
-    });
+    };
+    setTargetType(nextTargetType);
     setTargetDataSourceId(undefined);
-    setTargetTestStatus('idle');
+    setTargetTestStatus("idle");
+    syncAutoJobName(sourceType, nextTargetType);
   };
 
   const handleModeChange = (value: string) => {

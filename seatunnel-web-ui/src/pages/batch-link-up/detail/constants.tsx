@@ -1,4 +1,5 @@
 import { Tag } from "antd";
+import { DATA_SOURCE_REGISTRY } from "@/pages/data-source/dataSourceRegistry";
 import type { ClientItem } from "./types";
 
 export const STEP_THEME = {
@@ -42,8 +43,27 @@ export const getStatusTag = (status?: ClientItem["status"]) => {
   }
 };
 
+/** 展示用短库名（达梦，不用 DAMENG） */
+export const getFriendlyDbName = (item: any) => {
+  if (!item) return "数据源";
+  const dbType = String(item?.dbType || "").toUpperCase();
+  if (dbType === "WEB_UPLOAD") return "本地文件";
+  const registryLabel = DATA_SOURCE_REGISTRY.find(
+    (entry) => entry.dbType === dbType,
+  )?.label;
+  const raw = registryLabel || item?.dbType || item?.pluginName || "数据源";
+  return String(raw)
+    .replace(/（[^）]*）/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .trim();
+};
+
+/** 链路顶部等处展示库类型，统一用中文短名 */
 export const getDbLabel = (item: any) => {
   if (!item) return "-";
-  if (String(item?.dbType || "").toUpperCase() === "WEB_UPLOAD") return "本地文件";
-  return item?.dbType || item?.pluginName || item?.connectorType || "-";
+  return getFriendlyDbName(item);
 };
+
+/** 根据来源 / 去向生成默认任务名 */
+export const buildDefaultJobName = (sourceType: any, targetType: any) =>
+  `${getFriendlyDbName(sourceType)} → ${getFriendlyDbName(targetType)}`;

@@ -18,6 +18,7 @@ import {
   insertableTransformNodes,
   TRANSFORM_NODE_DROP_OFFSET,
 } from '../../common/workflow/graph';
+import { getFriendlyDbName } from '@/pages/batch-link-up/detail/constants';
 import { ControlMode } from './config';
 import CustomEdge from './edge';
 import useFlowBuilder from './hooks/useFlowBuilder';
@@ -86,19 +87,10 @@ function buildInitialGraph(
   const sinkId = `sink-${timestamp}`;
 
   const sourceDbType = sourceType?.dbType || 'MYSQL';
-  const targetDbType = targetType?.dbType || 'MYSQL';
+  const targetDbType = targetType?.dbType || 'KINGBASE';
 
-  const sourceTitle =
-    sourceType?.dbType ||
-    sourceType?.pluginName ||
-    sourceType?.connectorType ||
-    '输入端';
-
-  const sinkTitle =
-    targetType?.dbType ||
-    targetType?.pluginName ||
-    targetType?.connectorType ||
-    '输出端';
+  const sourceTitle = getFriendlyDbName(sourceType) || '输入端';
+  const sinkTitle = getFriendlyDbName(targetType) || '输出端';
 
   const nodes: Node[] = [
     {
@@ -510,6 +502,7 @@ export default function FlowCanvas({
           minZoom: 0.25,
           maxZoom: 0.75,
         }}
+        proOptions={{ hideAttribution: true }}
         className={`reactflow-wrapper ${
           flow.controlMode === ControlMode.Hand ? 'hand-mode' : 'pointer-mode'
         }`}

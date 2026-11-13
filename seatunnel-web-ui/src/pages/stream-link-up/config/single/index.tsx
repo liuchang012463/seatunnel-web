@@ -269,6 +269,14 @@ export default function SingleConfigPage() {
     history.push("/sync/stream-link-up");
   };
 
+  const goPreviousStep = () => {
+    if (id) {
+      history.push(`/sync/stream-link-up/${id}/detail?step=client`);
+      return;
+    }
+    history.push("/sync/stream-link-up");
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
@@ -305,6 +313,7 @@ export default function SingleConfigPage() {
         contextKey={workflowContextKey}
         params={params}
         goBack={goBack}
+        goPreviousStep={goPreviousStep}
         sourceType={sourceType}
         setSourceType={setSourceType}
         targetType={targetType}

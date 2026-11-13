@@ -81,7 +81,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
         desc={`${isElasticsearch ? 'Elasticsearch' : 'Kafka'} 节点不使用关系型表、SQL 或自动建表配置`}
         heroTitle={title}
         heroDesc={description}
-        heroTag="SINK"
+        heroTag="去向"
         dbType={dbType}
         onClose={onClose}
         footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
@@ -146,7 +146,7 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
       desc="修改后会实时同步到当前画布节点"
       heroTitle={title}
       heroDesc={description}
-      heroTag="SINK"
+      heroTag="去向"
       dbType={dbType}
       onClose={onClose}
       footer={

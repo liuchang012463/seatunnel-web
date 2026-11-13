@@ -18,6 +18,7 @@ import {
   insertableTransformNodes,
   TRANSFORM_NODE_DROP_OFFSET,
 } from '../../common/workflow/graph';
+import { getFriendlyDbName } from '../detail/constants';
 import { ControlMode } from './config';
 import CustomEdge from './edge';
 import useFlowBuilder from './hooks/useFlowBuilder';
@@ -88,8 +89,8 @@ function buildInitialGraph(
   const sourceId = `source-${timestamp}`;
   const sinkId = `sink-${timestamp}`;
 
-  const sourceDbType = sourceType?.dbType || 'MYSQL';
-  const targetDbType = targetType?.dbType || 'MYSQL';
+  const sourceDbType = sourceType?.dbType || 'DAMENG';
+  const targetDbType = targetType?.dbType || 'KINGBASE';
   const sourceMode = String(sourceType?.sourceMode || '').toUpperCase();
   const isFileResourceSource =
     sourceType?.dbType === 'FILE_RESOURCE' || sourceMode === 'FILE_RESOURCE';
@@ -98,17 +99,12 @@ function buildInitialGraph(
     (sourceType?.dbType === 'WEB_UPLOAD' || sourceType?.sourceManaged === true);
   const isManagedFileSource = isFileResourceSource || isWebUploadSource;
 
+  // 节点标题用中文短名，避免画布上显示 DAMENG / KINGBASE
   const sourceTitle =
-    (isFileResourceSource ? '湖文件' : isWebUploadSource ? '本地文件' : sourceType?.dbType) ||
-    sourceType?.pluginName ||
-    sourceType?.connectorType ||
+    (isFileResourceSource ? '湖文件' : isWebUploadSource ? '本地文件' : getFriendlyDbName(sourceType)) ||
     '输入端';
 
-  const sinkTitle =
-    targetType?.dbType ||
-    targetType?.pluginName ||
-    targetType?.connectorType ||
-    '输出端';
+  const sinkTitle = getFriendlyDbName(targetType) || '输出端';
 
   const nodes: Node[] = [
     {
@@ -589,6 +585,7 @@ export default function FlowCanvas({
             minZoom: 0.25,
             maxZoom: 0.75,
           }}
+          proOptions={{ hideAttribution: true }}
           className={`reactflow-wrapper ${
             flow.controlMode === ControlMode.Hand ? 'hand-mode' : 'pointer-mode'
           }`}

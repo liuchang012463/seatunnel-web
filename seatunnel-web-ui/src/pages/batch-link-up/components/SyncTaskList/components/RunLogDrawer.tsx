@@ -1,12 +1,12 @@
-import { CloseOutlined, FileSearchOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Empty, Input, Spin, Tooltip } from "antd";
+import { FileSearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Empty, Input, Modal, Spin, Tooltip } from "antd";
 import React, { FC, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 
 import { jobLogApi, type JobLogMode } from "@/services/jobLog";
 
+import "../../../sumary.less";
+
 type RunLogInstanceType = "BATCH" | "STREAMING" | string;
-type DrawerHeight = number | `${number}px` | `${number}vh`;
 
 interface RunLogDrawerProps {
   open: boolean;
@@ -17,10 +17,14 @@ interface RunLogDrawerProps {
   children?: ReactNode;
   instanceId?: string | number;
   jobMode?: RunLogInstanceType;
+  /** @deprecated 已改为与「查看历史」同款 Modal，保留以免调用方报错 */
   leftOffset?: number;
-  defaultHeight?: DrawerHeight;
-  minHeight?: DrawerHeight;
-  maxHeight?: DrawerHeight;
+  /** @deprecated 已改为与「查看历史」同款 Modal，保留以免调用方报错 */
+  defaultHeight?: number | string;
+  /** @deprecated 已改为与「查看历史」同款 Modal，保留以免调用方报错 */
+  minHeight?: number | string;
+  /** @deprecated 已改为与「查看历史」同款 Modal，保留以免调用方报错 */
+  maxHeight?: number | string;
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
@@ -89,45 +93,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
   children,
   instanceId,
   jobMode = "BATCH",
-  leftOffset = 64,
-  defaultHeight = "70vh",
-  minHeight = "40vh",
-  maxHeight = "90vh",
 }) => {
-  const toPxHeight = useCallback((value: DrawerHeight, fallback: number) => {
-    if (typeof value === "number") {
-      return value;
-    }
-
-    if (typeof window === "undefined") {
-      return fallback;
-    }
-
-    const text = String(value).trim();
-    if (text.endsWith("vh")) {
-      const num = Number.parseFloat(text);
-      return Number.isFinite(num) ? (window.innerHeight * num) / 100 : fallback;
-    }
-    if (text.endsWith("px")) {
-      const num = Number.parseFloat(text);
-      return Number.isFinite(num) ? num : fallback;
-    }
-    return fallback;
-  }, []);
-
-  const getSafePanelHeight = useCallback(
-    (height: number) => {
-      const minPanelHeight = toPxHeight(minHeight, 260);
-      const maxPanelHeight = toPxHeight(maxHeight, 880);
-      return Math.max(minPanelHeight, Math.min(maxPanelHeight, height));
-    },
-    [maxHeight, minHeight, toPxHeight],
-  );
-
-  const [panelHeight, setPanelHeight] = useState(() =>
-    getSafePanelHeight(toPxHeight(defaultHeight, 560)),
-  );
-  const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logContent, setLogContent] = useState("");
   const [errorText, setErrorText] = useState("");
@@ -174,26 +140,16 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
       return;
     }
 
-    setPanelHeight(getSafePanelHeight(toPxHeight(defaultHeight, 560)));
     setSearchKeyword("");
     void loadLogs(true);
 
+    // 打开期间定时拉取，保持「实时刷新」
     const timer = window.setInterval(() => {
       void loadLogs(false);
     }, 3000);
 
     return () => window.clearInterval(timer);
-  }, [defaultHeight, getSafePanelHeight, loadLogs, open, toPxHeight]);
-
-  useEffect(() => {
-    if (!open || typeof window === "undefined") {
-      return;
-    }
-
-    const handleResize = () => setPanelHeight((current) => getSafePanelHeight(current));
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [getSafePanelHeight, open]);
+  }, [loadLogs, open]);
 
   const logLines = useMemo(() => logContent.split(/\r?\n/), [logContent]);
   const normalizedKeyword = searchKeyword.trim().toLowerCase();
@@ -201,158 +157,147 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
     ? logLines.filter((line) => line.toLowerCase().includes(normalizedKeyword)).length
     : 0;
 
-  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(true);
-
-    const startY = event.clientY;
-    const startHeight = panelHeight;
-    const originalUserSelect = document.body.style.userSelect;
-    const originalCursor = document.body.style.cursor;
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "row-resize";
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      setPanelHeight(getSafePanelHeight(startHeight + startY - moveEvent.clientY));
-    };
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.body.style.userSelect = originalUserSelect;
-      document.body.style.cursor = originalCursor;
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  if (!open || typeof document === "undefined") {
-    return null;
-  }
-
-  const panelStyle = { height: `${panelHeight}px` } as React.CSSProperties;
-  const wrapperStyle = { left: leftOffset } as React.CSSProperties;
-
-  return createPortal(
-    <div className="run-log-drawer fixed bottom-0 right-0 top-0 z-[9999] pointer-events-none" style={wrapperStyle}>
-      <div className="absolute bottom-3 left-5 right-5 flex flex-col pointer-events-none">
-        <div className="flex h-5 cursor-row-resize items-center justify-center pointer-events-auto" onMouseDown={handleMouseDown}>
-          <div
-            className={[
-              "h-1 w-14 rounded-full transition-all duration-200",
-              isDragging
-                ? "bg-[#315efb] shadow-[0_8px_18px_rgba(49,94,251,0.2)]"
-                : "bg-slate-300 hover:bg-slate-400",
-            ].join(" ")}
-          />
+  const modalTitle = (
+    <div className="flex min-w-0 items-center justify-between gap-3 pr-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <Tooltip title="当前任务实例的实时原始日志">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-control)] text-[color:var(--st-color-accent)]">
+            <FileSearchOutlined className="text-[15px]" />
+          </div>
+        </Tooltip>
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-semibold text-[color:var(--st-color-text-primary)]">
+            {title}
+          </div>
+          <div className="truncate text-sm text-[color:var(--st-color-text-secondary)]">
+            {subtitle} · 实时刷新
+          </div>
         </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => void loadLogs(true)}
+        disabled={loading}
+        className={[
+          "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium",
+          "border-0 bg-transparent text-[var(--st-color-text-secondary)]",
+          "transition-colors duration-200 hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--st-color-focus)]",
+          loading ? "cursor-not-allowed opacity-60" : "active:scale-[0.98]",
+        ].join(" ")}
+      >
+        <ReloadOutlined className={loading ? "animate-spin" : ""} />
+        刷新
+      </button>
+    </div>
+  );
 
-        <section
-          style={panelStyle}
-          className="run-log-drawer__panel pointer-events-auto flex flex-col overflow-hidden rounded-[18px] border border-slate-200/90 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.10)]"
-        >
-          <header className="run-log-drawer__header flex h-[54px] items-center justify-between border-b border-slate-100 bg-white px-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <Tooltip title="当前任务实例的实时原始日志">
-                <div className="run-log-drawer__icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#eef3ff] text-[#315efb]">
-                  <FileSearchOutlined className="text-[15px]" />
-                </div>
-              </Tooltip>
-              <div className="min-w-0">
-                <div className="run-log-drawer__title truncate text-[15px] font-semibold text-slate-900">{title}</div>
-                <div className="truncate text-sm text-slate-600">{subtitle} · 实时刷新</div>
+  return (
+    <Modal
+      title={modalTitle}
+      open={open}
+      onCancel={onClose}
+      styles={{
+        mask: { background: "var(--st-color-modal-mask)" },
+        content: {
+          display: "flex",
+          flexDirection: "column",
+          flex: "1 1 0%",
+          minHeight: 0,
+        },
+        header: {
+          marginBottom: 0,
+          padding: "16px 20px",
+          borderBottom: "1px solid var(--st-color-border)",
+        },
+        body: {
+          display: "flex",
+          flexDirection: "column",
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflow: "hidden",
+          padding: 16,
+        },
+        footer: footer
+          ? {
+              marginTop: 0,
+              padding: "12px 20px",
+              borderTop: "1px solid var(--st-color-border)",
+            }
+          : undefined,
+      }}
+      destroyOnHidden
+      className="custom-modal task-history-modal"
+      maskClosable={false}
+      style={{ top: 10, height: "calc(100vh - 20px)" }}
+      width="96vw"
+      footer={footer || null}
+    >
+      <div className="flex min-h-0 flex-1 flex-col">
+        {children ? (
+          children
+        ) : (
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <Input
+                allowClear
+                value={searchKeyword}
+                onChange={(event) => setSearchKeyword(event.target.value)}
+                placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
+                className="min-w-[240px] flex-1"
+              />
+              <span className="whitespace-nowrap text-sm text-[color:var(--st-color-text-secondary)]">
+                {normalizedKeyword ? `命中 ${matchedLineCount} 行` : `共 ${logLines.length} 行`}
+              </span>
+            </div>
+
+            {loading && !logContent ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] text-center">
+                <Spin size="small" />
+                <span className="ml-2 text-sm text-[color:var(--st-color-text-secondary)]">
+                  正在加载日志...
+                </span>
               </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => void loadLogs(true)}
-                disabled={loading}
-                className={[
-                  "run-log-drawer__refresh-button inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-sm font-medium",
-                  "border-0 bg-transparent text-[var(--st-color-text-secondary)]",
-                  "transition-colors duration-200 hover:bg-[var(--st-color-hover)] hover:text-[var(--st-color-accent)]",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--st-color-focus)]",
-                  loading
-                    ? "cursor-not-allowed opacity-60"
-                    : "active:scale-[0.98]",
-                ].join(" ")}
-              >
-                <ReloadOutlined className={loading ? "animate-spin" : ""} />
-                刷新
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="run-log-drawer__close-button flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="关闭运行日志"
-              >
-                <CloseOutlined className="text-sm" />
-              </button>
-            </div>
-          </header>
-
-          <main className="run-log-drawer__body min-h-0 flex-1 bg-[#fafbfc] p-4">
-            {children ? (
-              children
-            ) : (
-              <div className="flex h-full min-h-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    allowClear
-                    value={searchKeyword}
-                    onChange={(event) => setSearchKeyword(event.target.value)}
-                    placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
-                    className="min-w-[240px] flex-1"
-                  />
-                  <span className="whitespace-nowrap text-sm text-slate-400">
-                    {normalizedKeyword ? `命中 ${matchedLineCount} 行` : `共 ${logLines.length} 行`}
-                  </span>
+            ) : errorText ? (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-red-400/40 bg-[color:var(--st-color-bg-control)] text-center">
+                <div className="text-sm font-medium text-red-500">获取日志失败</div>
+                <div className="mt-1 max-w-[520px] text-sm leading-5 text-[color:var(--st-color-text-secondary)]">
+                  {errorText}
                 </div>
-
-                {loading && !logContent ? (
-                  <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
-                    <Spin size="small" />
-                    <span className="ml-2 text-sm text-slate-400">正在加载日志...</span>
-                  </div>
-                ) : errorText ? (
-                  <div className="run-log-drawer__state-card flex min-h-[180px] flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-red-100 bg-white text-center">
-                    <div className="text-sm font-medium text-red-500">获取日志失败</div>
-                    <div className="mt-1 max-w-[520px] text-sm leading-5 text-slate-500">{errorText}</div>
-                  </div>
-                ) : (
-                  <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-800/90 bg-slate-950 p-4 font-mono text-sm leading-5 text-slate-100">
-                    {logContent ? (
-                      logLines.map((line, index) => {
-                        const matched = Boolean(normalizedKeyword && line.toLowerCase().includes(normalizedKeyword));
-                        return (
-                          <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>
-                            {line || " "}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="run-log-drawer__state-card flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center">
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前实例暂无日志" />
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[color:var(--st-color-border)] bg-[#0b1220] p-4 font-mono text-sm leading-5 text-slate-100">
+                {logContent ? (
+                  logLines.map((line, index) => {
+                    const matched = Boolean(
+                      normalizedKeyword && line.toLowerCase().includes(normalizedKeyword),
+                    );
+                    const isError = /\bERROR\b/i.test(line);
+                    return (
+                      <div
+                        key={index}
+                        className={[
+                          matched ? "rounded bg-cyan-950/80 text-cyan-100" : "",
+                          isError && !matched ? "text-red-400" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        {line || " "}
                       </div>
-                    )}
+                    );
+                  })
+                ) : (
+                  <div className="flex h-full min-h-[180px] items-center justify-center text-center">
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前实例暂无日志" />
                   </div>
                 )}
               </div>
             )}
-          </main>
-          {footer ? (
-            <footer className="run-log-drawer__footer flex items-center justify-end gap-2 border-t border-slate-100 bg-white px-5 py-3">
-              {footer}
-            </footer>
-          ) : null}
-        </section>
+          </div>
+        )}
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 };
 

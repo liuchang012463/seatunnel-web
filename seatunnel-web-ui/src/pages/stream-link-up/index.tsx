@@ -219,6 +219,7 @@ const getPageRecords = (res: any) => {
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
 
 const RealtimeSyncPage: React.FC = () => {
+  // 实时引接默认源仍用 MySQL-CDC；去向仅金仓/海量，默认金仓
   const sourceType = {
     dbType: 'MYSQL',
     connectorType: 'MySQL-CDC',
@@ -226,9 +227,9 @@ const RealtimeSyncPage: React.FC = () => {
   };
 
   const sinkType = {
-    dbType: 'MYSQL',
+    dbType: 'KINGBASE',
     connectorType: 'Jdbc',
-    pluginName: 'JDBC-MYSQL',
+    pluginName: 'JDBC-KINGBASE',
   };
 
   const ref = useRef<any>(null);

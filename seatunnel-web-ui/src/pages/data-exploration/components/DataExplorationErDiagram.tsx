@@ -3,9 +3,7 @@ import {
   EyeOutlined,
   LeftOutlined,
   RightOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
-import { Input } from 'antd';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactFlow, {
   Background,
@@ -35,6 +33,11 @@ interface DataExplorationErDiagramProps {
   dataSourceId?: string;
   databaseFqn?: string;
   schemaFqn?: string;
+  /** 与左侧主选表入口同步的当前表 */
+  selectedTableId?: string;
+  onSelectTable?: (tableId: string) => void;
+  /** 明确进入表详情（列/样本/指标），避免在 ER 侧再铺一遍字段列表 */
+  onOpenDetail?: (tableId: string) => void;
 }
 
 interface ErNodeData {
@@ -146,17 +149,18 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
   dataSourceId,
   databaseFqn,
   schemaFqn,
+  selectedTableId,
+  onSelectTable,
+  onOpenDetail,
 }) => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [diagram, setDiagram] = useState<ErDiagram>();
   const [selectedId, setSelectedId] = useState<string>();
-  const [searchKeyword, setSearchKeyword] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [hiddenDescriptionIds, setHiddenDescriptionIds] = useState<Set<string>>(new Set());
-  // Both side drawers start collapsed so the ER canvas gets the full width.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [detailCollapsed, setDetailCollapsed] = useState(true);
+  // 右侧仅保留「选中摘要 + 打开详情」；默认展开便于发现下钻入口
+  const [detailCollapsed, setDetailCollapsed] = useState(false);
   const flowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
   useEffect(() => {
@@ -173,7 +177,6 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     setLoadError('');
     setDiagram(undefined);
     setSelectedId(undefined);
-    setSearchKeyword('');
     setExpandedIds(new Set());
     setHiddenDescriptionIds(new Set());
 
@@ -191,7 +194,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
           edges: [],
         };
         setDiagram(nextDiagram);
-        setSelectedId(nextDiagram.nodes[0]?.id);
+        setSelectedId(selectedTableId || nextDiagram.nodes[0]?.id);
       })
       .catch((error: any) => {
         if (disposed) return;
@@ -212,15 +215,13 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     };
   }, [active, dataSourceId, databaseFqn, schemaFqn]);
 
-  const visibleTables = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    if (!keyword) return diagram?.nodes || [];
-    return (diagram?.nodes || []).filter((table) => (
-      tableTitle(table).toLowerCase().includes(keyword)
-      || table.name.toLowerCase().includes(keyword)
-      || table.fullyQualifiedName.toLowerCase().includes(keyword)
-    ));
-  }, [diagram, searchKeyword]);
+  // 跟随左侧主选表，避免 ER 与目录两套选中态
+  useEffect(() => {
+    if (!selectedTableId || !diagram?.nodes.some((table) => table.id === selectedTableId)) {
+      return;
+    }
+    setSelectedId(selectedTableId);
+  }, [diagram, selectedTableId]);
 
   const selectedTable = diagram?.nodes.find((table) => table.id === selectedId);
   const selectedRelationCount = (diagram?.edges || []).filter((edge) => (
@@ -295,8 +296,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     })
   ), [diagram, selectedId]);
 
-  const selectTableItem = (table: DataExplorationErNode) => {
-    setSelectedId(table.id);
+  const focusTableOnCanvas = (table: DataExplorationErNode) => {
     const node = nodes.find((candidate) => candidate.id === table.id);
     if (node) {
       flowInstanceRef.current?.setCenter(
@@ -307,74 +307,27 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     }
   };
 
+  const selectTableOnCanvas = (tableId: string) => {
+    setSelectedId(tableId);
+    onSelectTable?.(tableId);
+    const table = diagram?.nodes.find((item) => item.id === tableId);
+    if (table) focusTableOnCanvas(table);
+  };
+
   return (
     <main
-      className={`er-dialog-content${sidebarCollapsed ? ' is-sidebar-collapsed' : ''}${detailCollapsed ? ' is-detail-collapsed' : ''}`}
+      className={`er-dialog-content is-sidebar-collapsed${detailCollapsed ? ' is-detail-collapsed' : ''}`}
     >
-        <aside className="sidebar">
-          <div className="table-list">
-            <div className="side-head">
-              <strong>数据表</strong>
-              <div className="side-head__right">
-                <span>{diagram?.nodes.length || 0}</span>
-                <button
-                  type="button"
-                  className="panel-toggle"
-                  title="收起数据表栏"
-                  onClick={() => setSidebarCollapsed(true)}
-                >
-                  <LeftOutlined />
-                </button>
-              </div>
-            </div>
-            <Input
-              allowClear
-              prefix={<SearchOutlined />}
-              className="search"
-              placeholder="搜索数据表"
-              value={searchKeyword}
-              onChange={(event) => setSearchKeyword(event.target.value)}
-            />
-            <div className="table-items">
-              {visibleTables.map((table) => (
-                <button
-                  type="button"
-                  key={table.id}
-                  className={`table-item${table.id === selectedId ? ' active' : ''}`}
-                  onClick={() => selectTableItem(table)}
-                >
-                  <span aria-hidden="true">▦</span>
-                  <div>
-                    <b>{tableTitle(table)}</b>
-                    <small title={table.fullyQualifiedName}>
-                      {table.fullyQualifiedName} · {table.columns.length} 字段
-                    </small>
-                  </div>
-                </button>
-              ))}
-              {!visibleTables.length && !loading && (
-                <div className="empty-hint">暂无匹配的数据表</div>
-              )}
-            </div>
-          </div>
-        </aside>
-
         <div className="flow-wrapper">
-          {sidebarCollapsed && (
-            <button
-              type="button"
-              className="edge-toggle edge-toggle--left"
-              title="展开数据表栏"
-              onClick={() => setSidebarCollapsed(false)}
-            >
-              <RightOutlined />
-            </button>
-          )}
+          <div className="er-mode-banner">
+            <strong>关系总览</strong>
+            <p>查看表关系与主键/外键；在图中点选表后点右侧「打开表详情」，或直接从左侧「选择表」进入详情</p>
+          </div>
           {detailCollapsed && (
             <button
               type="button"
               className="edge-toggle edge-toggle--right"
-              title="展开字段栏"
+              title="展开选中表摘要"
               onClick={() => setDetailCollapsed(false)}
             >
               <LeftOutlined />
@@ -398,7 +351,8 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                 onInit={(instance) => {
                   flowInstanceRef.current = instance;
                 }}
-                onNodeClick={(_, node) => setSelectedId(node.id)}
+                onNodeClick={(_, node) => selectTableOnCanvas(node.id)}
+                onNodeDoubleClick={(_, node) => onOpenDetail?.(node.id)}
                 proOptions={{ hideAttribution: true }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#2a3a52" />
@@ -416,7 +370,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                 <button
                   type="button"
                   className="panel-toggle"
-                  title="收起字段栏"
+                  title="收起摘要栏"
                   onClick={() => setDetailCollapsed(true)}
                 >
                   <RightOutlined />
@@ -427,23 +381,23 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                   <small title={selectedTable.fullyQualifiedName}>{selectedTable.fullyQualifiedName}</small>
                 </div>
               </div>
-              <div className="tabs"><b>字段</b></div>
-              <div className="field-list">
-                {selectedTable.columns.map((column) => {
-                  const key = columnKey(column);
-                  return (
-                    <div key={column.id || column.name}>
-                      <i className={constraintClass(key || '')}>{key || '·'}</i>
-                      <span title={column.name}>{column.name}</span>
-                      <small title={column.dataType}>{column.dataType || '-'}</small>
-                    </div>
-                  );
-                })}
+              <div className="er-detail-summary">
+                <p><b>{selectedTable.columns.length}</b> 个字段（图上仅作关系概览）</p>
+                <p>
+                  {selectedRelationCount
+                    ? `参与 ${selectedRelationCount} 个关联关系`
+                    : '暂无关联关系'}
+                </p>
+                <p className="er-detail-hint">完整列定义、样本与探查指标请打开表详情，避免与总览重复罗列。</p>
+                <button
+                  type="button"
+                  className="er-open-detail"
+                  onClick={() => onOpenDetail?.(selectedTable.id)}
+                >
+                  打开表详情
+                </button>
+                <small className="er-detail-shortcut">也可双击画布上的表节点</small>
               </div>
-              <section className="relationship">
-                <strong>关联关系</strong>
-                <p>{selectedRelationCount ? `该表参与 ${selectedRelationCount} 个关联关系` : '暂无关联关系'}</p>
-              </section>
             </>
           ) : (
             <>
@@ -451,17 +405,15 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                 <button
                   type="button"
                   className="panel-toggle"
-                  title="收起字段栏"
+                  title="收起摘要栏"
                   onClick={() => setDetailCollapsed(true)}
                 >
                   <RightOutlined />
                 </button>
               </div>
-              <div className="detail-empty">请选择一张数据表</div>
+              <div className="detail-empty">在图中点选一张表，或从左侧主列表进入详情</div>
             </>
           )}
-          {/* PK/FK legend pinned to the bottom of the field panel, outside
-              the scrolling field list. */}
           <div className="legend">
             <p><i className="pk">PK</i> 主键</p>
             <p><i className="fk">FK</i> 外键</p>

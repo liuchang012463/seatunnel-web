@@ -237,7 +237,7 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
       desc="文件会由平台自动上传到 MinIO，任务运行时从 MinIO 读取结构化数据"
       heroTitle="本地文件"
       heroDesc={assets[0]?.originalName || '尚未上传文件'}
-      heroTag="SOURCE"
+      heroTag="来源"
       onClose={onClose}
       footer={
         <button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>

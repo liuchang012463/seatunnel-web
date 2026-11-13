@@ -1,8 +1,8 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Button, Popconfirm, Popover, Space, Tooltip } from "antd";
 import { Eye, FileCode2, RefreshCw, Save } from "lucide-react";
 import React from "react";
 
+import { WORKFLOW_BACK_BUTTON_CLASS } from "@/pages/common/workflow/backButtonClass";
 import { EnvConfig } from "../../workflow/components/ScheduleConfigContent/types";
 import CodeBlockWithCopy from "../../workflow/operator/CodeBlockWithCopy";
 import RightConfigPanel from "../../workflow/RightConfigPanel";
@@ -186,10 +186,9 @@ export default function CustomWorkflow({
 
           <div>
             <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+              type="default"
               onClick={goBack}
-              className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+              className={WORKFLOW_BACK_BUTTON_CLASS}
             >
               返回任务列表
             </Button>

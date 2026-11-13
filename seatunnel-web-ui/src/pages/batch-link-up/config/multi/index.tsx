@@ -333,6 +333,14 @@ export default function MultiConfigPage() {
     history.push("/sync/batch-link-up");
   };
 
+  const goPreviousStep = () => {
+    if (id) {
+      history.push(`/sync/batch-link-up/${id}/detail?step=client`);
+      return;
+    }
+    history.push("/sync/batch-link-up");
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
@@ -355,6 +363,7 @@ export default function MultiConfigPage() {
         params={params}
         setParams={setParams}
         goBack={goBack}
+        goPreviousStep={goPreviousStep}
         basicConfig={basicConfig}
         setBasicConfig={setBasicConfig}
         scheduleConfig={scheduleConfig}

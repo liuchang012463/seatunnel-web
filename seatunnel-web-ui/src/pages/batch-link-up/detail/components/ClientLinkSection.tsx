@@ -4,6 +4,7 @@ import CommonClientLinkSection, {
 import {
   generateOfflineSourceDataSourceOptions,
   generateSourceDataSourceOptions,
+  generateTaskTargetDataSourceOptions,
 } from "../../DataSourceSelect";
 
 interface Props {
@@ -40,13 +41,14 @@ const ClientLinkSection: React.FC<Props> = (props) => {
     <CommonClientLinkSection
       {...props}
       scene="offline"
-      clientLabel="我的客户端"
-      clientPlaceholder="请选择 Zeta 客户端节点"
+      clientLabel="数据引接引擎"
+      clientPlaceholder="请选择数据引接引擎节点"
       sourceTitle="来源"
       targetTitle="去向"
       sourceCreateText="新建来源数据源"
       targetCreateText="新建去向数据源"
       sourceDataSourceTypeOptions={sourceOptions}
+      targetDataSourceTypeOptions={generateTaskTargetDataSourceOptions()}
       sourceManaged={props.sourceManaged}
     />
   );

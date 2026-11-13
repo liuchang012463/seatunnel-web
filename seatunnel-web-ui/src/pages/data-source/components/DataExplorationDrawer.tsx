@@ -185,6 +185,13 @@ function asCompletionResult(value: unknown): CompletionResultSummary | undefined
   return value as CompletionResultSummary;
 }
 
+function completionPatchCount(result?: CompletionResultSummary) {
+  return (result?.results || []).reduce((sum, item) => {
+    const patches = Number(item.patches_count ?? item.patchesCount ?? 0);
+    return sum + (Number.isFinite(patches) ? patches : 0);
+  }, 0);
+}
+
 function completionResultCopy(job?: DataExplorationMetadataJob) {
   if (!job) return '';
   if (job.error) return job.error;
@@ -195,13 +202,14 @@ function completionResultCopy(job?: DataExplorationMetadataJob) {
   const failed = Number(result?.failed ?? progress.failed ?? 0);
   const skipped = Number(result?.skipped ?? progress.skipped ?? 0);
   const total = Number(result?.total ?? progress.total ?? job.totalTables ?? completed + failed + skipped);
+  const patches = completionPatchCount(result);
   if (status === 'completed') {
-    if (failed > 0) {
-      return `补全结束：成功 ${completed}，失败 ${failed}，跳过 ${skipped}`
-        + (total > 0 ? `（共 ${total} 张表）` : '');
-    }
-    return `补全完成：成功 ${completed}，跳过 ${skipped}`
-      + (total > 0 ? `（共 ${total} 张表）` : '');
+    const base = failed > 0
+      ? `补全结束：成功 ${completed}，失败 ${failed}，跳过 ${skipped}`
+      : `补全完成：成功 ${completed}，跳过 ${skipped}`;
+    const scope = total > 0 ? `（共 ${total} 张表）` : '';
+    const patchText = patches > 0 ? `，写入 ${patches} 处描述` : '';
+    return `${base}${scope}${patchText}。请人工确认后再用于业务。`;
   }
   if (status === 'failed' || status === 'cancelled') {
     return job.error || '元数据补全失败';
@@ -210,6 +218,63 @@ function completionResultCopy(job?: DataExplorationMetadataJob) {
     return `正在补全元数据… 已处理 ${completed + failed + skipped}/${total}`;
   }
   return '正在补全元数据，请稍候…';
+}
+
+/** 补全结束后弹出结果：数量 + 建议人工确认 */
+function presentCompletionFinishedResult(options: {
+  job: DataExplorationMetadataJob;
+  markedColumnCount: number;
+  onReviewColumns?: () => void;
+}) {
+  const result = asCompletionResult(options.job.result);
+  const progress = options.job.progress || {};
+  const completed = Number(result?.completed ?? progress.completed ?? 0);
+  const failed = Number(result?.failed ?? progress.failed ?? 0);
+  const skipped = Number(result?.skipped ?? progress.skipped ?? 0);
+  const patches = completionPatchCount(result);
+  const marked = options.markedColumnCount;
+
+  Modal[failed > 0 ? 'warning' : 'success']({
+    title: failed > 0 ? '元数据补全已结束（含失败）' : '元数据补全完成',
+    centered: true,
+    width: 520,
+    okText: options.onReviewColumns ? '去核对列定义' : '知道了',
+    onOk: () => options.onReviewColumns?.(),
+    content: (
+      <div style={{ fontSize: 14, lineHeight: 1.65 }}>
+        <p style={{ margin: '0 0 10px' }}>
+          成功 <b>{completed}</b> 张表
+          {patches > 0 ? <>，写入 <b>{patches}</b> 处描述</> : null}
+          {skipped > 0 ? <>，跳过 <b>{skipped}</b></> : null}
+          {failed > 0 ? <>，失败 <b>{failed}</b></> : null}
+          {marked > 0 ? <>；当前表有 <b>{marked}</b> 个字段说明已更新</> : null}
+          。
+        </p>
+        {marked > 0 ? (
+          <p style={{ margin: '0 0 10px', color: 'var(--exploration-text-muted, #8aa0b8)' }}>
+            列定义中已用「已补全」标识本次新写入或变更的字段说明。
+          </p>
+        ) : (
+          <p style={{ margin: '0 0 10px', color: 'var(--exploration-text-muted, #8aa0b8)' }}>
+            若当前表未见新说明，可能本次仅跳过已有描述，或描述尚未同步完成。
+          </p>
+        )}
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: 6,
+            background: 'rgba(255, 215, 132, 0.12)',
+            border: '1px solid rgba(255, 215, 132, 0.35)',
+          }}
+        >
+          <strong style={{ display: 'block', marginBottom: 4 }}>建议人工确认</strong>
+          <span>
+            补全内容由助手生成，请核对表描述与字段说明是否准确、合规后再用于业务或对外发布。
+          </span>
+        </div>
+      </div>
+    ),
+  });
 }
 
 const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
@@ -244,6 +309,9 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
   const [completionLoading, setCompletionLoading] = useState(false);
   const completionNoticeRef = useRef<string>();
+  /** 补全前字段/表描述快照，用于标识本次新写入 */
+  const descriptionSnapshotRef = useRef<Map<string, string>>(new Map());
+  const [completionMarkedColumns, setCompletionMarkedColumns] = useState<string[]>([]);
   const [scopeSummary, setScopeSummary] = useState<DataInventorySummary>();
   const [scopeSummaryLoading, setScopeSummaryLoading] = useState(false);
   const [scopeSummaryError, setScopeSummaryError] = useState<string>();
@@ -380,11 +448,10 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       const nextPage = response.data || { records: [], total: 0, pageNo, pageSize: 20 };
       setTablePage(nextPage);
       setTablePageNo(pageNo);
-      const firstTable = nextPage.records?.[0];
       setActiveTab('columns');
-      setSelectedTableId(firstTable?.id);
-      // The first table is selected automatically, so show its detail view instead of the ER overview.
-      setErActive(false);
+      // 默认进入关系总览；左侧「表」是唯一主选表入口，点表后再进详情
+      setSelectedTableId(undefined);
+      setErActive(true);
       setTableDetail(undefined);
       setProfile(undefined);
       setPreview(undefined);
@@ -555,15 +622,9 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           const status = normalizeCompletionStatus(nextJob.status);
           const noticeKey = `${jobId}:${status}`;
           if (status === 'completed' && completionNoticeRef.current !== noticeKey) {
-            completionNoticeRef.current = noticeKey;
-            const summary = completionResultCopy(nextJob);
-            const result = asCompletionResult(nextJob.result);
-            const failed = Number(result?.failed ?? nextJob.progress?.failed ?? 0);
-            if (failed > 0) {
-              message.warning(summary || '元数据补全已结束，部分表失败');
-            } else {
-              message.success(summary || '元数据补全已完成，正在刷新表详情');
-            }
+            // 结果弹窗在表详情刷新并比对「已补全」字段后再弹出
+            completionNoticeRef.current = `${noticeKey}:pending-review`;
+            message.success('元数据补全已完成，正在刷新并标识本次变更…');
           } else if ((status === 'failed' || status === 'cancelled')
             && completionNoticeRef.current !== noticeKey) {
             completionNoticeRef.current = noticeKey;
@@ -606,6 +667,20 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     let retryTimer: number | undefined;
     let attempts = 0;
 
+    const markCompletedColumns = (detail: DataExplorationTableDetail) => {
+      const snapshot = descriptionSnapshotRef.current;
+      const marked: string[] = [];
+      (detail.columns || []).forEach((column) => {
+        const before = (snapshot.get(column.name) || '').trim();
+        const after = (column.description || '').trim();
+        if (after && after !== before) {
+          marked.push(column.name);
+        }
+      });
+      setCompletionMarkedColumns(marked);
+      return marked;
+    };
+
     const refreshTableDetail = async () => {
       attempts += 1;
       setDetailLoading(true);
@@ -614,15 +689,37 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         if (disposed) return;
         if (response.code === 0 && response.data) {
           setTableDetail(response.data);
+          const marked = markCompletedColumns(response.data);
           const hasDescription = Boolean(response.data.description?.trim())
             || (response.data.columns || []).some((column) => Boolean(column.description?.trim()));
           if (!hasDescription && attempts < 5) {
             retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
+            return;
+          }
+          const reviewKey = `${completionJob?.jobId}:reviewed`;
+          if (completionJob && completionNoticeRef.current !== reviewKey) {
+            completionNoticeRef.current = reviewKey;
+            presentCompletionFinishedResult({
+              job: completionJob,
+              markedColumnCount: marked.length,
+              onReviewColumns: () => setActiveTab('columns'),
+            });
           }
         } else if (attempts < 5) {
           retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
         } else {
           message.warning(response.message || '补全已完成，但最新字段描述暂不可用');
+          if (completionJob) {
+            const reviewKey = `${completionJob.jobId}:reviewed`;
+            if (completionNoticeRef.current !== reviewKey) {
+              completionNoticeRef.current = reviewKey;
+              presentCompletionFinishedResult({
+                job: completionJob,
+                markedColumnCount: 0,
+                onReviewColumns: () => setActiveTab('columns'),
+              });
+            }
+          }
         }
       } catch (error: any) {
         if (!disposed) {
@@ -642,12 +739,22 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       disposed = true;
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
-  }, [completionJob?.jobId, completionJob?.status, dataSourceId, open, selectedTableId]);
+  }, [completionJob, dataSourceId, open, selectedTableId]);
 
   const startCompletion = async () => {
     if (!dataSourceId || !selectedTableId) return;
     setCompletionLoading(true);
     completionNoticeRef.current = undefined;
+    // 记录补全前描述，完成后用于在列定义中标识「已补全」
+    const snapshot = new Map<string, string>();
+    if (tableDetail?.description) {
+      snapshot.set('__table__', tableDetail.description);
+    }
+    (tableDetail?.columns || []).forEach((column) => {
+      snapshot.set(column.name, column.description || '');
+    });
+    descriptionSnapshotRef.current = snapshot;
+    setCompletionMarkedColumns([]);
     try {
       const response = await startDataExplorationMetadataCompletion(dataSourceId, selectedTableId);
       if (response.code !== 0 || !response.data?.jobId) {
@@ -658,7 +765,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         ...response.data,
         status: normalizeCompletionStatus(response.data.status) || response.data.status || 'pending',
       });
-      message.info('元数据补全任务已提交，正在等待完成…');
+      message.info('元数据补全任务已提交，完成后将提示补全数量并建议人工确认');
     } catch (error: any) {
       message.error(
         error?.response?.data?.message
@@ -707,8 +814,27 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, dataSourceId, open, preview, previewLoading, selectedTableId]);
 
+  const markedColumnSet = useMemo(
+    () => new Set(completionMarkedColumns),
+    [completionMarkedColumns],
+  );
+
   const structureColumns: TableColumnsType<DataExplorationColumn> = [
-    { title: '字段', dataIndex: 'name', key: 'name', width: 150, fixed: 'left' },
+    {
+      title: '字段',
+      dataIndex: 'name',
+      key: 'name',
+      width: 180,
+      fixed: 'left',
+      render: (value: string, column) => (
+        <span className="exploration-drawer__column-name">
+          {value || column.name}
+          {markedColumnSet.has(column.name) ? (
+            <Tag color="cyan" style={{ marginInlineStart: 6 }}>已补全</Tag>
+          ) : null}
+        </span>
+      ),
+    },
     {
       title: '类型',
       dataIndex: 'dataTypeDisplay',
@@ -716,7 +842,17 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       render: (value: string, column) => value || column.dataType || '-',
     },
     { title: '约束', dataIndex: 'constraint', key: 'constraint', width: 130, render: (value) => value || '-' },
-    { title: '说明', dataIndex: 'description', key: 'description', ellipsis: true },
+    {
+      title: '说明',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (value: string, column) => (
+        <span className={markedColumnSet.has(column.name) ? 'exploration-drawer__column-desc is-completed' : undefined}>
+          {value || '-'}
+        </span>
+      ),
+    },
   ];
 
   const profileColumns: TableColumnsType<DataExplorationColumnProfile> = [
@@ -848,11 +984,10 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                   className={`exploration-drawer__er-link${erActive ? ' is-active' : ''}`}
                   disabled={!databaseFqn || !schemaFqn}
                   onClick={() => {
-                    setSelectedTableId(undefined);
                     setErActive(true);
                   }}
                 >
-                  <span><ApartmentOutlined /> ER 图</span>
+                  <span><ApartmentOutlined /> 关系总览</span>
                   <RightOutlined />
                 </button>
               </div>
@@ -863,7 +998,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <div className="exploration-drawer__section-heading">
                   <div className="exploration-drawer__tables-title">
                     <TableOutlined />
-                    <strong>表</strong>
+                    <strong>选择表</strong>
                     <span>{tablePage?.total || 0}</span>
                   </div>
                   <Button
@@ -875,6 +1010,11 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     onClick={() => void loadTables(tablePageNo)}
                   />
                 </div>
+                <p className="exploration-drawer__tables-hint">
+                  {erActive
+                    ? '主入口：点表名打开详情；当前为关系总览'
+                    : '主入口：点表名查看列定义、样本与指标'}
+                </p>
                 <Input
                   allowClear
                   value={tableSearch}
@@ -891,9 +1031,12 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                       <button
                         type="button"
                         key={table.id}
-                        className={`exploration-drawer__table-item${selectedTableId === table.id ? ' is-selected' : ''}`}
+                        className={`exploration-drawer__table-item${selectedTableId === table.id && !erActive ? ' is-selected' : ''}${selectedTableId === table.id && erActive ? ' is-highlighted' : ''}`}
                         onClick={() => {
-                          if (selectedTableId !== table.id) setActiveTab('columns');
+                          if (selectedTableId !== table.id) {
+                            setActiveTab('columns');
+                            setCompletionMarkedColumns([]);
+                          }
                           setSelectedTableId(table.id);
                           setErActive(false);
                         }}
@@ -939,6 +1082,14 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     dataSourceId={dataSourceId}
                     databaseFqn={databaseFqn}
                     schemaFqn={schemaFqn}
+                    selectedTableId={selectedTableId}
+                    onSelectTable={(tableId) => setSelectedTableId(tableId)}
+                    onOpenDetail={(tableId) => {
+                      setActiveTab('columns');
+                      setCompletionMarkedColumns([]);
+                      setSelectedTableId(tableId);
+                      setErActive(false);
+                    }}
                   />
                 ) : (
                   <div className="exploration-drawer__empty-state"><Spin /></div>
@@ -947,13 +1098,16 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><DatabaseOutlined /></div>
                   <strong>选择一个 Schema</strong>
-                  <span>从左侧目录选择 Schema，查看其中的数据表。</span>
+                  <span>从左侧目录选择 Schema，再进入关系总览或表详情。</span>
                 </div>
               ) : !selectedTableId ? (
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><TableOutlined /></div>
-                  <strong>选择一张表开始查看</strong>
-                  <span>表结构、样本数据和数据指标会显示在这里。</span>
+                  <strong>从表列表打开详情</strong>
+                  <span>左侧「选择表」是主入口；也可先看关系总览，再点「打开表详情」。</span>
+                  <Button type="primary" style={{ marginTop: 12 }} onClick={() => setErActive(true)}>
+                    返回关系总览
+                  </Button>
                 </div>
               ) : detailLoading ? (
                 <div className="exploration-drawer__empty-state"><Spin /></div>
@@ -964,6 +1118,13 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 </div>
               ) : (
                 <>
+                  <div className="exploration-drawer__mode-banner">
+                    <strong>表详情</strong>
+                    <span>列定义、样本与探查指标；返回关系总览可查看表间关联</span>
+                    <button type="button" onClick={() => setErActive(true)}>
+                      <ApartmentOutlined /> 关系总览
+                    </button>
+                  </div>
                   <header className="exploration-drawer__asset-header">
                     <div className="exploration-drawer__asset-copy">
                       <h1 title={tableDetail.fullyQualifiedName}>{selectedTableTitle}</h1>
@@ -998,6 +1159,9 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                             <div className="exploration-drawer__tab-toolbar">
                               <div>
                                 <strong>列定义</strong>
+                                <small style={{ display: 'block', marginTop: 2, color: 'var(--exploration-text-muted)', fontWeight: 400 }}>
+                                  含约束与描述；与关系总览中的字段速览分工不同
+                                </small>
                               </div>
                               <span>{tableDetail.columns?.length || 0} 个字段</span>
                             </div>
@@ -1185,24 +1349,36 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                             )}
                           </div>
                         )}
-                        {normalizeCompletionStatus(completionJob.status) === 'completed'
-                          && (completionResult?.results?.length || 0) > 0 && (
-                          <ul className="exploration-drawer__agent-result-list">
-                            {completionResult?.results?.slice(0, 8).map((item, index) => {
-                              const name = item.table_name || item.tableName || `表 ${index + 1}`;
-                              const state = item.skipped
-                                ? '已跳过'
-                                : item.success
-                                  ? `已写入${item.patches_count ?? item.patchesCount ?? ''}`.trim()
-                                  : (item.error || '失败');
-                              return (
-                                <li key={`${name}-${index}`}>
-                                  <strong>{name}</strong>
-                                  <em>{state}</em>
-                                </li>
-                              );
-                            })}
-                          </ul>
+                        {normalizeCompletionStatus(completionJob.status) === 'completed' && (
+                          <>
+                            {(completionResult?.results?.length || 0) > 0 && (
+                              <ul className="exploration-drawer__agent-result-list">
+                                {completionResult?.results?.slice(0, 8).map((item, index) => {
+                                  const name = item.table_name || item.tableName || `表 ${index + 1}`;
+                                  const patches = item.patches_count ?? item.patchesCount;
+                                  const state = item.skipped
+                                    ? '已跳过'
+                                    : item.success
+                                      ? (patches != null ? `已写入 ${patches} 处` : '已写入')
+                                      : (item.error || '失败');
+                                  return (
+                                    <li key={`${name}-${index}`}>
+                                      <strong>{name}</strong>
+                                      <em>{state}</em>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                            {completionMarkedColumns.length > 0 && (
+                              <span className="exploration-drawer__agent-status-copy">
+                                当前表已标识 {completionMarkedColumns.length} 个「已补全」字段
+                              </span>
+                            )}
+                            <div className="exploration-drawer__agent-confirm-hint">
+                              建议人工确认字段说明与表描述后再用于业务。
+                            </div>
+                          </>
                         )}
                       </>
                     ) : (

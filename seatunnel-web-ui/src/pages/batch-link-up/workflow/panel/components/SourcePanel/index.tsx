@@ -148,7 +148,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         desc="上传或选择湖文件区中的文件，配置解析参数与字段 Schema。"
         heroTitle={title}
         heroDesc={description}
-        heroTag="SOURCE"
+        heroTag="来源"
         dbType={dbType}
         onClose={onClose}
         footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
@@ -170,7 +170,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         desc={`${isHttp ? 'HTTP' : isElasticsearch ? 'Elasticsearch' : 'Kafka'} 节点不支持关系型表、SQL、列解析或数据预览${isHttp && isIncremental ? '；增量窗口请在请求参数或 Body 中手动使用 ${window_start}/${window_end}' : ''}`}
         heroTitle={title}
         heroDesc={description}
-        heroTag="SOURCE"
+        heroTag="来源"
         dbType={dbType}
         onClose={onClose}
         footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
@@ -244,7 +244,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
         desc="修改后会实时同步到当前画布节点"
         heroTitle={title}
         heroDesc={description}
-        heroTag="SOURCE"
+        heroTag="来源"
         dbType={dbType}
         onClose={onClose}
         footer={

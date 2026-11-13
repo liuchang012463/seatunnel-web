@@ -195,10 +195,10 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
 
           <div>
             <div className="text-[18px] font-semibold text-[color:var(--st-color-text-primary)]">
-              {isEdit ? "编辑 Client" : "新增 Client"}
+              {isEdit ? "编辑数据引接引擎" : "新增数据引接引擎"}
             </div>
             <div className="mt-0.5 text-[14px] text-[color:var(--st-color-text-muted)]">
-              配置 SeaTunnel Zeta REST 连接信息。
+              配置数据引接引擎（SeaTunnel Zeta）的 REST 连接信息。
             </div>
           </div>
         </div>
@@ -236,7 +236,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
             onClick={onSubmit}
             style={{ height: 34, borderRadius: 16, paddingInline: 18 }}
           >
-            {isEdit ? "保存修改" : "创建 Client"}
+            {isEdit ? "保存修改" : "创建数据引接引擎"}
           </Button>
         </div>
       }
@@ -263,8 +263,8 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
             <Col span={12}>
               <Form.Item
                 name="clientName"
-                label="客户端名称"
-                rules={[{ required: true, message: "请输入客户端名称" }]}
+                label="引擎名称"
+                rules={[{ required: true, message: "请输入引擎名称" }]}
               >
                 <Input placeholder="例如：ZETA-prod-01" style={inputStyle} />
               </Form.Item>
@@ -439,11 +439,11 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   <Col span={12}>
                     <Form.Item
                       name="clientAddress"
-                      label="客户端地址"
+                      label="引擎地址"
                       rules={[
                         {
                           required: true,
-                          message: "请输入客户端地址",
+                          message: "请输入引擎地址",
                         },
                       ]}
                     >
@@ -457,7 +457,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   <Col span={12}>
                     <Form.Item
                       name="clientPort"
-                      label="客户端端口"
+                      label="引擎端口"
                       rules={[
                         {
                           required: true,
@@ -522,7 +522,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
 
           <Form.Item name="remark" label="备注">
             <TextArea
-              placeholder="补充说明这个 Client 的用途、环境或备注信息"
+              placeholder="补充说明这个数据引接引擎的用途、环境或备注信息"
               autoSize={{ minRows: 3, maxRows: 4 }}
               style={{ borderRadius: 10 }}
             />

@@ -1,25 +1,26 @@
-import { history, useParams } from '@umijs/max';
+import { history, useLocation, useParams } from '@umijs/max';
 import { Form, message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DEFAULT_TASK_DATASOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from '../../../data-source/dataSourceRegistry';
 import { seatunnelJobDefinitionApi } from '../../api';
-import { getDbLabel } from '../constants';
+import { buildDefaultJobName, getDbLabel } from '../constants';
 import type { DetailFormValues, SourceTargetType, StepKey, SyncMode } from '../types';
 import { isWebUploadSource, normalizeOfflineMode } from '../modeUtils';
 
-const defaultSourceType: SourceTargetType = {
-  dbType: 'MYSQL',
-  connectorType: 'Jdbc',
-  pluginName: 'JDBC-MYSQL',
-};
+const defaultSourceType: SourceTargetType = { ...DEFAULT_TASK_DATASOURCE_TYPE };
+const defaultTargetType: SourceTargetType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
-const defaultTargetType: SourceTargetType = {
-  dbType: 'MYSQL',
-  connectorType: 'Jdbc',
-  pluginName: 'Jdbc-MYSQL',
+const readStepFromSearch = (search?: string): StepKey => {
+  const step = new URLSearchParams(search || '').get('step');
+  return step === 'client' ? 'client' : 'base';
 };
 
 export default function useDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [form] = Form.useForm<DetailFormValues>();
 
   const [params, setParams] = useState<any>(null);
@@ -27,7 +28,10 @@ export default function useDetailPage() {
   const [loadError, setLoadError] = useState<string>();
   const [sourceType, setSourceType] = useState<SourceTargetType>(defaultSourceType);
   const [targetType, setTargetType] = useState<SourceTargetType>(defaultTargetType);
-  const [activeStep, setActiveStep] = useState<StepKey>('base');
+  // 支持 ?step=client：从逻辑关系配置「返回上一步」时回到引接链路配置
+  const [activeStep, setActiveStep] = useState<StepKey>(() =>
+    readStepFromSearch(location.search),
+  );
 
   const [sourceClientId, setSourceClientId] = useState<string>();
   const [targetClientId, setTargetClientId] = useState<string>();
@@ -45,17 +49,40 @@ export default function useDetailPage() {
   const [sourceDataSourceId, setSourceDataSourceId] = useState<string>();
   const [targetDataSourceId, setTargetDataSourceId] = useState<string>();
 
+  /** 最近一次自动生成的任务名；用户改名后不再随库类型覆盖 */
+  const autoJobNameRef = useRef(
+    buildDefaultJobName(defaultSourceType, defaultTargetType),
+  );
+
+  const syncAutoJobName = useCallback(
+    (nextSource: SourceTargetType, nextTarget: SourceTargetType) => {
+      const nextName = buildDefaultJobName(nextSource, nextTarget);
+      const currentName = String(form.getFieldValue('jobName') || '').trim();
+      const previousAuto = autoJobNameRef.current;
+      if (!currentName || currentName === previousAuto) {
+        form.setFieldValue('jobName', nextName);
+        autoJobNameRef.current = nextName;
+      }
+    },
+    [form],
+  );
+
   const applyDetail = useCallback(
     (data: any) => {
       setParams(data);
 
+      const nextSource = data?.sourceType || defaultSourceType;
+      const nextTarget = data?.targetType || defaultTargetType;
       if (data?.sourceType) setSourceType(data.sourceType);
       if (data?.targetType) setTargetType(data.targetType);
 
       const currentMode = normalizeOfflineMode(data?.sourceType, data?.mode) as SyncMode;
+      const defaultName = buildDefaultJobName(nextSource, nextTarget);
+      const jobName = data?.jobName || defaultName;
+      autoJobNameRef.current = data?.jobName ? jobName : defaultName;
 
       form.setFieldsValue({
-        jobName: data?.jobName || '',
+        jobName,
         jobDesc: data?.jobDesc || '',
         mode: currentMode,
       });
@@ -158,6 +185,10 @@ export default function useDetailPage() {
   }, [applyDetail, id]);
 
   useEffect(() => {
+    setActiveStep(readStepFromSearch(location.search));
+  }, [location.search]);
+
+  useEffect(() => {
     if (!id) {
       setLoading(false);
       return;
@@ -196,6 +227,7 @@ export default function useDetailPage() {
     setSourceType(nextSourceType);
     setSourceDataSourceId(undefined);
     setSourceTestStatus('idle');
+    syncAutoJobName(nextSourceType, targetType);
     if (isWebUploadSource(nextSourceType)) {
       setMode('GUIDE_SINGLE');
       form.setFieldValue('mode', 'GUIDE_SINGLE');
@@ -203,13 +235,15 @@ export default function useDetailPage() {
   };
 
   const handleTargetChange = (value: string, option: any) => {
-    setTargetType({
+    const nextTargetType = {
       dbType: value,
       connectorType: option?.connectorType,
       pluginName: option?.pluginName,
-    });
+    };
+    setTargetType(nextTargetType);
     setTargetDataSourceId(undefined);
     setTargetTestStatus('idle');
+    syncAutoJobName(sourceType, nextTargetType);
   };
 
   const handleModeChange = (value: string) => {

@@ -19,6 +19,7 @@ import type {
 } from '../types';
 import { buildSubmitPayload, parseOriginalJson } from '../utils';
 import { getDataSourceConnectionErrorMessage } from '../connectionError';
+import { presentConnectionTestResult } from '../connectionTestFeedback';
 import DataSourceTypeSelector from './DataSourceTypeSelector';
 import DynamicDataSourceForm from './DynamicDataSourceForm';
 
@@ -40,6 +41,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const [hideBackButton, setHideBackButton] = useState(false);
   const [defaultUsage, setDefaultUsage] = useState<'SOURCE' | 'SINK'>();
   const [usageOnly, setUsageOnly] = useState(false);
+  const [hideSinkUsage, setHideSinkUsage] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   const successCallbackRef = useRef<(() => void) | undefined>();
 
@@ -53,6 +56,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     setHideBackButton(false);
     setDefaultUsage(undefined);
     setUsageOnly(false);
+    setHideSinkUsage(false);
     basicForm.resetFields();
     configForm.resetFields();
   };
@@ -62,11 +66,15 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     resetModalState();
   };
 
-  const initializeEditForm = (record: DataSourceRecord) => {
+  const initializeEditForm = (record: DataSourceRecord, hideSink = false) => {
     basicForm.setFieldsValue({
       name: record.name || '',
       usages: (() => {
         const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === record.dbType);
+        // 管理页隐藏目标端：表单只带源端，提交时通过 preserveExistingSink 保留后台 sink
+        if (hideSink) {
+          return supportsDataSourceUsage(connector, 'SOURCE') ? ['SOURCE'] : [];
+        }
         return (['SOURCE', 'SINK'] as const).filter((usage) => {
           const supported = supportsDataSourceUsage(connector, usage);
           const enabled = usage === 'SOURCE' ? record.sourceEnabled : record.sinkEnabled;
@@ -94,6 +102,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       hideBack,
       defaultUsage: requestedUsage,
       usageOnly: requestedUsageOnly,
+      hideSinkUsage: requestedHideSinkUsage,
     }: DataSourceModalOpenPayload) => {
       /**
        * 每次打开前，先清理上一次弹窗状态。
@@ -104,8 +113,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       setOpen(true);
       setOperateType(nextOperateType);
       setCurrentRecord(nextRecord);
-      setDefaultUsage(requestedUsage);
+      setDefaultUsage(requestedHideSinkUsage ? 'SOURCE' : requestedUsage);
       setUsageOnly(Boolean(requestedUsageOnly));
+      setHideSinkUsage(Boolean(requestedHideSinkUsage));
       successCallbackRef.current = onSuccess;
 
       /**
@@ -116,7 +126,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
         setSelectedDbType(nextRecord.dbType || '');
         setShowFormStep(true);
         setHideBackButton(true);
-        initializeEditForm(nextRecord);
+        initializeEditForm(nextRecord, Boolean(requestedHideSinkUsage));
         return;
       }
 
@@ -162,30 +172,47 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const handleTestConnection = async () => {
     try {
       const connectionValues = await configForm.validateFields();
+      setTestingConnection(true);
+      const hideLoading = message.loading('正在测试连接…', 0);
 
-      const response = await testDataSourceConnectionWithParams({
-        connJson: JSON.stringify({
-          ...connectionValues,
-          type: selectedDbType,
-        }),
-        ...(isEditMode && currentRecord?.id ? { dataSourceId: currentRecord.id } : {}),
-      });
-
-      if (response.code === 0 && response.data === true) {
-        message.success(
-          intl.formatMessage({
-            id: 'pages.datasource.modal.message.success',
-            defaultMessage: 'Success',
+      try {
+        const response = await testDataSourceConnectionWithParams({
+          connJson: JSON.stringify({
+            ...connectionValues,
+            type: selectedDbType,
           }),
-        );
-        return;
+          ...(isEditMode && currentRecord?.id ? { dataSourceId: currentRecord.id } : {}),
+        });
+
+        if (response.code === 0 && response.data === true) {
+          presentConnectionTestResult({
+            success: true,
+            detail: '当前表单中的连接参数可用，保存后列表状态会同步更新。',
+            dataSourceName: basicForm.getFieldValue('name') || currentRecord?.name,
+          });
+          return;
+        }
+
+        presentConnectionTestResult({
+          success: false,
+          detail:
+            response.code === 0
+              ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
+              : getDataSourceConnectionErrorMessage(response),
+          dataSourceName: basicForm.getFieldValue('name') || currentRecord?.name,
+        });
+      } finally {
+        hideLoading();
+        setTestingConnection(false);
       }
-      message.error(response.code === 0
-        ? '连接验证未通过，连接器未返回具体原因，请检查主机、端口、数据库和账号配置。'
-        : getDataSourceConnectionErrorMessage(response));
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(getDataSourceConnectionErrorMessage(error));
+      presentConnectionTestResult({
+        success: false,
+        detail: getDataSourceConnectionErrorMessage(error),
+        dataSourceName: basicForm.getFieldValue('name') || currentRecord?.name,
+      });
+      setTestingConnection(false);
     }
   };
 
@@ -199,7 +226,10 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
         const usages = basicValues.usages || [];
         const response = await updateDataSourceUsage(currentRecord.id, {
           sourceEnabled: usages.includes('SOURCE'),
-          sinkEnabled: usages.includes('SINK'),
+          // 管理页隐藏目标端时保留后台 sink，避免用户侧误清目标端配置
+          sinkEnabled: hideSinkUsage
+            ? Boolean(currentRecord.sinkEnabled)
+            : usages.includes('SINK'),
         });
         if (response.code !== 0) {
           return;
@@ -219,7 +249,13 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       const basicValues = await basicForm.validateFields();
       const connectionValues = await configForm.validateFields();
 
-      const payload = buildSubmitPayload(selectedDbType, basicValues, connectionValues, currentRecord);
+      const payload = buildSubmitPayload(
+        selectedDbType,
+        basicValues,
+        connectionValues,
+        currentRecord,
+        hideSinkUsage ? { preserveExistingSink: isEditMode } : undefined,
+      );
 
       if (isCreateMode) {
         const response = await createDataSource(payload);
@@ -403,7 +439,12 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           {showFormStep ? (
             <div style={{ display: 'flex', gap: 10 }}>
               {!usageOnly ? (
-                <Button onClick={handleTestConnection} style={{ height: 34, borderRadius: 6 }}>
+                <Button
+                  loading={testingConnection}
+                  disabled={testingConnection}
+                  onClick={() => void handleTestConnection()}
+                  style={{ height: 34, borderRadius: 6 }}
+                >
                   连接测试
                 </Button>
               ) : null}

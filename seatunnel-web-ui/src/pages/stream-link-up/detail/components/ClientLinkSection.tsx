@@ -1,6 +1,7 @@
 import CommonClientLinkSection, {
   ConnectivityStatus,
 } from "@/pages/common/components/CommonClientLinkSection";
+import { generateTaskTargetDataSourceOptions } from "@/pages/batch-link-up/DataSourceSelect";
 
 interface Props {
   activeStep: "base" | "client";
@@ -31,12 +32,13 @@ const RealtimeClientLinkSection: React.FC<Props> = (props) => {
     <CommonClientLinkSection
       {...props}
       scene="realtime"
-      clientLabel="实时客户端"
-      clientPlaceholder="请选择实时 Zeta 客户端节点"
+      clientLabel="数据引接引擎"
+      clientPlaceholder="请选择数据引接引擎节点"
       sourceTitle="实时来源"
       targetTitle="实时去向"
       sourceCreateText="新建实时来源数据源"
       targetCreateText="新建实时去向数据源"
+      targetDataSourceTypeOptions={generateTaskTargetDataSourceOptions()}
       getVerifyExtraParams={({ side }) => ({
         linkType: "REALTIME",
         roleScene: side === "source" ? "REALTIME_SOURCE" : "REALTIME_SINK",

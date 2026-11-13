@@ -695,6 +695,22 @@
   }
 }
 
+/* 规划中分类：可见但不可点，悬停看接入说明 */
+.datasource-planned-category {
+  opacity: 0.72;
+  cursor: not-allowed;
+
+  .datasource-planned-category__tag {
+    margin-left: 6px;
+    padding: 0 6px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--st-color-text-muted, #8aa0b8);
+    border: 1px solid rgba(138, 160, 184, 0.35);
+    border-radius: 4px;
+  }
+}
+
 .datasource-create-button {
   // height: 42px;
   padding-inline: 18px;

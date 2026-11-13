@@ -22,7 +22,6 @@ const businessRoutes = [
   ['/reporting/reports', './FeaturePlaceholderPage'],
   ['/data-source', './data-source'],
   ['/data-source/source-connection', './data-source'],
-  ['/data-source/target-connection', './data-source'],
   ['/data-source/master-data', './master-data'],
   ['/data-exploration/overview', './data-exploration/overview'],
   ['/data-exploration/tasks', './data-exploration/tasks'],
@@ -99,6 +98,12 @@ const hiddenRoutes = [
 const framedRoutes = [
   ...businessRoutes,
   ...hiddenRoutes,
+  // 目标端连接对业务用户隐藏：后台配置，直达源端管理页
+  {
+    path: '/data-source/target-connection',
+    redirect: '/data-source/source-connection',
+    hideInMenu: true,
+  },
   {
     path: '/sync/file-resources',
     component: './file-resources',

@@ -289,6 +289,11 @@ export interface DataSourceModalOpenPayload {
   dbType?: string;
   /** Default purpose for a new connection created from a source/target workflow. */
   defaultUsage?: 'SOURCE' | 'SINK';
+  /**
+   * 数据源管理页对用户隐藏目标端用途；任务配置等内部入口可不传，仍允许选 SINK。
+   * 编辑时保留库内已有 sinkEnabled，避免误清后台目标端配置。
+   */
+  hideSinkUsage?: boolean;
 
   /**
    * 是否隐藏“上一步”按钮。
@@ -342,6 +347,8 @@ export interface DynamicDataSourceFormProps {
   savedSecretFields?: string[];
   defaultUsage?: 'SOURCE' | 'SINK';
   usageOnly?: boolean;
+  /** 隐藏「目标端」用途选项（数据源管理页对用户不可见） */
+  hideSinkUsage?: boolean;
 }
 
 export interface DataSourceOptionItem {

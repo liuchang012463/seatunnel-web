@@ -1,6 +1,10 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import { history } from 'umi';
+import {
+  DEFAULT_TASK_DATASOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from '../data-source/dataSourceRegistry';
 import { seatunnelJobDefinitionApi } from './api';
 import SyncTaskList from './components/SyncTaskList';
 import './index.less';
@@ -8,17 +12,8 @@ import './index.less';
 // import SyncTaskList from "./SyncTaskList";
 
 const App = () => {
-  const sourceType = {
-    dbType: 'MYSQL',
-    connectorType: 'Jdbc',
-    pluginName: 'JDBC-MYSQL',
-  };
-
-  const targetType = {
-    dbType: 'MYSQL',
-    connectorType: 'Jdbc',
-    pluginName: 'JDBC-MYSQL',
-  };
+  const sourceType = { ...DEFAULT_TASK_DATASOURCE_TYPE };
+  const targetType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
   /**
    * 新增场景：

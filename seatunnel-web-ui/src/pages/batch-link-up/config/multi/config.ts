@@ -1,8 +1,9 @@
+import { DEFAULT_TASK_DATASOURCE_TYPE } from "../../../data-source/dataSourceRegistry";
 import { DbTypeValue, TableItem } from "./types";
 
 export const DEFAULT_DB_TYPE: DbTypeValue = {
-  dbType: "MYSQL",
-  connectorType: "Jdbc",
+  dbType: DEFAULT_TASK_DATASOURCE_TYPE.dbType,
+  connectorType: DEFAULT_TASK_DATASOURCE_TYPE.connectorType,
 };
 
 export const DEFAULT_FORM_VALUES = {

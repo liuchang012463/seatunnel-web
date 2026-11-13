@@ -142,7 +142,7 @@ function SourcePanel({
         desc={`${isHttp ? "HTTP" : isElasticsearch ? "Elasticsearch" : "Kafka"} 节点不支持关系型表、SQL、列解析或数据预览`}
         heroTitle={title}
         heroDesc={description}
-        heroTag="SOURCE"
+        heroTag="来源"
         dbType={dbType}
         onClose={onClose}
         footer={<button type="button" className="workflow-panel__btn workflow-panel__btn--ghost" onClick={onClose}>关闭</button>}
@@ -216,7 +216,7 @@ function SourcePanel({
         desc="修改后会实时同步到当前画布节点"
         heroTitle={title}
         heroDesc={description}
-        heroTag="CDC SOURCE"
+        heroTag="实时来源"
         dbType={dbType}
         onClose={onClose}
         footer={

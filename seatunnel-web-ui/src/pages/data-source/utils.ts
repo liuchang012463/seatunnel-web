@@ -36,6 +36,7 @@ export function buildSubmitPayload(
   basicValues: DataSourceFormValues,
   connectionValues: DataSourceConnectionFormValues,
   previousUsage?: { sourceEnabled?: boolean; sinkEnabled?: boolean },
+  options?: { preserveExistingSink?: boolean },
 ) {
   // `unitId` is only used to populate the cascading selector. The server's
   // canonical ownership key is `businessSystemId`; the old free-text
@@ -51,9 +52,12 @@ export function buildSubmitPayload(
   const sourceEnabled = !supportsDataSourceUsage(connector, 'SOURCE')
     ? Boolean(previousUsage?.sourceEnabled)
     : usages.includes('SOURCE');
-  const sinkEnabled = !supportsDataSourceUsage(connector, 'SINK')
+  // 管理页隐藏目标端时：创建一律不写 sink；编辑保留后台已有 sinkEnabled，避免把目标端配置清掉
+  const sinkEnabled = options?.preserveExistingSink
     ? Boolean(previousUsage?.sinkEnabled)
-    : usages.includes('SINK');
+    : !supportsDataSourceUsage(connector, 'SINK')
+      ? Boolean(previousUsage?.sinkEnabled)
+      : usages.includes('SINK');
 
   return {
     dbType,

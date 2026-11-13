@@ -55,35 +55,49 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
     );
   }, [visibleGroups]);
 
+  // 「常用」跟随上方类型过滤：选「文件与对象存储」时优先 FTP/SFTP/S3 等，而不是固定前几项
   const suggestedDatasourceList = useMemo(() => {
+    const maxSuggested = 4;
+    const toSuggestedItem = (item: (typeof flatDatasourceList)[number]) => ({
+      label: item.label,
+      value: item.dbType,
+      dbType: item.dbType,
+      connectorType: item.connectorType,
+      groupName: item.groupName,
+    });
+
+    if (selectedGroupName) {
+      return flatDatasourceList
+        .filter((item) => item.groupName === selectedGroupName)
+        .slice(0, maxSuggested)
+        .map(toSuggestedItem);
+    }
+
     return COMMON_DB_OPTIONS.filter((common) => {
       if (!defaultUsage) return true;
       const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === common.value);
       return supportsDataSourceUsage(connector, defaultUsage);
-    }).map((common) => {
-      const matched = flatDatasourceList.find(
-        (item) =>
-          item.dbType === common.value ||
-          item.dbType === common.label ||
-          item.dbType?.toLowerCase() === common.value?.toLowerCase() ||
-          item.dbType?.toLowerCase() === common.label?.toLowerCase(),
-      );
-
-      return {
-        ...common,
-        dbType: matched?.dbType || common.value,
-        connectorType: matched?.connectorType,
-        groupName: matched?.groupName,
-      };
-    }).filter((item) => item.dbType).slice(0, 3);;
-  }, [defaultUsage, flatDatasourceList]);
+    })
+      .map((common) => {
+        const matched = flatDatasourceList.find(
+          (item) =>
+            item.dbType === common.value ||
+            item.dbType === common.label ||
+            item.dbType?.toLowerCase() === common.value?.toLowerCase() ||
+            item.dbType?.toLowerCase() === common.label?.toLowerCase(),
+        );
+        if (!matched) return null;
+        return toSuggestedItem(matched);
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item?.dbType))
+      .slice(0, maxSuggested);
+  }, [defaultUsage, flatDatasourceList, selectedGroupName]);
 
   const showSuggested = !keyword && suggestedDatasourceList.length > 0;
 
   const filteredDatasourceList = useMemo(() => {
-    // 默认浏览态下隐藏已在「常用数据源」中的项，避免同屏重复（审计 audit-22）。
-    const hideSuggested = showSuggested && selectedGroupName === null;
-    const suggestedDbTypes = hideSuggested
+    // 已在「常用数据源」展示的类型从下方列表隐藏，避免同屏重复
+    const suggestedDbTypes = showSuggested
       ? new Set(suggestedDatasourceList.map((item) => item.dbType))
       : null;
     return flatDatasourceList.filter((item) => {
@@ -161,7 +175,9 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
               常用数据源
             </div>
             <div className="datasource-type-section-meta">
-              常用连接器，点击即可创建
+              {selectedGroupName
+                ? `当前类型常用连接器（${selectedGroupName}）`
+                : '常用连接器，点击即可创建'}
             </div>
           </div>
 

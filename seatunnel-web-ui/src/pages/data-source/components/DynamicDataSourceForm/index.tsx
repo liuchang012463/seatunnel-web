@@ -48,6 +48,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   savedSecretFields = EMPTY_SAVED_SECRET_FIELDS,
   defaultUsage,
   usageOnly = false,
+  hideSinkUsage = false,
 }) => {
   const intl = useIntl();
 
@@ -80,18 +81,34 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
 
     if (isEmptyValue(current?.usages)) {
       const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
-      const supportedUsages = (['SOURCE', 'SINK'] as const).filter((usage) =>
-        supportsDataSourceUsage(connector, usage),
-      );
-      patch.usages = defaultUsage
-        ? supportedUsages.includes(defaultUsage) ? [defaultUsage] : supportedUsages
-        : supportedUsages;
+      const supportedUsages = (['SOURCE', 'SINK'] as const).filter((usage) => {
+        if (hideSinkUsage && usage === 'SINK') return false;
+        return supportsDataSourceUsage(connector, usage);
+      });
+      // 管理页对用户隐藏目标端：新建默认仅源端
+      if (hideSinkUsage) {
+        patch.usages = supportsDataSourceUsage(connector, 'SOURCE') ? ['SOURCE'] : supportedUsages;
+      } else {
+        patch.usages = defaultUsage
+          ? supportedUsages.includes(defaultUsage) ? [defaultUsage] : supportedUsages
+          : supportedUsages;
+      }
     }
 
     if (Object.keys(patch).length) {
       form.setFieldsValue(patch);
     }
-  }, [hideBaseFields, operateType, form, dbType, defaultUsage]);
+  }, [hideBaseFields, operateType, form, dbType, defaultUsage, hideSinkUsage]);
+
+  const usageOptions = (() => {
+    const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
+    return (['SOURCE', 'SINK'] as const)
+      .filter((usage) => {
+        if (hideSinkUsage && usage === 'SINK') return false;
+        return supportsDataSourceUsage(connector, usage);
+      })
+      .map((usage) => ({ label: usage === 'SOURCE' ? '源端' : '目标端', value: usage }));
+  })();
 
   const loadFormConfig = useCallback(
     async (currentDbType: string): Promise<void> => {
@@ -370,17 +387,15 @@ const renderFieldLabel = (field: any): React.ReactNode => {
   };
 
   if (usageOnly) {
-    const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
-    const usageOptions = [
-      ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
-      ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
-    ];
-
     return (
       <div className="datasource-form-panel p-5">
         <div className="mb-5">
           <h3 className={sectionTitleClass}>连接用途</h3>
-          <p className={sectionDescClass}>调整此连接可用于源端或目标端。已被任务使用的用途不能移除。</p>
+          <p className={sectionDescClass}>
+            {hideSinkUsage
+              ? '此连接按源端用途管理；目标端由后台配置，用户侧不可见。'
+              : '调整此连接可用于源端或目标端。已被任务使用的用途不能移除。'}
+          </p>
         </div>
         <Form form={form} layout="vertical">
           <Form.Item
@@ -445,25 +460,23 @@ const renderFieldLabel = (field: any): React.ReactNode => {
               />
             </Form.Item>
 
-            <Form.Item
-              label="连接用途"
-              name="usages"
-              rules={[{
-                validator: (_, value) => value?.length
-                  ? Promise.resolve()
-                  : Promise.reject(new Error('至少选择一个连接用途')),
-              }]}
-            >
-              <Checkbox.Group
-                options={(() => {
-                  const connector = DATA_SOURCE_REGISTRY.find((item) => item.dbType === dbType);
-                  return [
-                    ...(supportsDataSourceUsage(connector, 'SOURCE') ? [{ label: '源端', value: 'SOURCE' }] : []),
-                    ...(supportsDataSourceUsage(connector, 'SINK') ? [{ label: '目标端', value: 'SINK' }] : []),
-                  ];
-                })()}
-              />
-            </Form.Item>
+            {hideSinkUsage ? (
+              <Form.Item name="usages" hidden>
+                <Checkbox.Group options={usageOptions} />
+              </Form.Item>
+            ) : (
+              <Form.Item
+                label="连接用途"
+                name="usages"
+                rules={[{
+                  validator: (_, value) => value?.length
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('至少选择一个连接用途')),
+                }]}
+              >
+                <Checkbox.Group options={usageOptions} />
+              </Form.Item>
+            )}
 
             {/* Environment is not shown; create defaults to DEVELOP, edit keeps existing. */}
             <Form.Item name="environment" hidden>

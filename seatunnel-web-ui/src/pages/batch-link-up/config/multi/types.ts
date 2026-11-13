@@ -40,6 +40,7 @@ export interface DbTypeValue {
 export interface MultiWorkflowProps {
   params: any;
   goBack: () => void;
+  goPreviousStep?: () => void;
   basicConfig: BasicConfig;
   setBasicConfig: React.Dispatch<React.SetStateAction<BasicConfig>>;
   scheduleConfig: ScheduleConfig;

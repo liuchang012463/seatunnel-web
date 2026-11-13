@@ -96,6 +96,7 @@ const OfflineImportConfigCanvas: React.FC<OfflineImportConfigCanvasProps> = ({
           fitViewOptions={{ padding: 0.3, minZoom: 0.35, maxZoom: 0.85 }}
           minZoom={0.25}
           maxZoom={1}
+          proOptions={{ hideAttribution: true }}
           className="offline-import-config-canvas__flow"
         >
           <Controls position="top-left" showInteractive={false} />

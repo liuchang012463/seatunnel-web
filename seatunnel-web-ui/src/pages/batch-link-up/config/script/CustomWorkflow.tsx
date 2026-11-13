@@ -3,6 +3,7 @@ import { Button, Popconfirm, Popover, Space, Tooltip } from "antd";
 import { Eye, FileCode2, RefreshCw, Save } from "lucide-react";
 import React from "react";
 
+import { WORKFLOW_BACK_BUTTON_CLASS } from "@/pages/common/workflow/backButtonClass";
 import { EnvConfig } from "../../workflow/components/ScheduleConfigContent/types";
 import CodeBlockWithCopy from "../../workflow/operator/CodeBlockWithCopy";
 import RightConfigPanel from "../../workflow/RightConfigPanel";
@@ -18,6 +19,7 @@ interface CustomWorkflowProps {
   params: any;
   setParams: React.Dispatch<React.SetStateAction<any>>;
   goBack: () => void;
+  goPreviousStep?: () => void;
   basicConfig: any;
   setBasicConfig: React.Dispatch<React.SetStateAction<any>>;
   scheduleConfig: any;
@@ -30,6 +32,7 @@ export default function CustomWorkflow({
   params,
   setParams,
   goBack,
+  goPreviousStep,
   basicConfig,
   setBasicConfig,
   scheduleConfig,
@@ -147,7 +150,7 @@ export default function CustomWorkflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                自定义编排任务
+                逻辑关系配置（自定义引接）
               </div>
               <div className="text-[14px] leading-6 text-slate-500">
                 直接编写 HOCON 配置，并补充基础信息、调度策略与运行参数。
@@ -155,12 +158,21 @@ export default function CustomWorkflow({
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            {goPreviousStep ? (
+              <Button
+                type="default"
+                icon={<ArrowLeftOutlined />}
+                onClick={goPreviousStep}
+                className={WORKFLOW_BACK_BUTTON_CLASS}
+              >
+                返回上一步
+              </Button>
+            ) : null}
             <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
+              type="default"
               onClick={goBack}
-              className="!h-10 !rounded-full !border !border-slate-200 !bg-white !px-4 !text-slate-700 !shadow-sm hover:!border-slate-300 hover:!bg-slate-50 hover:!text-slate-800"
+              className={WORKFLOW_BACK_BUTTON_CLASS}
             >
               返回任务列表
             </Button>

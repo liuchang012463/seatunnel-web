@@ -1,13 +1,10 @@
 import React from "react";
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
+import { DEFAULT_TASK_DATASOURCE_TYPE } from "@/pages/data-source/dataSourceRegistry";
 import { TableOutlined } from "@ant-design/icons";
 import type { TableItem } from "./types";
 
-export const DEFAULT_DB_TYPE = {
-  dbType: "MYSQL",
-  connectorType: "Jdbc",
-  pluginName: "JDBC-MYSQL",
-};
+export const DEFAULT_DB_TYPE = { ...DEFAULT_TASK_DATASOURCE_TYPE };
 
 export const safeParseDraft = (draftStr?: string) => {
   if (!draftStr) return null;

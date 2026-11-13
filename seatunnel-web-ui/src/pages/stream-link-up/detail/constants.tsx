@@ -42,7 +42,8 @@ export const getStatusTag = (status?: ClientItem["status"]) => {
   }
 };
 
-export const getDbLabel = (item: any) => {
-  if (!item) return "-";
-  return item?.dbType || item?.pluginName || item?.connectorType || "-";
-};
+export {
+  buildDefaultJobName,
+  getDbLabel,
+  getFriendlyDbName,
+} from "@/pages/batch-link-up/detail/constants";

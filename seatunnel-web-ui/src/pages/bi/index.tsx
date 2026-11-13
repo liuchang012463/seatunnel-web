@@ -71,12 +71,70 @@ const TASK_TYPES: TaskTypeMeta[] = [
 ];
 
 const TIME_RANGES: { value: TimeRange; label: string; shortLabel: string }[] = [
-  { value: 'H1', label: '近 1 小时', shortLabel: '1H' },
-  { value: 'H6', label: '近 6 小时', shortLabel: '6H' },
-  { value: 'H12', label: '近 12 小时', shortLabel: '12H' },
-  { value: 'H24', label: '近 24 小时', shortLabel: '24H' },
+  { value: 'H1', label: '近 1 小时', shortLabel: '1时' },
+  { value: 'H6', label: '近 6 小时', shortLabel: '6时' },
+  { value: 'H12', label: '近 12 小时', shortLabel: '12时' },
+  { value: 'H24', label: '近 24 小时', shortLabel: '24时' },
   { value: 'D7', label: '近 7 天', shortLabel: '一周' },
 ];
+
+/** 连接器/数据源类型展示名：能中文化的用中文，产品名保留可读简称 */
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  MYSQL: 'MySQL 库',
+  POSTGRE_SQL: 'PostgreSQL 库',
+  POSTGRESQL: 'PostgreSQL 库',
+  POSTGRES: 'PostgreSQL 库',
+  ORACLE: 'Oracle 库',
+  SQLSERVER: 'SQL Server 库',
+  SQL_SERVER: 'SQL Server 库',
+  DAMENG: '达梦库',
+  DM: '达梦库',
+  KINGBASE: '人大金仓',
+  VASTBASE: '海量数据库',
+  GBASE: '南大通用',
+  DORIS: 'Doris 库',
+  STARROCKS: 'StarRocks 库',
+  CLICKHOUSE: 'ClickHouse 库',
+  HIVE: 'Hive 数仓',
+  HDFS: '分布式文件',
+  ELASTICSEARCH: '搜索引擎',
+  ES: '搜索引擎',
+  MONGODB: '文档数据库',
+  MONGO: '文档数据库',
+  REDIS: '缓存服务',
+  KAFKA: '消息队列',
+  RABBITMQ: '消息队列',
+  HTTP: '接口服务',
+  HTTPS: '接口服务',
+  REST: '接口服务',
+  API: '接口服务',
+  JDBC: '通用数据库',
+  MINIO: '对象存储',
+  S3: '对象存储',
+  OSS: '对象存储',
+  FTP: '文件传输',
+  SFTP: '安全文件传输',
+  FILE: '本地文件',
+  LOCAL_FILE: '本地文件',
+};
+
+const formatSourceTypeLabel = (raw?: string | null) => {
+  const key = String(raw || '').trim();
+  if (!key) return '未知类型';
+  const upper = key.toUpperCase().replace(/[\s-]+/g, '_');
+  return SOURCE_TYPE_LABELS[upper] || SOURCE_TYPE_LABELS[key.toUpperCase()] || key;
+};
+
+/** 列内节点纵向均分，数量变化时仍与引擎中线对齐，避免错位 */
+const layoutColumnYs = (count: number, top = 96, bottom = 500) => {
+  if (count <= 0) return [] as number[];
+  if (count === 1) return [(top + bottom) / 2];
+  const step = (bottom - top) / (count - 1);
+  return Array.from({ length: count }, (_, index) => top + step * index);
+};
+
+/** SVG 坐标 → 绝对定位百分比（topology viewBox 高 560） */
+const topologyTopPercent = (y: number) => (y / 5.6) + '%';
 
 const SOURCE_TONES = ['cyan', 'green', 'amber', 'blue', 'pink', 'violet'];
 const integerFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
@@ -123,7 +181,7 @@ const formatRecords = (value: number) => {
 };
 
 const formatBytes = (value: number) => {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const units = ['字节', 'KB', 'MB', 'GB', 'TB'];
   let unitIndex = 0;
   let scaledValue = Math.max(0, value);
   while (scaledValue >= 1024 && unitIndex < units.length - 1) {
@@ -441,7 +499,7 @@ const IngestionSituationPage: React.FC = () => {
       tone: 'green',
     },
     {
-      label: 'Schema',
+      label: '数据库模式',
       value: inventorySummary ? integerFormat.format(inventorySummary.schemaCount) : '—',
       unit: inventorySummary ? '个' : '',
       tone: 'violet',
@@ -493,7 +551,6 @@ const IngestionSituationPage: React.FC = () => {
       detail: '连接器',
       value: inventorySummary?.dataSourceCount,
       tone: 'cyan',
-      y: 96,
       icon: <Database size={16} strokeWidth={1.8} />,
     },
     {
@@ -501,15 +558,13 @@ const IngestionSituationPage: React.FC = () => {
       detail: '资源目录',
       value: inventorySummary?.databaseCount,
       tone: 'green',
-      y: 178,
       icon: <Layers3 size={16} strokeWidth={1.8} />,
     },
     {
-      label: 'Schema',
+      label: '数据库模式',
       detail: '元数据',
       value: inventorySummary?.schemaCount,
       tone: 'violet',
-      y: 260,
       icon: <Network size={16} strokeWidth={1.8} />,
     },
     {
@@ -517,7 +572,6 @@ const IngestionSituationPage: React.FC = () => {
       detail: '元数据',
       value: inventorySummary?.tableCount,
       tone: 'blue',
-      y: 342,
       icon: <Archive size={16} strokeWidth={1.8} />,
     },
     {
@@ -525,7 +579,6 @@ const IngestionSituationPage: React.FC = () => {
       detail: '元数据',
       value: inventorySummary?.columnCount,
       tone: 'pink',
-      y: 424,
       icon: <List size={16} strokeWidth={1.8} />,
     },
     {
@@ -533,10 +586,18 @@ const IngestionSituationPage: React.FC = () => {
       detail: '已采集行数 ' + integerFormat.format(inventorySummary?.knownRowCount || 0),
       value: inventorySummary?.profiledTableCount,
       tone: 'amber',
-      y: 506,
       icon: <Search size={16} strokeWidth={1.8} />,
     },
   ];
+
+  // 拓扑：仅「采集方式 → 引擎」有汇聚语义可画线；数据源/目录无一一对应，不画跨列假链路
+  const topologySources = sourceRows.slice(0, 6);
+  const sourceYs = layoutColumnYs(topologySources.length);
+  const taskYs = layoutColumnYs(visibleMetrics.length, 120, 460);
+  const resourceYs = layoutColumnYs(resourceItems.length);
+  const collectBusX = 535;
+  const engineInX = 555;
+  const engineY = 278;
 
   const rangeLabel = TIME_RANGES.find((range) => range.value === timeRange)?.label || '所选范围';
   const taskFilterOptions = [
@@ -611,7 +672,7 @@ const IngestionSituationPage: React.FC = () => {
                     >
                       <span className="tile-icon">{sourceIcon(source.name || source.key)}</span>
                       <span className="tile-copy">
-                        <b>{source.name || source.key}</b>
+                        <b>{formatSourceTypeLabel(source.name || source.key)}</b>
                         <small>已登记连接器</small>
                       </span>
                       <span className="tile-count">
@@ -642,7 +703,7 @@ const IngestionSituationPage: React.FC = () => {
                       aria-pressed={activeSource?.key === source.key}
                       onClick={() => setActiveSourceVariant(source.key)}
                     >
-                      {source.name || source.key}
+                      {formatSourceTypeLabel(source.name || source.key)}
                     </button>
                   ))}
                 </div>
@@ -660,19 +721,18 @@ const IngestionSituationPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <span className="data-label">{activeSource?.name || activeSource?.key || '连接器'}</span>
+                    <span className="data-label">{formatSourceTypeLabel(activeSource?.name || activeSource?.key) || '连接器'}</span>
                     <strong className="breakdown-total">
                       {activeSource ? integerFormat.format(activeSource.count) : '—'}
                       <small> 个</small>
                     </strong>
-                    <p>来自数据源登记统计</p>
                   </div>
                 </div>
                 <div className="breakdown-list">
                   {sourceRows.slice(0, 8).map((source, index) => (
                     <div className="breakdown-row" key={source.key}>
                       <div className="breakdown-row-meta">
-                        <span><i className={'legend-dot ' + SOURCE_TONES[index % SOURCE_TONES.length]} />{source.name || source.key}</span>
+                        <span><i className={'legend-dot ' + SOURCE_TONES[index % SOURCE_TONES.length]} />{formatSourceTypeLabel(source.name || source.key)}</span>
                         <b>{integerFormat.format(source.count)} 个</b>
                       </div>
                       <div className="progress-track">
@@ -742,7 +802,6 @@ const IngestionSituationPage: React.FC = () => {
                       <span className="system-status" />
                       <span className="system-copy">
                         <b>{system.name || system.key}</b>
-                        <small>关联数据源</small>
                       </span>
                       <span className="system-volume">
                         <b>{integerFormat.format(system.count)}</b>
@@ -830,8 +889,8 @@ const IngestionSituationPage: React.FC = () => {
               <svg className="trend-chart" viewBox="0 0 640 220" preserveAspectRatio="none" aria-label="引接数据量趋势图" role="img">
                 <defs>
                   <linearGradient id="trend-fill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0" stopColor="#4DD2FF" stopOpacity=".28" />
-                    <stop offset="1" stopColor="#4DD2FF" stopOpacity="0" />
+                    <stop offset="0" stopColor="#71E4FF" stopOpacity=".28" />
+                    <stop offset="1" stopColor="#71E4FF" stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 {[34, 76, 118, 160, 198].map((line) => (
@@ -868,7 +927,7 @@ const IngestionSituationPage: React.FC = () => {
                 <span className="metric-name">{metric.label}</span>
                 <span className="metric-value">
                   <AnimatedMetric value={metric.value} />
-                  <small>{metric.unit}</small>
+                  {metric.unit ? <small>{metric.unit}</small> : null}
                 </span>
               </article>
             ))}
@@ -880,8 +939,8 @@ const IngestionSituationPage: React.FC = () => {
                 <h2>采集引接链路拓扑</h2>
               </div>
               <div className="topology-controls">
-                <span className="control-caption"><Filter size={13} />任务类型</span>
-                <div className="filter-tabs" role="group" aria-label="任务类型筛选">
+                <span className="control-caption"><Filter size={13} />采集方式</span>
+                <div className="filter-tabs" role="group" aria-label="采集方式筛选">
                   {taskFilterOptions.map((filter) => (
                     <button
                       key={filter.key || 'ALL'}
@@ -907,28 +966,25 @@ const IngestionSituationPage: React.FC = () => {
               </div>
             </div>
             <div className="topology-legend">
-              <span><i className="legend-dot cyan" />数据源类型</span>
-              <span><i className="legend-dot online" />任务指标</span>
-              <span><i className="legend-dot purple" />数据资产</span>
-              <span className="legend-help"><Eye size={13} />选中任务查看汇总指标</span>
-              <span className="topology-count">{sourceRows.length} 种数据源 · {visibleMetrics.length} 类任务</span>
+              <span><i className="legend-dot cyan" />数据源类型（登记）</span>
+              <span><i className="legend-dot online" />采集方式 → 引擎</span>
+              <span><i className="legend-dot purple" />资源目录汇总</span>
+              <span className="legend-help"><Eye size={13} />悬停采集方式查看执行汇总</span>
+              <span className="topology-count">{topologySources.length} 种数据源 · {visibleMetrics.length} 种采集方式</span>
             </div>
 
             <div className="topology-stage">
               <svg className="topology-svg" viewBox="0 0 1000 560" preserveAspectRatio="none" aria-hidden="true">
                 <defs>
                   <pattern id="topology-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2187A8" strokeOpacity=".13" strokeWidth="1" />
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2B4C72" strokeOpacity=".35" strokeWidth="1" />
                   </pattern>
                   <filter id="topology-glow" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="4" result="blur" />
                     <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                   </filter>
                   <marker id="arrow-online" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#4DD2FF" />
-                  </marker>
-                  <marker id="arrow-offline" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#D9B621" />
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#71E4FF" />
                   </marker>
                 </defs>
                 <rect width="1000" height="560" fill="url(#topology-grid)" />
@@ -936,80 +992,102 @@ const IngestionSituationPage: React.FC = () => {
                 <line x1="562" y1="34" x2="562" y2="526" className="topology-divider" />
                 <line x1="755" y1="34" x2="755" y2="526" className="topology-divider" />
                 <text x="35" y="33" className="topology-column-label">数据源类型</text>
-                <text x="320" y="33" className="topology-column-label">任务类型</text>
-                <text x="602" y="33" className="topology-column-label">SeaTunnel Engine</text>
-                <text x="812" y="33" className="topology-column-label">数据资产</text>
-                {sourceRows.slice(0, 6).map((source, index) => {
-                  const y = 98 + index * 82;
-                  return (
-                    <g className="edge-group online" key={'source-edge-' + source.key}>
-                      <path d={'M 148 ' + y + ' C 250 ' + y + ', 385 278, 555 278'} className="edge-hit" />
-                      <path d={'M 148 ' + y + ' C 250 ' + y + ', 385 278, 555 278'} className="edge-line online" markerEnd="url(#arrow-online)" />
-                      <path d={'M 148 ' + y + ' C 250 ' + y + ', 385 278, 555 278'} className="edge-flow online" />
-                    </g>
-                  );
-                })}
-                {visibleMetrics.map((metric) => {
-                  const taskIndex = TASK_TYPES.findIndex((item) => item.key === metric.key);
-                  const y = 154 + taskIndex * 104;
-                  const selected = selectedTaskType === metric.key;
-                  return (
-                    <g className={'edge-group online' + (selected ? ' hovered' : '')} key={'task-edge-' + metric.key}>
-                      <path d={'M 510 ' + y + ' C 544 ' + y + ', 545 278, 568 278'} className="edge-hit" />
-                      <path
-                        d={'M 510 ' + y + ' C 544 ' + y + ', 545 278, 568 278'}
-                        className="edge-line online"
-                        style={{ stroke: 'var(--' + metric.tone + ')' }}
-                        markerEnd="url(#arrow-online)"
-                        filter={selected ? 'url(#topology-glow)' : undefined}
-                      />
-                      <path
-                        d={'M 510 ' + y + ' C 544 ' + y + ', 545 278, 568 278'}
-                        className="edge-flow online"
-                        style={{ stroke: 'var(--' + metric.tone + ')' }}
-                      />
-                    </g>
-                  );
-                })}
-                {resourceItems.map((resource) => (
-                  <g className="edge-group online" key={'resource-edge-' + resource.label}>
-                    <path d={'M 684 278 C 750 278, 784 ' + resource.y + ', 846 ' + resource.y} className="edge-hit" />
-                    <path d={'M 684 278 C 750 278, 784 ' + resource.y + ', 846 ' + resource.y} className="edge-line online" markerEnd="url(#arrow-online)" />
-                    <path d={'M 684 278 C 750 278, 784 ' + resource.y + ', 846 ' + resource.y} className="edge-flow online" />
+                <text x="320" y="33" className="topology-column-label">采集方式</text>
+                <text x="602" y="33" className="topology-column-label">数据引接引擎</text>
+                <text x="812" y="33" className="topology-column-label">资源目录</text>
+                {/* 仅画采集方式汇入引擎：正交总线，避免交叉与假一一对应 */}
+                {visibleMetrics.length > 0 && (
+                  <g className="edge-group online topology-collect-bus">
+                    <path
+                      d={
+                        'M ' +
+                        collectBusX +
+                        ' ' +
+                        Math.min(taskYs[0], engineY) +
+                        ' L ' +
+                        collectBusX +
+                        ' ' +
+                        Math.max(taskYs[taskYs.length - 1], engineY)
+                      }
+                      className="edge-line online topology-bus-line"
+                    />
+                    <path
+                      d={
+                        'M ' +
+                        collectBusX +
+                        ' ' +
+                        Math.min(taskYs[0], engineY) +
+                        ' L ' +
+                        collectBusX +
+                        ' ' +
+                        Math.max(taskYs[taskYs.length - 1], engineY)
+                      }
+                      className="edge-flow online"
+                    />
+                    {visibleMetrics.map((metric, index) => {
+                      const y = taskYs[index];
+                      const selected = selectedTaskType === metric.key || hoveredTaskType === metric.key;
+                      return (
+                        <g
+                          key={'task-stub-' + metric.key}
+                          className={selected ? 'hovered' : undefined}
+                        >
+                          <path
+                            d={'M 500 ' + y + ' L ' + collectBusX + ' ' + y}
+                            className="edge-line online"
+                            style={{ stroke: 'var(--' + metric.tone + ')' }}
+                            filter={selected ? 'url(#topology-glow)' : undefined}
+                          />
+                          <path
+                            d={'M 500 ' + y + ' L ' + collectBusX + ' ' + y}
+                            className="edge-flow online"
+                            style={{ stroke: 'var(--' + metric.tone + ')' }}
+                          />
+                        </g>
+                      );
+                    })}
+                    <path
+                      d={'M ' + collectBusX + ' ' + engineY + ' L ' + engineInX + ' ' + engineY}
+                      className="edge-line online"
+                      markerEnd="url(#arrow-online)"
+                    />
+                    <path
+                      d={'M ' + collectBusX + ' ' + engineY + ' L ' + engineInX + ' ' + engineY}
+                      className="edge-flow online"
+                    />
                   </g>
-                ))}
+                )}
                 <circle cx="625" cy="278" r="82" className="agent-halo" />
                 <circle cx="625" cy="278" r="59" className="agent-ring" />
               </svg>
 
-              {sourceRows.slice(0, 6).map((source, index) => {
-                const y = 98 + index * 82;
+              {topologySources.map((source, index) => {
+                const y = sourceYs[index];
                 const tone = SOURCE_TONES[index % SOURCE_TONES.length];
                 return (
                   <button
                     key={source.key}
                     type="button"
                     className={'topology-node source-node ' + tone}
-                    style={{ left: '11.8%', top: (y / 5.6) + '%' }}
+                    style={{ left: '11.8%', top: topologyTopPercent(y) }}
                     onClick={() => {
                       setActiveSourceVariant(source.key);
                       setActiveSourceTab('breakdown');
                     }}
-                    aria-label={source.name + ' 数据源 ' + source.count + ' 个'}
+                    aria-label={formatSourceTypeLabel(source.name || source.key) + ' 数据源 ' + source.count + ' 个'}
                   >
                     <span className="node-icon">{sourceIcon(source.name || source.key)}</span>
                     <span className="node-copy">
-                      <b>{source.name || source.key}</b>
-                      <small>数据源连接器</small>
+                      <b>{formatSourceTypeLabel(source.name || source.key)}</b>
+                      <small>登记统计</small>
                     </span>
                     <span className="node-state">{integerFormat.format(source.count)} 个</span>
                   </button>
                 );
               })}
 
-              {visibleMetrics.map((metric) => {
-                const taskIndex = TASK_TYPES.findIndex((item) => item.key === metric.key);
-                const y = 154 + taskIndex * 104;
+              {visibleMetrics.map((metric, index) => {
+                const y = taskYs[index];
                 const selected = hoveredTaskType === metric.key || selectedTaskType === metric.key;
                 const running = asNumber(metric.summary.runningTasks);
                 return (
@@ -1018,7 +1096,7 @@ const IngestionSituationPage: React.FC = () => {
                     type="button"
                     className={'topology-node task-node ' + metric.tone + (selected ? ' selected' : '')}
                     aria-pressed={selectedTaskType === metric.key}
-                    style={{ left: '43%', top: (y / 5.6) + '%' }}
+                    style={{ left: '43%', top: topologyTopPercent(y) }}
                     onMouseEnter={() => setHoveredTaskType(metric.key)}
                     onMouseLeave={() => setHoveredTaskType(null)}
                     onFocus={() => setHoveredTaskType(metric.key)}
@@ -1039,18 +1117,18 @@ const IngestionSituationPage: React.FC = () => {
                 type="button"
                 className={'agent-node' + (hoveredTaskType || selectedTaskType ? ' active' : '')}
                 onClick={() => setSelectedTaskType(null)}
-                title="清除任务类型筛选"
+                title="清除采集方式筛选"
               >
                 <span className="agent-icon"><Cpu size={22} strokeWidth={1.55} /></span>
-                <span className="agent-name">SeaTunnel</span>
-                <span className="agent-meta">引接任务引擎</span>
+                <span className="agent-name">数据引接引擎</span>
+                <span className="agent-meta">统一调度与执行</span>
               </button>
 
-              {resourceItems.map((resource) => (
+              {resourceItems.map((resource, index) => (
                 <div
                   key={resource.label}
                   className={'topology-node resource-node ' + resource.tone}
-                  style={{ left: '87.8%', top: (resource.y / 5.6) + '%' }}
+                  style={{ left: '87.8%', top: topologyTopPercent(resourceYs[index]) }}
                 >
                   <span className="resource-icon">{resource.icon}</span>
                   <span className="resource-copy">
@@ -1064,35 +1142,55 @@ const IngestionSituationPage: React.FC = () => {
                 </div>
               ))}
 
-              {hoveredTaskType && taskMetrics && (() => {
-                const metric = taskMetrics.find((item) => item.key === hoveredTaskType);
+              {(hoveredTaskType || selectedTaskType) && taskMetrics && (() => {
+                const detailKey = hoveredTaskType || selectedTaskType;
+                const metric = taskMetrics.find((item) => item.key === detailKey);
                 if (!metric) return null;
                 const metricRecords = formatRecords(toRecords(metric.summary));
                 const metricBytes = formatBytes(toBytes(metric.summary));
+                const successCount = asNumber(metric.summary.successTasks);
+                const failedCount = asNumber(metric.summary.failedTasks);
+                const finishedCount = successCount + failedCount;
+                const endedSuccessRate =
+                  finishedCount > 0 ? (successCount / finishedCount) * 100 : null;
                 return (
                   <div className={'topology-detail ' + metric.tone}>
                     <div className="detail-topline">
-                      <span><span className="status-dot online" />任务统计 · {rangeLabel}</span>
+                      <span><span className="status-dot online" />采集方式汇总 · {rangeLabel}</span>
                       <button
                         type="button"
-                        title="筛选此任务类型"
-                        aria-label="筛选此任务类型"
+                        title="按此采集方式筛选"
+                        aria-label="按此采集方式筛选"
                         onClick={() => setSelectedTaskType(metric.key)}
                       >
                         <CircleDot size={14} />
                       </button>
                     </div>
                     <div className="detail-title"><strong>{metric.label}</strong><span>{metric.detail}</span></div>
-                    <p className="detail-route">按已上报的任务执行指标聚合</p>
+                    <p className="detail-route">
+                      本类任务执行汇总；已结束成功率 = 成功 / (成功 + 失败)，不含运行中
+                    </p>
                     <div className="detail-metrics">
                       <div><span>任务数</span><b>{integerFormat.format(metric.summary.totalTasks)} 项</b></div>
+                      <div><span>运行中</span><b>{integerFormat.format(metric.summary.runningTasks)} 项</b></div>
+                      <div><span>成功</span><b>{integerFormat.format(successCount)} 项</b></div>
+                      <div><span>失败</span><b>{integerFormat.format(failedCount)} 项</b></div>
+                    </div>
+                    <div className="detail-metrics detail-metrics-secondary">
                       <div><span>引接条数</span><b>{metricRecords.value} {metricRecords.unit}</b></div>
                       <div><span>数据量</span><b>{metricBytes.value} {metricBytes.unit}</b></div>
-                      <div><span>运行中</span><b>{integerFormat.format(metric.summary.runningTasks)} 项</b></div>
+                      <div>
+                        <span>已结束成功率</span>
+                        <b>
+                          {endedSuccessRate === null
+                            ? '—'
+                            : numberFormat.format(endedSuccessRate) + '%'}
+                        </b>
+                      </div>
                     </div>
                     <div className="detail-foot">
                       <span><Clock3 size={12} />{rangeLabel}</span>
-                      <span>成功 <b>{integerFormat.format(metric.summary.successTasks)}</b></span>
+                      <span>已结束 <b>{integerFormat.format(finishedCount)}</b> 项</span>
                     </div>
                   </div>
                 );
@@ -1101,11 +1199,11 @@ const IngestionSituationPage: React.FC = () => {
               {taskMetrics && visibleMetrics.length === 0 && (
                 <div className="topology-empty">
                   <CircleAlert size={16} />
-                  <span>当前筛选没有任务指标</span>
+                  <span>当前筛选没有采集方式指标</span>
                   <button type="button" onClick={() => setSelectedTaskType(null)}>显示全部</button>
                 </div>
               )}
-              <div className="topology-edge-actions sr-only" aria-label="任务类型筛选">
+              <div className="topology-edge-actions sr-only" aria-label="采集方式筛选">
                 {TASK_TYPES.map((taskType) => (
                   <button key={taskType.key} type="button" onClick={() => setSelectedTaskType(taskType.key)}>
                     {taskType.label}
@@ -1149,11 +1247,11 @@ const IngestionSituationPage: React.FC = () => {
                 </div>
                 <div>
                   <span>最新记录速率</span>
-                  <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/s`}</b>
+                  <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/秒`}</b>
                 </div>
                 <div>
                   <span>实时平均延迟</span>
-                  <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} ms`}</b>
+                  <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} 毫秒`}</b>
                 </div>
               </div>
               <div className="inspect-chart">

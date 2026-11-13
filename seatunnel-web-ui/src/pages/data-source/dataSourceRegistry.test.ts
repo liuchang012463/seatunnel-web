@@ -1,6 +1,10 @@
 import {
   DATA_SOURCE_CATEGORIES,
   DATA_SOURCE_REGISTRY,
+  DEFAULT_TASK_DATASOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+  PLANNED_DATA_SOURCE_CATEGORIES,
+  TASK_TARGET_DB_TYPES,
   filterDataSourceTypesByUsage,
   getDataSourceCategory,
   groupDataSourcesByCategory,
@@ -8,11 +12,42 @@ import {
 } from './dataSourceRegistry';
 
 describe('dataSourceRegistry', () => {
+  it('defaults new tasks to Dameng source / Kingbase target and lists domestic DBs first', () => {
+    expect(DEFAULT_TASK_DATASOURCE_TYPE).toEqual({
+      dbType: 'DAMENG',
+      connectorType: 'Jdbc',
+      pluginName: 'JDBC-DAMENG',
+    });
+    expect(DEFAULT_TASK_TARGET_DATASOURCE_TYPE).toEqual({
+      dbType: 'KINGBASE',
+      connectorType: 'Jdbc',
+      pluginName: 'JDBC-KINGBASE',
+    });
+    expect([...TASK_TARGET_DB_TYPES]).toEqual(['KINGBASE', 'VASTBASE']);
+    expect(
+      DATA_SOURCE_REGISTRY.filter((item) => item.taskSelector)
+        .map((item) => item.dbType)
+        .slice(0, 3),
+    ).toEqual(['DAMENG', 'KINGBASE', 'VASTBASE']);
+  });
+
   it('maps HTTP and known datasource types to their categories', () => {
     expect(getDataSourceCategory('HTTP').label).toBe('API 服务');
     expect(getDataSourceCategory('KAFKA').label).toBe('消息队列');
     expect(getDataSourceCategory('ELASTICSEARCH').label).toBe('OLAP 数据库');
     expect(getDataSourceCategory('MYSQL').label).toBe('关系型数据库');
+  });
+
+  it('keeps graph and time-series categories planned until connectors are registered', () => {
+    expect(PLANNED_DATA_SOURCE_CATEGORIES.map((item) => item.key)).toEqual([
+      'GRAPH',
+      'TIME_SERIES',
+    ]);
+    expect(DATA_SOURCE_CATEGORIES.map((item) => item.key)).not.toEqual(
+      expect.arrayContaining(['GRAPH', 'TIME_SERIES']),
+    );
+    expect(DATA_SOURCE_REGISTRY.some((item) => item.category === 'GRAPH')).toBe(false);
+    expect(DATA_SOURCE_REGISTRY.some((item) => item.category === 'TIME_SERIES')).toBe(false);
   });
 
   it('falls unknown types back to OTHER', () => {

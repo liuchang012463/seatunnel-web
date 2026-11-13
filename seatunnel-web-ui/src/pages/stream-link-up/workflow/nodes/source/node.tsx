@@ -55,12 +55,11 @@ const SourceNode: FC<NodeProps<SourceNodeData>> = ({ data, selected }) => {
           paddingLeft: 4,
           fontSize: 14,
           fontWeight: 700,
-          letterSpacing: 0.8,
-          textTransform: "uppercase",
+          letterSpacing: 0.4,
           color: "#6B7FD7",
         }}
       >
-        Source
+        来源
       </div>
 
       <div

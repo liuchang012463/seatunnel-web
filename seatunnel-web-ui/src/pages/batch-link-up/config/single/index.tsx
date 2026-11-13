@@ -382,6 +382,16 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
     history.push("/sync/batch-link-up");
   };
 
+  /** 回到引接链路配置步骤（保留当前任务草稿） */
+  const goPreviousStep = () => {
+    if (id) {
+      // 回到第二步「引接链路配置」，而不是基础配置
+      history.push(`/sync/batch-link-up/${id}/detail?step=client`);
+      return;
+    }
+    history.push("/sync/batch-link-up");
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
@@ -419,6 +429,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         contextKey={workflowContextKey}
         params={params}
         goBack={goBack}
+        goPreviousStep={goPreviousStep}
         sourceType={sourceType}
         setSourceType={setSourceType}
         targetType={targetType}
