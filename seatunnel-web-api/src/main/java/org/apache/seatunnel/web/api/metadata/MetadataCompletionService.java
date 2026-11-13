@@ -128,10 +128,11 @@ public class MetadataCompletionService {
                     result.get("failed"),
                     result.get("skipped"));
         } catch (RuntimeException error) {
-            String message = "Metadata completion failed";
+            // Keep internal exception details in server logs and return a clear, actionable message to the UI.
+            String message = "元数据补全任务异常中断，请检查服务状态后重试。";
             job.fail(message);
-            log.warn("Metadata completion worker failed: jobId={}, tableId={}, errorType={}",
-                    job.jobId, job.tableId, error.getClass().getSimpleName());
+            log.warn("Metadata completion worker failed: jobId={}, tableId={}",
+                    job.jobId, job.tableId, error);
         }
     }
 

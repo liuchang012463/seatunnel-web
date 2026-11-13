@@ -10,6 +10,7 @@ import {
   RightOutlined,
   SearchOutlined,
   TableOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   Button,
@@ -187,7 +188,7 @@ function asCompletionResult(value: unknown): CompletionResultSummary | undefined
 
 function completionResultCopy(job?: DataExplorationMetadataJob) {
   if (!job) return '';
-  if (job.error) return job.error;
+  if (job.error) return `补全未完成：${job.error}`;
   const status = normalizeCompletionStatus(job.status);
   const result = asCompletionResult(job.result);
   const progress = job.progress || {};
@@ -197,7 +198,8 @@ function completionResultCopy(job?: DataExplorationMetadataJob) {
   const total = Number(result?.total ?? progress.total ?? job.totalTables ?? completed + failed + skipped);
   if (status === 'completed') {
     if (failed > 0) {
-      return `补全结束：成功 ${completed}，失败 ${failed}，跳过 ${skipped}`
+      const summary = completed === 0 ? '补全未完成' : '补全结束';
+      return `${summary}：成功 ${completed}，失败 ${failed}，跳过 ${skipped}`
         + (total > 0 ? `（共 ${total} 张表）` : '');
     }
     return `补全完成：成功 ${completed}，跳过 ${skipped}`
@@ -210,6 +212,35 @@ function completionResultCopy(job?: DataExplorationMetadataJob) {
     return `正在补全元数据… 已处理 ${completed + failed + skipped}/${total}`;
   }
   return '正在补全元数据，请稍候…';
+}
+
+function completionFailureResults(job?: DataExplorationMetadataJob) {
+  const result = asCompletionResult(job?.result);
+  return (result?.results || []).filter((item) => !item.success && !item.skipped);
+}
+
+// A single-table task can complete at the job level while its table result failed.
+function completionHasFailures(job?: DataExplorationMetadataJob) {
+  if (!job) return false;
+  const status = normalizeCompletionStatus(job.status);
+  const result = asCompletionResult(job.result);
+  const failed = Number(result?.failed ?? job.progress?.failed ?? 0);
+  return status === 'failed' || status === 'cancelled' || failed > 0
+    || completionFailureResults(job).length > 0;
+}
+
+function completionFailureTitle(job?: DataExplorationMetadataJob) {
+  return normalizeCompletionStatus(job?.status) === 'cancelled'
+    ? '元数据补全任务已取消'
+    : '元数据补全未完成';
+}
+
+function completionFailureMessage(job?: DataExplorationMetadataJob) {
+  if (job?.error) return job.error;
+  if (normalizeCompletionStatus(job?.status) === 'cancelled') {
+    return '任务已取消，可以重新发起补全。';
+  }
+  return '本次未能生成并保存元数据描述，请检查 OpenMetadata 和模型服务后重试。';
 }
 
 const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
@@ -567,7 +598,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           } else if ((status === 'failed' || status === 'cancelled')
             && completionNoticeRef.current !== noticeKey) {
             completionNoticeRef.current = noticeKey;
-            message.error(nextJob.error || '元数据补全失败');
+            message.error(completionFailureMessage(nextJob));
           }
         })
         .catch((error: any) => {
@@ -1162,16 +1193,48 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                     <div className="exploration-drawer__agent-status-head">
                       <span><BulbOutlined /> Metadata agent</span>
                       {completionJob ? (
-                        <Tag color={completionColor(completionJob.status)}>{completionLabel(completionJob.status)}</Tag>
+                        <Tag color={normalizeCompletionStatus(completionJob.status) === 'completed'
+                          && completionHasFailures(completionJob)
+                          ? 'warning' : completionColor(completionJob.status)}>
+                          {normalizeCompletionStatus(completionJob.status) === 'completed'
+                            && completionHasFailures(completionJob)
+                            ? '部分失败' : completionLabel(completionJob.status)}
+                        </Tag>
                       ) : (
                         <Tag color="success">已就绪</Tag>
                       )}
                     </div>
                     {completionJob ? (
                       <>
-                        <span className="exploration-drawer__agent-status-copy">
-                          {completionSummary || '正在跟踪元数据补全任务'}
-                        </span>
+                        {completionHasFailures(completionJob) ? (
+                          <div className="exploration-drawer__agent-failure" role="alert">
+                            <WarningOutlined className="exploration-drawer__agent-failure-icon" />
+                            <div className="exploration-drawer__agent-failure-content">
+                              <strong>{completionFailureTitle(completionJob)}</strong>
+                              {completionFailureResults(completionJob).length > 0 ? (
+                                <ul>
+                                  {completionFailureResults(completionJob).slice(0, 3).map((item, index) => {
+                                    const fullName = item.table_name || item.tableName || `表 ${index + 1}`;
+                                    const tableName = String(fullName).split('.').filter(Boolean).pop() || fullName;
+                                    return (
+                                      <li key={`${fullName}-${index}`}>
+                                        <span title={String(fullName)}>{tableName}</span>
+                                        <span>{item.error || '该表的元数据描述未能补全。'}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              ) : (
+                                <span>{completionFailureMessage(completionJob)}</span>
+                              )}
+                              <small>请检查相关服务配置后重试；如问题持续，请联系管理员。</small>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="exploration-drawer__agent-status-copy">
+                            {completionSummary || '正在跟踪元数据补全任务'}
+                          </span>
+                        )}
                         {(completionJob.progress || completionResult) && (
                           <div className="exploration-drawer__agent-progress">
                             {(completionResult?.completed ?? completionJob.progress?.completed) !== undefined && (
@@ -1185,7 +1248,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                             )}
                           </div>
                         )}
-                        {normalizeCompletionStatus(completionJob.status) === 'completed'
+                        {!completionHasFailures(completionJob)
+                          && normalizeCompletionStatus(completionJob.status) === 'completed'
                           && (completionResult?.results?.length || 0) > 0 && (
                           <ul className="exploration-drawer__agent-result-list">
                             {completionResult?.results?.slice(0, 8).map((item, index) => {
