@@ -1198,6 +1198,75 @@
     line-height: 20px;
   }
 
+  .exploration-drawer__agent-failure {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-top: 9px;
+    padding: 10px 11px;
+    background: rgb(255 77 79 / 7%);
+    border: 1px solid rgb(255 120 117 / 24%);
+    border-radius: 6px;
+  }
+
+  .exploration-drawer__agent-failure-icon {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: #ff7875;
+    font-size: 15px;
+  }
+
+  .exploration-drawer__agent-failure-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+
+    strong {
+      color: var(--exploration-text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 19px;
+    }
+
+    > span,
+    small {
+      color: var(--exploration-text-muted);
+      font-size: 12px;
+      line-height: 18px;
+      overflow-wrap: anywhere;
+    }
+
+    small {
+      margin-top: 2px;
+    }
+
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 2px;
+      color: var(--exploration-text-muted);
+      font-size: 12px;
+      line-height: 18px;
+      overflow-wrap: anywhere;
+
+      span:first-child {
+        color: var(--exploration-text-secondary);
+        font-weight: 550;
+      }
+    }
+  }
+
   .exploration-drawer__agent-progress {
     display: flex;
     flex-wrap: wrap;

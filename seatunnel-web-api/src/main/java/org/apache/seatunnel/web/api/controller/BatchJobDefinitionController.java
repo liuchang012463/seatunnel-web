@@ -72,12 +72,12 @@ public class BatchJobDefinitionController {
     }
 
     /**
-     * 保存或更新单表增量微批任务。该入口使用独立模式，避免把全量任务
+     * 保存或更新单表增量任务。该入口使用独立模式，避免把全量任务
      * 的手工/普通调度语义误当成增量水位任务。
      */
     @PostMapping("/guide-single-incremental/saveOrUpdate")
     @Operation(summary = "saveOrUpdateGuideSingleIncrementalJobDefinition",
-            description = "保存或更新单表增量微批任务")
+            description = "保存或更新单表增量任务")
     @ApiException(SAVE_OR_UPDATE_BATCH_JOB_DEFINITION_ERROR)
     public Result<JobDefinitionSaveResultVO> saveGuideSingleIncremental(
             @RequestBody BatchGuideSingleIncrementalJobSaveCommand command) {
@@ -123,7 +123,7 @@ public class BatchJobDefinitionController {
 
     @PostMapping("/guide-single-incremental/build-config")
     @Operation(summary = "buildGuideSingleIncrementalJobHoconConfig",
-            description = "预览单表增量微批 HOCON")
+            description = "预览单表增量 HOCON")
     @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
     public Result<String> buildGuideSingleIncrementalConfig(
             @RequestBody BatchGuideSingleIncrementalJobSaveCommand command) {

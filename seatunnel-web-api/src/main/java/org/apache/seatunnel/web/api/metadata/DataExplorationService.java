@@ -86,7 +86,7 @@ public class DataExplorationService {
     private final OpenMetadataClient openMetadataClient;
     private final DataSourceCatalogService dataSourceCatalogService;
     private final OpenMetadataConfigResolver configResolver;
-    private final MetadataExtensionClient metadataExtensionClient;
+    private final MetadataCompletionService metadataCompletionService;
     private final OmReadCache omReadCache;
 
     /** Constructor used by the Spring application. */
@@ -97,14 +97,14 @@ public class DataExplorationService {
             OpenMetadataClient openMetadataClient,
             DataSourceCatalogService dataSourceCatalogService,
             OpenMetadataConfigResolver configResolver,
-            MetadataExtensionClient metadataExtensionClient,
+            MetadataCompletionService metadataCompletionService,
             OmReadCache omReadCache) {
         this.dataSourceDao = dataSourceDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
         this.dataSourceCatalogService = dataSourceCatalogService;
         this.configResolver = configResolver;
-        this.metadataExtensionClient = metadataExtensionClient;
+        this.metadataCompletionService = metadataCompletionService;
         this.omReadCache = omReadCache == null ? OmReadCache.disabled() : omReadCache;
     }
 
@@ -306,7 +306,7 @@ public class DataExplorationService {
     public DataExplorationMetadataJobVO startMetadataCompletion(Long dataSourceId, String tableId) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataTable table = requireOwnedTable(context, tableId);
-        return toMetadataJob(requireMetadataExtensionClient().startGenerate(table.getFullyQualifiedName()));
+        return requireMetadataCompletionService().submit(dataSourceId, table);
     }
 
     /** Reads a completion task only in the context of its owned source/table. */
@@ -314,10 +314,9 @@ public class DataExplorationService {
             Long dataSourceId, String tableId, String jobId) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataTable table = requireOwnedTable(context, tableId);
-        DataExplorationMetadataJobVO result = toMetadataJob(requireMetadataExtensionClient().getJob(jobId));
-        if (result.getFullyQualifiedName() != null
-                && !result.getFullyQualifiedName().isBlank()
-                && !result.getFullyQualifiedName().equals(table.getFullyQualifiedName())) {
+        DataExplorationMetadataJobVO result = requireMetadataCompletionService()
+                .getJob(jobId, dataSourceId, tableId, table.getFullyQualifiedName());
+        if (result == null) {
             throw invalid("metadata completion job does not belong to this table");
         }
         return result;
@@ -624,100 +623,13 @@ public class DataExplorationService {
         return result;
     }
 
-    private DataExplorationMetadataJobVO toMetadataJob(JsonNode node) {
-        DataExplorationMetadataJobVO result = new DataExplorationMetadataJobVO();
-        result.setJobId(text(node, "job_id", "jobId"));
-        result.setStatus(normalizeJobStatus(text(node, "status")));
-        result.setType(text(node, "type"));
-        result.setFullyQualifiedName(text(node, "fqn", "fullyQualifiedName"));
-        result.setLevel(text(node, "level"));
-        if (node != null && node.hasNonNull("total_tables")) {
-            result.setTotalTables(node.get("total_tables").asInt());
-        } else if (node != null && node.hasNonNull("totalTables")) {
-            result.setTotalTables(node.get("totalTables").asInt());
-        }
-        JsonNode progress = node == null ? null : node.get("progress");
-        if (progress != null && progress.isObject()) {
-            result.setProgress(toPlainMap(progress));
-        }
-        if (node != null && node.has("result") && !node.get("result").isNull()) {
-            JsonNode resultNode = node.get("result");
-            result.setResult(resultNode.isObject() || resultNode.isArray()
-                    ? toPlainValue(resultNode)
-                    : resultNode.asText());
-        }
-        result.setError(text(node, "error"));
-        result.setCreatedAt(text(node, "created_at", "createdAt"));
-        result.setUpdatedAt(text(node, "updated_at", "updatedAt"));
-        return result;
-    }
-
-    private static String normalizeJobStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return status;
-        }
-        return switch (status.trim().toLowerCase(Locale.ROOT)) {
-            case "success" -> "completed";
-            case "failure" -> "failed";
-            case "revoked" -> "cancelled";
-            case "progress" -> "running";
-            default -> status.trim().toLowerCase(Locale.ROOT);
-        };
-    }
-
-    private static Map<String, Object> toPlainMap(JsonNode node) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        node.fields().forEachRemaining(entry -> values.put(entry.getKey(), toPlainValue(entry.getValue())));
-        return values;
-    }
-
-    private static Object toPlainValue(JsonNode value) {
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (value.isBoolean()) {
-            return value.booleanValue();
-        }
-        if (value.isInt() || value.isLong()) {
-            return value.longValue();
-        }
-        if (value.isNumber()) {
-            return value.numberValue();
-        }
-        if (value.isTextual()) {
-            return value.asText();
-        }
-        if (value.isArray()) {
-            List<Object> items = new ArrayList<>();
-            value.forEach(item -> items.add(toPlainValue(item)));
-            return items;
-        }
-        if (value.isObject()) {
-            return toPlainMap(value);
-        }
-        return value.asText();
-    }
-
-    private static String text(JsonNode node, String... names) {
-        if (node == null) {
-            return null;
-        }
-        for (String name : names) {
-            JsonNode value = node.get(name);
-            if (value != null && !value.isNull()) {
-                return value.asText();
-            }
-        }
-        return null;
-    }
-
-    private MetadataExtensionClient requireMetadataExtensionClient() {
-        if (metadataExtensionClient == null) {
+    private MetadataCompletionService requireMetadataCompletionService() {
+        if (metadataCompletionService == null) {
             throw new MetadataIntegrationException(
-                    MetadataErrorCode.METADATA_EXTENSION_NOT_CONFIGURED,
+                    MetadataErrorCode.METADATA_COMPLETION_ERROR,
                     "Metadata completion service is not configured");
         }
-        return metadataExtensionClient;
+        return metadataCompletionService;
     }
 
     private static void addPatch(ArrayNode patch, String operationName, String path, JsonNode value) {

@@ -1047,11 +1047,11 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       const res = await seatunnelClientApi.saveOrUpdate(values);
 
       if (res?.code !== 0) {
-        message.error(res?.msg || "创建 Client 失败");
+        message.error(res?.msg || "创建引接引擎失败");
         return;
       }
 
-      message.success("Client 创建成功");
+      message.success("引接引擎创建成功");
 
       setOpenAddModal(false);
       clientForm.resetFields();
@@ -1086,7 +1086,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
       }
     } catch (error: any) {
       if (error?.errorFields) return;
-      message.error(error?.message || "创建 Client 失败");
+      message.error(error?.message || "创建引接引擎失败");
     } finally {
       setConfirmLoading(false);
     }

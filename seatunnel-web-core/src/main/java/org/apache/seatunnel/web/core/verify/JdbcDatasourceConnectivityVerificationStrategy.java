@@ -60,7 +60,7 @@ public class JdbcDatasourceConnectivityVerificationStrategy
     /**
      * 给 CDC 策略复用。
      *
-     * CDC 场景也需要先确认客户端能通过 SeaTunnel 访问该数据源。
+     * CDC 场景也需要先确认引接引擎能通过 SeaTunnel 访问该数据源。
      */
     public ClientDatasourceVerifyVO doVerify(DatasourceVerifyContext context) {
         ConnectivityTestJob testJob = connectivityTestJobFactory.build(
@@ -98,19 +98,19 @@ public class JdbcDatasourceConnectivityVerificationStrategy
         if (success) {
             return ClientDatasourceVerifyItemVO.success(
                     "JDBC_DATABASE_ACCESS",
-                    "客户端 JDBC/数据库访问",
-                    "SeaTunnel 客户端 JDBC/数据库访问验证成功",
-                    "SeaTunnel 客户端 JDBC/数据库访问验证成功",
-                    "客户端可以通过 SeaTunnel 访问该数据源；该结果不代表已执行真实 Stream Load 写入"
+                    "引接引擎 JDBC/数据库访问",
+                    "SeaTunnel 引接引擎 JDBC/数据库访问验证成功",
+                    "SeaTunnel 引接引擎 JDBC/数据库访问验证成功",
+                    "引接引擎可以通过 SeaTunnel 访问该数据源；该结果不代表已执行真实 Stream Load 写入"
             );
         }
 
         return ClientDatasourceVerifyItemVO.fail(
                 "JDBC_DATABASE_ACCESS",
-                "客户端 JDBC/数据库访问",
+                "引接引擎 JDBC/数据库访问",
                 StringUtils.defaultIfBlank(vo.getErrorMessage(), vo.getMessage()),
-                "SeaTunnel 客户端 JDBC/数据库访问验证成功",
-                "客户端无法通过 SeaTunnel 访问该数据源"
+                "SeaTunnel 引接引擎 JDBC/数据库访问验证成功",
+                "引接引擎无法通过 SeaTunnel 访问该数据源"
         );
     }
 

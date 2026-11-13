@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-@Schema(description = "客户端验证数据源结果")
+@Schema(description = "引接引擎验证数据源结果")
 public class ClientDatasourceVerifyVO {
 
     @Schema(description = "是否成功")
@@ -22,13 +22,13 @@ public class ClientDatasourceVerifyVO {
     @Schema(description = "缓存过期时间戳，毫秒")
     private Long cacheExpireAt;
 
-    @Schema(description = "客户端ID")
+    @Schema(description = "引接引擎ID")
     private Long clientId;
 
-    @Schema(description = "客户端名称")
+    @Schema(description = "引接引擎名称")
     private String clientName;
 
-    @Schema(description = "客户端地址")
+    @Schema(description = "引接引擎地址")
     private String clientBaseUrl;
 
     @Schema(description = "数据源ID")

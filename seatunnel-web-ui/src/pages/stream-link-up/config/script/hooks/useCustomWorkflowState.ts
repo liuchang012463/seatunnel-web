@@ -263,7 +263,7 @@ export function useCustomWorkflowState({
     }
 
     if (!basicConfig?.clientId) {
-      message.warning("请选择运行客户端");
+      message.warning("请选择运行引接引擎");
       setActiveTab("basic");
       return false;
     }

@@ -83,11 +83,11 @@ public class SeaTunnelClientTopologyBuilder {
      */
     private void validateBasicSpec(SeaTunnelClientSpec spec) {
         if (spec == null) {
-            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "客户端参数不能为空");
+            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "引接引擎参数不能为空");
         }
 
         if (StringUtils.isBlank(spec.getClientName())) {
-            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "客户端名称不能为空");
+            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "引接引擎名称不能为空");
         }
 
         if (StringUtils.isBlank(spec.getEngineType())) {
@@ -162,7 +162,7 @@ public class SeaTunnelClientTopologyBuilder {
             String contextPath
     ) {
         if (StringUtils.isBlank(host)) {
-            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "客户端地址不能为空");
+            throw new ServiceException(Status.INTERNAL_SERVER_ERROR_ARGS, "引接引擎地址不能为空");
         }
 
         validatePort(port);

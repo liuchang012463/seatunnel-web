@@ -76,7 +76,7 @@ public class StreamingJobSubmitter {
         jobLogger.info("=== Streaming Job Submit Start (REST API) ===");
         jobLogger.info("Streaming instanceId: " + instanceId);
         jobLogger.info("Streaming definitionId: " + jobDefinitionId);
-        jobLogger.info("Client id: " + clientId);
+        jobLogger.info("引接引擎 ID: " + clientId);
         jobLogger.info("Start with savepoint: " + options.isStartWithSavepoint());
         jobLogger.info("Restore engine job id: " + options.getRestoreEngineJobId());
 

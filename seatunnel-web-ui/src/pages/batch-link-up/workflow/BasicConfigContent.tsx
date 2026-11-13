@@ -14,7 +14,7 @@ const getModeLabel = (mode?: string) => {
     case "GUIDE_SINGLE":
       return "单表同步";
     case "GUIDE_SINGLE_INCREMENTAL":
-      return "单表增量微批";
+      return "单表增量";
     case "GUIDE_MULTI":
       return "多表同步";
     case "SCRIPT":

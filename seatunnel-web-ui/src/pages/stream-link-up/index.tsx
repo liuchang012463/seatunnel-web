@@ -564,7 +564,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const loadCheckpointData = async (record: StreamingJobDefinitionVO) => {
     if (!record?.clientId) {
-      message.warning('当前任务没有绑定 Aircas Client');
+      message.warning('当前任务没有绑定引接引擎');
       return;
     }
 
@@ -614,7 +614,7 @@ const RealtimeSyncPage: React.FC = () => {
 
   const handleCheckpoint = async (record: StreamingJobDefinitionVO) => {
     if (!record?.clientId) {
-      message.warning('当前任务没有绑定 Aircas Client');
+      message.warning('当前任务没有绑定引接引擎');
       return;
     }
 

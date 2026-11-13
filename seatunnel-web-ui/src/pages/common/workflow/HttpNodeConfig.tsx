@@ -497,7 +497,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         label="Query Params"
         hint={
           isIncremental
-            ? '新建单表微批任务默认填充 from=${window_start}、to=${window_end}；可按接口文档修改，调度时系统会自动替换时间值。'
+            ? '新建单表增量任务默认填充 from=${window_start}、to=${window_end}；可按接口文档修改，调度时系统会自动替换时间值。'
             : '每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。'
         }
       >
@@ -526,7 +526,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           label="请求体 Body"
           hint={
             isIncremental
-              ? '新建单表微批任务默认填充 from/to 时间窗口；请求体中的占位符会在解析预览和调度执行时自动替换。'
+              ? '新建单表增量任务默认填充 from/to 时间窗口；请求体中的占位符会在解析预览和调度执行时自动替换。'
               : '按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。'
           }
         >

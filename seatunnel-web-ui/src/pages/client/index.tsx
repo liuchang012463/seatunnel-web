@@ -52,7 +52,7 @@ const ClientPageTailwind: React.FC = () => {
           <div className="client-page__detail">
             {!selectedClient ? (
               <div className="client-page__empty">
-                <div className="client-page__empty-title">选择一个 Client</div>
+                <div className="client-page__empty-title">选择一个引接引擎</div>
                 <div className="client-page__empty-desc">
                   左侧选择节点后，可查看基础信息、健康状态与核心运行指标。
                 </div>

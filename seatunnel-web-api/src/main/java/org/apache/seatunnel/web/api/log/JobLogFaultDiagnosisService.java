@@ -344,9 +344,9 @@ public class JobLogFaultDiagnosisService {
             actions = List.of("检查网络连通性、DNS、端口和防火墙", "确认 Engine 与数据源之间的路由稳定性");
         } else if (containsAny(text, "engine", "rest", "client", "nullpointer", "outofmemory", "classnotfound", "serialization", "系统组件")) {
             faultType = SYSTEM_COMPONENT;
-            rootCause = "SeaTunnel Engine、Web 客户端或系统组件运行异常";
+            rootCause = "SeaTunnel Engine、Web 引接引擎或系统组件运行异常";
             stage = "系统组件";
-            actions = List.of("查看 Engine/Web 节点组件堆栈", "核对客户端与 SeaTunnel Engine 版本兼容性");
+            actions = List.of("查看 Engine/Web 节点组件堆栈", "核对引接引擎与 SeaTunnel Engine 版本兼容性");
         } else {
             faultType = COLLECTOR;
             rootCause = "采集任务提交、配置解析或采集执行环节出现异常";

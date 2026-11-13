@@ -364,7 +364,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
               >
                 2
               </span>
-              客户端与连接
+              引擎连接
             </button>
           </div>
         </div>
@@ -485,11 +485,11 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
         onCancel={goBack}
         onNext={() => void handleNextWithGuard()}
         onPrev={isClientStep ? goBaseStep : undefined}
-        nextText={isBaseStep ? '下一步：客户端与连接' : '进入任务配置'}
+        nextText={isBaseStep ? '下一步：引擎连接' : '进入任务配置'}
         hintText={
           isBaseStep
-            ? '先完成基础信息，再选择客户端并测试来源与去向连接'
-            : '确认客户端链接关系后，将进入任务配置'
+            ? '先完成基础信息，再选择引接引擎并测试来源与去向连接'
+            : '确认引擎连接关系后，将进入任务配置'
         }
         nextDisabled={isClientStep && !canGoNextFromClient}
       />

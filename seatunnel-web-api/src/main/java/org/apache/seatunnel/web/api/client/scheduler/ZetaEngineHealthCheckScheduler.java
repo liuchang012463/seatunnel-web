@@ -132,7 +132,7 @@ public class ZetaEngineHealthCheckScheduler {
         String clientName = client.getClientName();
         String baseUrl = client.getBaseUrl();
 
-        return "Zeta Engine 探活失败，Web 端已将该 Client 下仍处于运行中的任务实例标记为 FAILED。"
+        return "Zeta Engine 探活失败，Web 端已将该引接引擎下仍处于运行中的任务实例标记为 FAILED。"
                 + " clientId=" + client.getId()
                 + ", clientName=" + safe(clientName)
                 + ", baseUrl=" + safe(baseUrl)

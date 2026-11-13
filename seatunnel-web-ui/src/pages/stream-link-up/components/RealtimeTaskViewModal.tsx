@@ -559,7 +559,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                         value={viewData.runningDuration}
                       />
                       <MiniInfo
-                        label="客户端 ID (Client ID)"
+                        label="引接引擎 ID"
                         value={viewData.clientId}
                       />
                       <MiniInfo

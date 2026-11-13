@@ -87,10 +87,10 @@ public abstract class BaseSeatunnelJobDefinitionDTO extends PaginationBaseDTO {
     private Integer jobVersion;
 
     /**
-     * Client ID
+     * 引接引擎 ID
      */
     @Schema(
-            description = "Client ID (owner of the job)",
+            description = "引接引擎 ID（任务所属引接引擎）",
             example = "10001"
     )
     private Long clientId;

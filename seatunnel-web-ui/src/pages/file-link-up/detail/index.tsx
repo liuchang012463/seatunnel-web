@@ -86,11 +86,11 @@ const FileDetailPage = () => {
     ? STEP_THEME.client.dot
     : STEP_THEME.client.dotInactive;
 
-  const nextText = isBaseStep ? '下一步：客户端链接配置' : '进入文件同步配置';
+  const nextText = isBaseStep ? '下一步：引擎连接配置' : '进入文件同步配置';
 
   const hintText = isBaseStep
-    ? '先完成基础配置，再进入客户端链接配置'
-    : '确认客户端链接关系后，将进入文件同步配置';
+    ? '先完成基础配置，再进入引擎连接配置'
+    : '确认引擎连接关系后，将进入文件同步配置';
 
   const sourceManaged = sourceType?.dbType === 'WEB_UPLOAD';
   const canGoNextFromClient = sourceManaged
@@ -184,7 +184,7 @@ const FileDetailPage = () => {
               >
                 2
               </span>
-              客户端链接配置
+              引擎连接配置
             </button>
           </div>
         </div>
