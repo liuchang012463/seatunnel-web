@@ -4,7 +4,7 @@ export type FileResourceId = string | number;
 
 export type FileResourceKind = 'FILE' | 'DIRECTORY';
 
-export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb' | 'sqlite';
+export type FileResourceFormat = 'csv' | 'excel' | 'json' | 'text' | 'duckdb' | 'sqlite' | 'datapack';
 
 export interface DuckDbColumn {
   name: string;

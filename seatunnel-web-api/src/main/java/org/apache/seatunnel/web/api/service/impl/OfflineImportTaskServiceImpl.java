@@ -38,6 +38,7 @@ import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskRunDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackTaskConfig;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
@@ -46,15 +47,20 @@ import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackFormVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackInspectVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvInspectVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvSelectVO;
 import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.apache.seatunnel.web.spi.enums.OfflineImportType;
 import org.apache.seatunnel.web.spi.enums.Status;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.nio.ByteBuffer;
@@ -535,6 +541,111 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                 Arrays.fill(encrypted, (byte) 0);
             }
         }
+    }
+
+    @Override
+    public OfflineDatapackCsvInspectVO inspectDatapackCsv(Long fileResourceId, char[] password) {
+        byte[] encrypted = null;
+        boolean memoryBudgetAcquired = false;
+        try {
+            FileResource resource = requireOwnedDatapack(fileResourceId);
+            long size = resource.getSize() == null ? 0L : resource.getSize();
+            if (size <= 0 || size > offlineImportProperties.getDatapackCsvMaxFileBytes()) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包为空或超过大小上限");
+            }
+            if (!tryAcquireDatapackMemoryBudget("CSV inspection")) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                        "当前已有数据包正在校验或导入，请稍后重试");
+            }
+            memoryBudgetAcquired = true;
+            encrypted = readDatapackResource(resource, offlineImportProperties.getDatapackCsvMaxFileBytes());
+            DatapackPackageInspector.CsvArchiveInspection inspection =
+                    datapackPackageInspector.inspectCsvArchive(encrypted, password);
+            log.info("Inspected datapack CSV members resourceId={}, ownerId={}, csvCount={}",
+                    fileResourceId, currentUserProvider.getCurrentUserId(), inspection.fileNames().size());
+            return new OfflineDatapackCsvInspectVO(inspection.fingerprint(), inspection.fileNames());
+        } finally {
+            if (memoryBudgetAcquired) {
+                DATAPACK_MEMORY_BUDGET.release();
+            }
+            if (password != null) {
+                Arrays.fill(password, '\0');
+            }
+            if (encrypted != null) {
+                Arrays.fill(encrypted, (byte) 0);
+            }
+        }
+    }
+
+    @Override
+    public OfflineDatapackCsvSelectVO selectDatapackCsv(OfflineDatapackCsvSelectDTO request) {
+        byte[] encrypted = null;
+        byte[] csv = null;
+        boolean memoryBudgetAcquired = false;
+        try {
+            if (request == null) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包 CSV 选择参数无效");
+            }
+            FileResource resource = requireOwnedDatapack(request.getFileResourceId());
+            long size = resource.getSize() == null ? 0L : resource.getSize();
+            if (size <= 0 || size > offlineImportProperties.getDatapackCsvMaxFileBytes()) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包为空或超过大小上限");
+            }
+            if (!tryAcquireDatapackMemoryBudget("CSV extraction")) {
+                throw new ServiceException(Status.OFFLINE_IMPORT_TASK_STATE_ERROR,
+                        "当前已有数据包正在校验或导入，请稍后重试");
+            }
+            memoryBudgetAcquired = true;
+            encrypted = readDatapackResource(resource, offlineImportProperties.getDatapackCsvMaxFileBytes());
+            DatapackPackageInspector.CsvSelection selection = datapackPackageInspector.extractCsv(
+                    encrypted,
+                    request.getPassword(),
+                    request.getPackageFingerprint(),
+                    request.getFileName());
+            csv = selection.content();
+
+            // A unique first-level directory keeps extracted resources from sharing a parent path.
+            String uniquePath = "/offline-datapack-" + UUID.randomUUID();
+            List<FileResourceVO> resources = fileResourceService.upload(
+                    uniquePath,
+                    new MultipartFile[] {new DatapackCsvMultipartFile(selection.fileName(), csv)},
+                    new String[] {selection.fileName()});
+            if (resources == null || resources.isEmpty()) {
+                throw new IllegalStateException("文件资源服务未登记所选 CSV");
+            }
+
+            OfflineDatapackCsvSelectVO result = new OfflineDatapackCsvSelectVO();
+            result.setFileResource(resources.get(0));
+            result.setSchema(selection.schema());
+            result.setNullValue(selection.nullValue());
+            log.info("Materialized selected datapack CSV packageResourceId={}, ownerId={}, fileName={},"
+                            + " fileResourceId={}, size={}",
+                    request.getFileResourceId(), currentUserProvider.getCurrentUserId(), selection.fileName(),
+                    resources.get(0).getId(), csv.length);
+            return result;
+        } finally {
+            if (memoryBudgetAcquired) {
+                DATAPACK_MEMORY_BUDGET.release();
+            }
+            if (request != null && request.getPassword() != null) {
+                Arrays.fill(request.getPassword(), '\0');
+            }
+            if (encrypted != null) {
+                Arrays.fill(encrypted, (byte) 0);
+            }
+            if (csv != null) {
+                Arrays.fill(csv, (byte) 0);
+            }
+        }
+    }
+
+    private FileResource requireOwnedDatapack(Long fileResourceId) {
+        FileResourceVO resourceView = fileResourceService.get(fileResourceId);
+        if (!"FILE".equalsIgnoreCase(resourceView.getResourceType())
+                || !StringUtils.defaultString(resourceView.getName()).toLowerCase(Locale.ROOT).endsWith(".datapack")) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请选择 .datapack 文件资源");
+        }
+        return requireWorkerResource(fileResourceId, currentUserProvider.getCurrentUserId());
     }
 
     @Override
@@ -1193,9 +1304,12 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
     }
 
     private byte[] readDatapackResource(FileResource resource) {
+        return readDatapackResource(resource, offlineImportProperties.getDatapackMaxFileBytes());
+    }
+
+    private byte[] readDatapackResource(FileResource resource, long maxBytes) {
         try {
-            LimitedByteArrayOutputStream output = new LimitedByteArrayOutputStream(
-                    offlineImportProperties.getDatapackMaxFileBytes());
+            LimitedByteArrayOutputStream output = new LimitedByteArrayOutputStream(maxBytes);
             storageProvider.download(resource.getObjectKey(), output);
             return output.toByteArray();
         } catch (FileTooLargeException e) {
@@ -1320,6 +1434,57 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
         vo.setStartTime(entity.getStartTime());
         vo.setEndTime(entity.getEndTime());
         return vo;
+    }
+
+    private static final class DatapackCsvMultipartFile implements MultipartFile {
+        private final String fileName;
+        private final byte[] content;
+
+        private DatapackCsvMultipartFile(String fileName, byte[] content) {
+            this.fileName = fileName;
+            this.content = content;
+        }
+
+        @Override
+        public String getName() {
+            return "file";
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            int separator = fileName.lastIndexOf('/');
+            return separator < 0 ? fileName : fileName.substring(separator + 1);
+        }
+
+        @Override
+        public String getContentType() {
+            return "text/csv; charset=UTF-8";
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return content.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return content.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return Arrays.copyOf(content, content.length);
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new java.io.ByteArrayInputStream(content);
+        }
+
+        @Override
+        public void transferTo(File destination) throws IOException {
+            Files.write(destination.toPath(), content);
+        }
     }
 
     private record ValidatedImportConfig(

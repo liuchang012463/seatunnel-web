@@ -2,13 +2,16 @@ import { history, useLocation, useParams } from '@umijs/max';
 import { App, Empty, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import Workflow from '@/pages/batch-link-up/workflow';
+import DatapackCsvImportStep from '../../DatapackCsvImportStep';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../../types';
+import type { FileResource } from '../../types';
 import { fileIngestTaskApi } from '../../api';
 import {
   defaultScheduleConfig,
   mergeEnvConfig,
   mergeScheduleConfig,
   normalizeWorkflowGraph,
+  patchSourceConfig,
 } from '../runtime';
 import '../../index.less';
 
@@ -172,6 +175,83 @@ const FileIngestConfigPage: React.FC = () => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <Empty description="未找到离线文件导入配置，请从任务列表重新进入" />
+      </div>
+    );
+  }
+
+  if (params.datapackCsvImport === true) {
+    return (
+      <div className="min-h-screen bg-[#ffffff]">
+        <DatapackCsvImportStep
+          onBack={goBack}
+          onImported={({ fileResource, schema, nullValue }: {
+            fileResource: FileResource;
+            schema: Record<string, string>;
+            nullValue: string;
+          }) => {
+            const fields = schema || {};
+            const outputSchema = Object.entries(fields).map(([name, type]) => ({
+              originFieldName: name,
+              fieldName: name,
+              name,
+              type,
+              nullable: true,
+            }));
+            const sourceConfig = {
+              sourceMode: 'FILE_RESOURCE',
+              dbType: 'MINIO',
+              connectorType: 'S3File',
+              pluginName: 'S3File',
+              readMode: 'file',
+              syncType: 'FULL',
+              fileFormatType: 'csv',
+              formatLocked: true,
+              fileResourceId: fileResource.id,
+              fileResource,
+              path: fileResource.path || fileResource.objectKey,
+              objectKey: fileResource.objectKey || fileResource.path,
+              encoding: 'UTF-8',
+              fieldDelimiter: ',',
+              csvUseHeaderLine: true,
+              skipHeader: true,
+              skipHeaderRowNumber: 0,
+              quoteChar: '"',
+              // RFC4180 encodes a quote inside a quoted field by doubling it.
+              nullFormat: nullValue,
+              schema: { fields },
+              outputSchema,
+              schemaStatus: outputSchema.length ? 'success' : 'idle',
+              schemaError: '',
+            };
+            // SeaTunnel 3.0.0's CSV deserializer auto-detects local timestamps with up to 9 fractional digits.
+            // Leave the S3File datetime option unset: its explicit format whitelist does not include this pattern.
+            setParams((previous: any) => {
+              const workflow = patchSourceConfig(previous, sourceConfig);
+              return {
+                ...previous,
+                datapackCsvImport: undefined,
+                sourceType: { ...FILE_RESOURCE_SOURCE, fileFormatType: 'csv', formatLocked: true },
+                workflow: {
+                  ...workflow,
+                  nodes: workflow.nodes.map((node: any) => node?.data?.nodeType === 'source'
+                    ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          meta: {
+                            ...(node.data.meta || {}),
+                            outputSchema,
+                            schemaStatus: outputSchema.length ? 'success' : 'idle',
+                            schemaError: '',
+                          },
+                        },
+                      }
+                    : node),
+                },
+              };
+            });
+          }}
+        />
       </div>
     );
   }

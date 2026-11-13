@@ -1,4 +1,5 @@
 import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
+import type { FileResource } from '../types';
 
 const OFFLINE_IMPORT_API_PREFIX = '/api/v1/offline-import-tasks';
 
@@ -31,6 +32,17 @@ export interface OfflineDatapackInspect {
   packageType: 'DATA' | 'DISTRIBUTION';
   recordCount: number;
   forms: OfflineDatapackForm[];
+}
+
+export interface OfflineDatapackCsvInspect {
+  packageFingerprint: string;
+  fileNames: string[];
+}
+
+export interface OfflineDatapackCsvSelection {
+  fileResource: FileResource;
+  schema: Record<string, string>;
+  nullValue: string;
 }
 
 export interface OfflineImportOptions {
@@ -159,6 +171,20 @@ export const offlineImportTaskApi = {
       fileResourceId,
       password,
     }, options),
+
+  inspectDatapackCsv: (fileResourceId: string | number, password: string, options?: RequestOptions) =>
+    HttpUtils.post<OfflineDatapackCsvInspect>(`${OFFLINE_IMPORT_API_PREFIX}/datapack/csv/inspect`, {
+      fileResourceId,
+      password,
+    }, options),
+
+  selectDatapackCsv: (payload: {
+    fileResourceId: string | number;
+    password: string;
+    packageFingerprint: string;
+    fileName: string;
+  }, options?: RequestOptions) =>
+    HttpUtils.post<OfflineDatapackCsvSelection>(`${OFFLINE_IMPORT_API_PREFIX}/datapack/csv/select`, payload, options),
 
   online: (id: string | number) =>
     HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/online`),

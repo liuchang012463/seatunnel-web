@@ -93,6 +93,10 @@ class S3FileHoconBuilderTest {
                     "schema", Map.of("fields", Map.of("id", "long"))));
             node.put("sheetName", "Sheet1");
             node.put("excelEngine", "EasyExcel");
+            node.put("nullFormat", "NULL_7fe4");
+            node.put("quoteChar", "\"");
+            node.put("escapeChar", "\"");
+            node.put("csvUseHeaderLine", true);
 
             Config result = new S3FileHoconBuilder().buildSourceHocon(context(
                     Map.of(
@@ -107,7 +111,34 @@ class S3FileHoconBuilderTest {
             assertEquals("UTF-8", result.getString("encoding"));
             assertEquals("Sheet1", result.getString("sheet_name"));
             assertEquals("long", result.getString("schema.fields.id"));
+            if ("csv".equals(format)) {
+                assertEquals("NULL_7fe4", result.getString("null_format"));
+                assertEquals("\"", result.getString("quote_char"));
+                assertEquals("\"", result.getString("escape_char"));
+                assertTrue(result.getBoolean("csv_use_header_line"));
+            }
         }
+    }
+
+    @Test
+    void leavesCsvEscapeUnsetForRfc4180DoubledQuotes() {
+        Config result = new S3FileHoconBuilder().buildSourceHocon(context(
+                Map.of(
+                        "dbType", "MINIO",
+                        "endpoint", "http://minio:9000",
+                        "bucket", "archive",
+                        "accessKey", "minio",
+                        "secretKey", "minio-secret"),
+                Map.of(
+                        "path", "/uploads/orders.csv",
+                        "fileFormatType", "csv",
+                        "fieldDelimiter", ",",
+                        "quoteChar", "\"",
+                        "csvUseHeaderLine", true,
+                        "schema", Map.of("fields", Map.of("description", "string")))));
+
+        assertEquals("\"", result.getString("quote_char"));
+        assertFalse(result.hasPath("escape_char"));
     }
 
     @Test

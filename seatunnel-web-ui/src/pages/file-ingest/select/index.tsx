@@ -41,7 +41,11 @@ interface ImportChoice {
 }
 
 /** Shared entry for the canvas-based structured and database-file flows. */
-const enterFileIngestWizard = async (createButtonText: string, selectedFormat?: FileFormat) => {
+const enterFileIngestWizard = async (
+  createButtonText: string,
+  selectedFormat?: FileFormat,
+  datapackCsvImport = false,
+) => {
   const response = await fileIngestTaskApi.getUniqueId();
   const id = response?.data as any;
   if (response?.code !== 0 || !id) {
@@ -71,6 +75,8 @@ const enterFileIngestWizard = async (createButtonText: string, selectedFormat?: 
             }
           : {}),
       },
+      // The password is deliberately collected only on the config page and never enters this draft.
+      datapackCsvImport: datapackCsvImport || undefined,
       targetType: {
         dbType: 'MYSQL',
         connectorType: 'Jdbc',
@@ -98,6 +104,11 @@ const ImportSelectPage: React.FC = () => {
     const enterSqlite = () => {
       enterFileIngestWizard('sqlite').catch((error: any) => {
         message.error(error?.message || '新建离线文件导入任务失败');
+      });
+    };
+    const enterDatapackCsv = () => {
+      enterFileIngestWizard('datapack-csv', 'csv', true).catch((error: any) => {
+        message.error(error?.message || '新建离线数据包导入任务失败');
       });
     };
 
@@ -177,7 +188,7 @@ const ImportSelectPage: React.FC = () => {
             key: 'report-package',
             label: '离线三级采报工具',
             detail: '导入工具导出的离线文件',
-            action: () => history.push('/sync/file-ingest/import/create?type=DATAPACK&importType=DATAPACK'),
+            action: enterDatapackCsv,
           },
         ],
       },

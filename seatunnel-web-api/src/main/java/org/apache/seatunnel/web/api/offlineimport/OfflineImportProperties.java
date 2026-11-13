@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class OfflineImportProperties {
 
     private static final long DATAPACK_ABSOLUTE_MAX_FILE_BYTES = 32L * 1024 * 1024;
+    private static final long DATAPACK_CSV_ABSOLUTE_MAX_FILE_BYTES = 64L * 1024 * 1024;
     private static final int DATAPACK_ABSOLUTE_MAX_RECORDS = 50_000;
     private static final long DATAPACK_ABSOLUTE_MAX_CONFIG_BYTES = 1024L * 1024;
 
@@ -39,6 +40,9 @@ public class OfflineImportProperties {
      * with an absolute 32 MiB ceiling. Values configured above that runtime budget are clamped.
      */
     private long datapackMaxFileBytes = 8L * 1024 * 1024;
+
+    /** Encrypted TOTAL ZIP size; one CSV import is capped at 1/64 of heap with a 64 MiB ceiling. */
+    private long datapackCsvMaxFileBytes = DATAPACK_CSV_ABSOLUTE_MAX_FILE_BYTES;
 
     /** Must match the exporting tool because DRPK1 does not store this value in its header. */
     private int datapackPbkdf2Iterations = 120000;
@@ -71,6 +75,12 @@ public class OfflineImportProperties {
     public long getDatapackMaxFileBytes() {
         long heapBudget = Math.max(1L, Runtime.getRuntime().maxMemory() / 256L);
         return Math.min(datapackMaxFileBytes, Math.min(DATAPACK_ABSOLUTE_MAX_FILE_BYTES, heapBudget));
+    }
+
+    /** Runtime-aware bound for encrypted CSV ZIP inspection and extraction, separate from JSON datapacks. */
+    public long getDatapackCsvMaxFileBytes() {
+        long heapBudget = Math.max(1L, Runtime.getRuntime().maxMemory() / 64L);
+        return Math.min(datapackCsvMaxFileBytes, Math.min(DATAPACK_CSV_ABSOLUTE_MAX_FILE_BYTES, heapBudget));
     }
 
     public int getDatapackMaxRecords() {

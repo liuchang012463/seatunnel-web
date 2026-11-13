@@ -79,6 +79,7 @@ export function resourceMatchesFormats(resource: FileResourceEntry, formats?: Fi
     text: ['txt', 'text'],
     duckdb: ['db', 'duckdb'],
     sqlite: ['db', 'sqlite', 'sqlite3'],
+    datapack: ['datapack'],
   };
   return formats.some((format) => extensions[format]?.includes(extension));
 }

@@ -8,12 +8,16 @@ import org.apache.seatunnel.web.api.service.OfflineImportTaskService;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackInspectDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvInspectDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportExecuteDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineImportTaskRunVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackInspectVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvInspectVO;
+import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvSelectVO;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -91,6 +95,21 @@ public class OfflineImportTaskController {
     @Operation(summary = "inspectOfflineDatapack", description = "验证加密离线数据包并读取表单字段清单")
     public Result<OfflineDatapackInspectVO> inspectDatapack(@Valid @RequestBody OfflineDatapackInspectDTO dto) {
         return Result.buildSuc(offlineImportTaskService.inspectDatapack(dto.getFileResourceId(), dto.getPassword()));
+    }
+
+    @PostMapping("/datapack/csv/inspect")
+    @Operation(summary = "inspectOfflineDatapackCsv", description = "验证加密数据包并列出清单中的 CSV 文件名")
+    public Result<OfflineDatapackCsvInspectVO> inspectDatapackCsv(
+            @Valid @RequestBody OfflineDatapackCsvInspectDTO dto) {
+        return Result.buildSuc(offlineImportTaskService.inspectDatapackCsv(
+                dto.getFileResourceId(), dto.getPassword()));
+    }
+
+    @PostMapping("/datapack/csv/select")
+    @Operation(summary = "selectOfflineDatapackCsv", description = "重新验证数据包并提取所选 CSV 到文件资源库")
+    public Result<OfflineDatapackCsvSelectVO> selectDatapackCsv(
+            @Valid @RequestBody OfflineDatapackCsvSelectDTO dto) {
+        return Result.buildSuc(offlineImportTaskService.selectDatapackCsv(dto));
     }
 
     @PostMapping("/{id}/execute")
