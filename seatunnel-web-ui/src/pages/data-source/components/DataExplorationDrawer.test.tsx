@@ -18,6 +18,10 @@ jest.mock('../service', () => ({
 
 const service = jest.requireMock('../service');
 
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 it('opens column definitions first and keeps wide sample fields readable', async () => {
   const columns = Array.from({ length: 16 }, (_, index) => ({
     name: `field_${index}`,
@@ -45,6 +49,9 @@ it('opens column definitions first and keeps wide sample fields readable', async
   const { container } = render(React.createElement(DataExplorationDrawer, {
     inline: true, open: true, dataSourceId: '42', onClose: () => {},
   }));
+  // 列定义和样本 Tab 属于表详情；先从左侧表列表打开一张表。
+  await waitFor(() => expect(service.fetchDataExplorationTables).toHaveBeenCalled());
+  fireEvent.click(await screen.findByRole('button', { name: /orders/ }));
   const columnsTab = await screen.findByRole('tab', { name: /列/ });
   expect(columnsTab.getAttribute('aria-selected')).toBe('true');
   expect(service.previewDataExplorationTable).not.toHaveBeenCalled();
@@ -115,6 +122,9 @@ it('shows a readable failure notice for an unsuccessful metadata completion resu
   render(React.createElement(DataExplorationDrawer, {
     inline: true, open: true, dataSourceId: '42', onClose: () => {},
   }));
+  // 表详情 Tab 需先选择表后才会显示。
+  await waitFor(() => expect(service.fetchDataExplorationTables).toHaveBeenCalled());
+  fireEvent.click(await screen.findByRole('button', { name: /orders/ }));
   await screen.findByRole('tab', { name: /列/ });
   fireEvent.click(screen.getByRole('tab', { name: /样本数据/ }));
   expect(await screen.findByText('sample order')).toBeTruthy();
