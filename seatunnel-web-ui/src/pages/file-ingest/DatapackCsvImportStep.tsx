@@ -138,7 +138,7 @@ const DatapackCsvImportStep: React.FC<DatapackCsvImportStepProps> = ({ onImporte
         </Button>
 
         {inspection ? (
-          <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+          <div className="datapack-csv-selection space-y-3 rounded-xl border p-4">
             <div className="text-sm font-semibold text-slate-900">选择 CSV 文件</div>
             <Select
               className="w-full"

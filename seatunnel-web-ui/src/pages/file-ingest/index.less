@@ -1,3 +1,9 @@
+// CSV 选择区直接使用主题色，避免浅色背景覆盖暗色面板。
+.datapack-csv-selection {
+  background-color: var(--st-color-bg-elevated);
+  border-color: var(--st-color-border);
+}
+
 // The workflow editor also runs in deployments where the optional Tailwind
 // transform is not enabled. Keep the structural layout explicit so the
 // canvas never collapses to zero height and both file editors remain usable.
