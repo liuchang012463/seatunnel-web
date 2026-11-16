@@ -64,7 +64,8 @@
   --st-color-neutral: #9cacbf;
   --st-color-line: #124769;
   --st-color-line-strong: #2187a8;
-  --st-color-border: var(--st-color-line-strong);
+  /* 面板/分割线边框用弱线色，避免暗色背景下过亮抢视线；强调态仍用 line-strong / accent */
+  --st-color-border: var(--st-color-line);
   --st-color-divider: var(--st-color-line);
   --st-color-divider-subtle: #073052;
   --st-color-hover: var(--st-color-bg-hover);

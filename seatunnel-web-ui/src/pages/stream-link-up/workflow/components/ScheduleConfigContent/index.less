@@ -6,7 +6,8 @@
   overflow: hidden;
   border-radius: 24px;
   background: var(--st-color-bg-panel);
-  border-width: 1px;
+  /* 显式指定边框色，避免 Tailwind preflight 默认浅灰边框在暗色主题下发白 */
+  border: 1px solid var(--st-color-divider);
   padding: 12px;
 
   &__scroll {

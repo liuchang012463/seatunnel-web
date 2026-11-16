@@ -204,7 +204,7 @@ const DetailPage = () => {
           <Form form={form} layout="vertical">
             <div
               className={[
-                "overflow-hidden rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] shadow-none",
+                "overflow-hidden bg-[color:var(--st-color-bg-panel)] shadow-none",
                 activeStep === "base" ? "" : "hidden",
               ].join(" ")}
             >

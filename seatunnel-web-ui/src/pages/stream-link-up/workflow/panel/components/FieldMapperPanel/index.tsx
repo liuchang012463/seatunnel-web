@@ -545,7 +545,7 @@ function FieldMapperPanel({
         </button>
       }
     >
-      <section className="mb-2.5 rounded-[22px] border border-blue-100/80 bg-white p-3">
+      <section className="mb-2.5 rounded-[22px] border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-panel)] p-3">
         {!hasInputSchema ? (
           <FieldMapperInitGuide onRefresh={handleRefreshSchema} />
         ) : (

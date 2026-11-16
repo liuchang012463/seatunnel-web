@@ -572,11 +572,11 @@ export default function FlowCanvas({
                   cursor: 'pointer',
                 }}
               >
-                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-[color:var(--st-color-divider)] bg-[color:var(--st-color-bg-control)] text-[color:var(--st-color-accent)]">
                   {insertNodeIconMap[nodeConfig.componentType]}
                 </div>
                 <div
-                  className="truncate text-[14px] leading-[20px] text-slate-800"
+                  className="truncate text-[14px] leading-[20px] text-[color:var(--st-color-text-primary)]"
                   style={{ minWidth: 0 }}
                 >
                   {nodeConfig.label}

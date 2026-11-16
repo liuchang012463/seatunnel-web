@@ -87,14 +87,41 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+    max-width: 100%;
     padding: 12px 14px;
     border-radius: 16px;
     border: 1px solid #e8edf5;
     background: linear-gradient(180deg, #fbfcff 0%, #f7f9fc 100%);
+    box-sizing: border-box;
+
+    /* Select 在 flex 行内需可收缩，避免长数据源名撑破外框 */
+    > .workflow-panel__antd-select,
+    > .ant-select {
+      flex: 1 1 0%;
+      min-width: 0;
+      max-width: 100%;
+      width: auto !important;
+    }
   }
 
   &__meta-card--compact {
     padding: 12px 14px;
+  }
+
+  &__antd-select {
+    max-width: 100%;
+
+    .ant-select-selector {
+      overflow: hidden;
+    }
+
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   &__meta-icon {

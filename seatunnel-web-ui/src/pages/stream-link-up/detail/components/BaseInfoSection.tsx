@@ -32,7 +32,7 @@ const BaseConfigSection: React.FC<Props> = ({
 }) => {
   return (
     <div className="p-6">
-      <div className="space-y-5 rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-panel)] p-5 shadow-none">
+      <div className="space-y-5 bg-[color:var(--st-color-bg-panel)] p-5 shadow-none">
         <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
           <div className={sectionTitleClass}>数据同步方式</div>
           <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ const BaseConfigSection: React.FC<Props> = ({
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
+        <section>
           <div className={sectionTitleClass}>任务信息</div>
           <div className="grid grid-cols-1 gap-4">
             <Form.Item
@@ -83,7 +83,7 @@ const BaseConfigSection: React.FC<Props> = ({
           </div>
         </section>
 
-        <section className="rounded-[4px] border border-[color:var(--st-color-border)] bg-[color:var(--st-color-bg-control)] p-4">
+        <section>
           <div className={sectionTitleClass}>配置模式</div>
           <Form.Item name="mode" initialValue="GUIDE_SINGLE" className="mb-0">
             <Radio.Group className="w-full">
