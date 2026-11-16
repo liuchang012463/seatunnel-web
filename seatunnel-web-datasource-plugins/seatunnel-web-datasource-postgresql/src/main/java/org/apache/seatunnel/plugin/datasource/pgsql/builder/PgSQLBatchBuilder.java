@@ -2,10 +2,13 @@ package org.apache.seatunnel.plugin.datasource.pgsql.builder;
 
 import com.google.auto.service.AutoService;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigValueFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.hocon.AbstractJdbcBatchBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
+import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.api.hocon.JdbcBatchConstants;
 import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcSourceTargetBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcTableNameResolver;
@@ -13,6 +16,7 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.table.JdbcTableNameResol
 import java.util.Map;
 
 @AutoService(DataSourceHoconBuilder.class)
+@Slf4j
 public class PgSQLBatchBuilder extends AbstractJdbcBatchBuilder {
 
     private final JdbcSourceTargetBuilder pgSingleSourceBuilder;
@@ -35,6 +39,28 @@ public class PgSQLBatchBuilder extends AbstractJdbcBatchBuilder {
     @Override
     protected String defaultDriver() {
         return DataSourceConstants.ORG_POSTGRESQL_DRIVER;
+    }
+
+    @Override
+    public Config buildSinkHocon(HoconBuildContext context) {
+        Config sink = super.buildSinkHocon(context);
+        if (!sink.getBoolean(JdbcBatchConstants.GENERATE_SINK_SQL)
+                || sink.hasPath(JdbcBatchConstants.QUERY)
+                || sink.hasPath("properties.stringtype")) {
+            return sink;
+        }
+
+        String url = sink.getString(JdbcBatchConstants.URL);
+        String urlOptions = StringUtils.substringAfter(url, "?");
+        if (("&" + urlOptions).contains("&stringtype=")) {
+            return sink;
+        }
+
+        // SeaTunnel binds CSV strings with setString; let PostgreSQL infer JSON/JSONB from the target column.
+        String separator = url.contains("?") ? "&" : "?";
+        log.debug("Using stringtype=unspecified for generated PostgreSQL sink SQL");
+        return sink.withValue(JdbcBatchConstants.URL,
+                ConfigValueFactory.fromAnyRef(url + separator + "stringtype=unspecified"));
     }
 
     @Override
