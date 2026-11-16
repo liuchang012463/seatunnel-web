@@ -12,13 +12,6 @@ export const PAGE_DEFAULT_PAGINATION = {
   total: 0,
 };
 
-export const COMMON_DB_OPTIONS: DataSourceOptionItem[] = [
-  ...DATA_SOURCE_REGISTRY.filter((item) => item.creatable !== false).map((item) => ({
-    label: item.label,
-    value: item.dbType,
-  })),
-];
-
 export const ENVIRONMENT_OPTIONS: DataSourceOptionItem[] = [
   { label: "DEVELOP", value: "DEVELOP" },
   { label: "TEST", value: "TEST" },

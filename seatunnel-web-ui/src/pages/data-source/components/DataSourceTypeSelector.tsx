@@ -3,7 +3,6 @@ import { Button, Empty, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
 import DatabaseIcons from '../icon/DatabaseIcons';
-import { COMMON_DB_OPTIONS } from '../constants';
 import {
   DATA_SOURCE_REGISTRY,
   getConnectorTypeLabel,
@@ -45,6 +44,7 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
     );
   }, [visibleGroups]);
 
+  // 列表沿用类型筛选项的顺序，并保留每种类型内的注册顺序。
   const flatDatasourceList = useMemo(() => {
     return visibleGroups.flatMap((group) =>
       group.datasourceList.map((item) => ({
@@ -55,60 +55,15 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
     );
   }, [visibleGroups]);
 
-  // 「常用」跟随上方类型过滤：选「文件与对象存储」时优先 FTP/SFTP/S3 等，而不是固定前几项
-  const suggestedDatasourceList = useMemo(() => {
-    const maxSuggested = 4;
-    const toSuggestedItem = (item: (typeof flatDatasourceList)[number]) => ({
-      label: item.label,
-      value: item.dbType,
-      dbType: item.dbType,
-      connectorType: item.connectorType,
-      groupName: item.groupName,
-    });
-
-    if (selectedGroupName) {
-      return flatDatasourceList
-        .filter((item) => item.groupName === selectedGroupName)
-        .slice(0, maxSuggested)
-        .map(toSuggestedItem);
-    }
-
-    return COMMON_DB_OPTIONS.filter((common) => {
-      if (!defaultUsage) return true;
-      const connector = DATA_SOURCE_REGISTRY.find((entry) => entry.dbType === common.value);
-      return supportsDataSourceUsage(connector, defaultUsage);
-    })
-      .map((common) => {
-        const matched = flatDatasourceList.find(
-          (item) =>
-            item.dbType === common.value ||
-            item.dbType === common.label ||
-            item.dbType?.toLowerCase() === common.value?.toLowerCase() ||
-            item.dbType?.toLowerCase() === common.label?.toLowerCase(),
-        );
-        if (!matched) return null;
-        return toSuggestedItem(matched);
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item?.dbType))
-      .slice(0, maxSuggested);
-  }, [defaultUsage, flatDatasourceList, selectedGroupName]);
-
-  const showSuggested = !keyword && suggestedDatasourceList.length > 0;
-
   const filteredDatasourceList = useMemo(() => {
-    // 已在「常用数据源」展示的类型从下方列表隐藏，避免同屏重复
-    const suggestedDbTypes = showSuggested
-      ? new Set(suggestedDatasourceList.map((item) => item.dbType))
-      : null;
     return flatDatasourceList.filter((item) => {
       const matchGroup =
         selectedGroupName === null || item.groupName === selectedGroupName;
       const matchKeyword = !keyword || item.searchText.includes(keyword);
-      const notSuggested = !suggestedDbTypes || !suggestedDbTypes.has(item.dbType);
 
-      return matchGroup && matchKeyword && notSuggested;
+      return matchGroup && matchKeyword;
     });
-  }, [flatDatasourceList, keyword, selectedGroupName, showSuggested, suggestedDatasourceList]);
+  }, [flatDatasourceList, keyword, selectedGroupName]);
 
   return (
     <div className="datasource-type-selector flex flex-col gap-5">
@@ -167,47 +122,6 @@ const DataSourceTypeSelector: React.FC<DataSourceTypeSelectorProps> = ({
           })}
         </div>
       </div>
-
-      {showSuggested && (
-        <section className="datasource-type-suggested p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="datasource-type-section-title">
-              常用数据源
-            </div>
-            <div className="datasource-type-section-meta">
-              {selectedGroupName
-                ? `当前类型常用连接器（${selectedGroupName}）`
-                : '常用连接器，点击即可创建'}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {suggestedDatasourceList.map((item) => (
-              <button
-                key={item.dbType}
-                type="button"
-                className="datasource-type-option group flex min-h-[66px] items-center gap-3 px-4 py-3 text-left"
-                onClick={() => onSelect(item.dbType)}
-              >
-                <div
-                  className="datasource-type-option-icon"
-                >
-                  <DatabaseIcons dbType={item.dbType} width="18px" height="18px" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="datasource-type-option-title truncate">
-                    {item.label}
-                  </div>
-                  <div className="datasource-type-option-meta mt-1 truncate">
-                    {getConnectorTypeLabel(item.connectorType, item.groupName || '快速选择')}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section>
         <div className="mb-3 flex items-center justify-between">
