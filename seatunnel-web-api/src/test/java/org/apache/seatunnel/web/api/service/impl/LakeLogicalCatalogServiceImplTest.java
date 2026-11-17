@@ -100,8 +100,10 @@ class LakeLogicalCatalogServiceImplTest {
         assertTrue(result.isSourceNetworkReachabilityKnown());
         assertTrue(result.isSourceNetworkReachable());
         assertTrue(result.isLakeDorisReachable());
-        verify(context.client).probeSource(any(LakeCatalogDesiredSpec.class),
+        var desiredCaptor = org.mockito.ArgumentCaptor.forClass(LakeCatalogDesiredSpec.class);
+        verify(context.client).probeSource(desiredCaptor.capture(),
                 eq(context.driverRegistry), any(LakeJdbcCatalogDdlBuilder.CatalogCredentials.class));
+        assertTrue(desiredCaptor.getValue().catalogName().matches("[a-zA-Z][a-zA-Z0-9_-]{0,63}"));
     }
 
     @Test

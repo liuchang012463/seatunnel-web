@@ -1004,7 +1004,8 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
 
     private static String probeCatalogName(Long sourceDataSourceId) {
         String suffix = UUID.randomUUID().toString().replace("-", "");
-        return "_lake_probe_" + sourceDataSourceId + "_" + suffix.substring(0, 20);
+        // Doris requires catalog identifiers to begin with a letter, unlike table names.
+        return "lake_probe_" + sourceDataSourceId + "_" + suffix.substring(0, 20);
     }
 
     private static String classifyRuntime(RuntimeException exception) {
