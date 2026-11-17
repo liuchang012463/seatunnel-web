@@ -111,6 +111,49 @@ class JdbcDorisLakeClientTest {
     }
 
     @Test
+    void catalogLookupReadsNamesInsteadOfNumericCatalogIds() throws Exception {
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet result = mock(ResultSet.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("SHOW CATALOGS")).thenReturn(result);
+        // Doris 4.x returns CatalogId first and CatalogName second.
+        when(result.next()).thenReturn(true, true, false, true, true, false, true, true, false);
+        when(result.getString(1)).thenReturn("1794897323985", "0");
+        when(result.getString("CatalogName")).thenReturn(
+                "ext_ds_22978064259872", "internal",
+                "ext_ds_22978064259872", "internal",
+                "ext_ds_22978064259872", "internal");
+        JdbcDorisLakeClient client = new JdbcDorisLakeClient(dataSource, new LakeProperties());
+
+        assertEquals(List.of("ext_ds_22978064259872", "internal"), client.listCatalogs());
+        assertTrue(client.catalogExists("EXT_DS_22978064259872"));
+        assertFalse(client.catalogExists("missing_catalog"));
+        verify(result, org.mockito.Mockito.never()).getString(1);
+    }
+
+    @Test
+    void catalogLookupFallsBackToTheNameColumnWhenLabelsAreUnavailable() throws Exception {
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet result = mock(ResultSet.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("SHOW CATALOGS")).thenReturn(result);
+        when(result.next()).thenReturn(true, false);
+        when(result.getString("CatalogName")).thenThrow(new SQLException("column labels unavailable"));
+        when(result.getString(1)).thenReturn("1794897323985");
+        when(result.getString(2)).thenReturn("ext_ds_22978064259872");
+        JdbcDorisLakeClient client = new JdbcDorisLakeClient(dataSource, new LakeProperties());
+
+        assertTrue(client.catalogExists("ext_ds_22978064259872"));
+        verify(result, org.mockito.Mockito.never()).getString(1);
+    }
+
+    @Test
     void showCreateReadsTheDefinitionColumnWithoutLeakingJdbcErrorText() throws Exception {
         DataSource dataSource = mock(DataSource.class);
         Connection connection = mock(Connection.class);

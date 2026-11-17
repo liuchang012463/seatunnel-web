@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.DorisIdentifier;
@@ -62,6 +63,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * short-lived source reachability observation produced by the explicit
  * FE/BE probe endpoint.  It never probes the source from the Web process.</p>
  */
+@Slf4j
 @Service
 public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService {
 
@@ -490,6 +492,8 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
                 throw external(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED,
                         "catalog validation did not match");
             }
+            log.info("Created and validated logical catalog sourceDataSourceId={} catalog={} adapter={} scope={}",
+                    input.sourceDataSourceId(), desired.catalogName(), input.adapter(), input.scope());
             return publication(desired, validation, LakeResourceStatus.READY);
         } catch (LakeExternalOperationException exception) {
             throw exception;

@@ -364,11 +364,14 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
                 try (ResultSet result = statement.executeQuery("SHOW CATALOGS")) {
                     List<String> catalogs = new ArrayList<>();
                     while (result.next()) {
-                        String value = result.getString(1);
+                        // SHOW CATALOGS returns CatalogId first, then CatalogName.
+                        // Comparing IDs with names falsely marks a successful CREATE as missing.
+                        String value = catalogValue(result, 2, "CatalogName");
                         if (value != null && !value.isBlank()) {
                             catalogs.add(value);
                         }
                     }
+                    log.debug("Read Doris catalog names count={}", catalogs.size());
                     return List.copyOf(catalogs);
                 }
             }
