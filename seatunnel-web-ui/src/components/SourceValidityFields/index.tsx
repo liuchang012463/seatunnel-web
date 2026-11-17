@@ -1,6 +1,6 @@
 import { fetchTimeVariableList } from '@/pages/knowledge-management/api';
 import { Alert, Button, Collapse, Select, Space, Switch } from 'antd';
-import { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 
 type Validity = { enabled?: boolean; fieldName?: string; timeVariable?: string };
 

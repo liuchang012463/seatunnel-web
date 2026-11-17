@@ -361,6 +361,7 @@ const ManagedTableWizard: React.FC = () => {
               <Descriptions.Item label="来源表">{selectedTable?.fullyQualifiedName}</Descriptions.Item>
               <Descriptions.Item label="目标表">{source.odsDatabase?.databaseName}.{preview?.targetTableName}</Descriptions.Item>
               <Descriptions.Item label="字段数">{preview?.targetContract?.columns?.length}</Descriptions.Item>
+              <Descriptions.Item label="任务写入">全量覆盖：每次先清空目标数据再重导，失败后需重新执行。</Descriptions.Item>
               <Descriptions.Item label="保留方式">{form.getFieldValue('lifecyclePolicyId') ? policies.find((policy) => policy.id === form.getFieldValue('lifecyclePolicyId'))?.policyName : '长期保留'}</Descriptions.Item>
             </Descriptions>
             {preview?.warnings?.length ? <Alert style={{ marginTop: 16 }} type="warning" showIcon message="请确认转换提醒" description={<><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul><Checkbox checked={warningsAcknowledged} onChange={(event) => setWarningsAcknowledged(event.target.checked)}>我已了解转换提醒</Checkbox></>} /> : null}
