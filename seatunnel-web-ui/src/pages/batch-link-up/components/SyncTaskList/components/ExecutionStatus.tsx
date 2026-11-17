@@ -13,6 +13,8 @@ interface ExecutionStatusProps {
 const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const intl = useIntl();
   const isManual = record?.runMode === "MANUAL";
+  // runMode describes the last execution, not the configured schedule mode.
+  const runModeLabel = isManual ? "手动" : record?.runMode === "SCHEDULED" ? "自动" : "—";
 
   return (
     <div className="task-metric-group">
@@ -22,7 +24,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
             isManual ? "is-manual" : "is-auto"
           }`}
         >
-          {isManual ? "手动" : "自动"}
+          {runModeLabel}
         </span>
         <span className="task-metric">
           <span className="task-metric__label">

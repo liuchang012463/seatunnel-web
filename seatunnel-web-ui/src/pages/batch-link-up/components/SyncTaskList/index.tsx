@@ -3,7 +3,7 @@ import { history, useIntl } from "@umijs/max";
 import { Alert, Button, Divider, Empty, Modal, Table, Tooltip, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { seatunnelJobDefinitionApi } from "../../api";
 import BatchCreateJobModal, {
@@ -183,7 +183,13 @@ const App: React.FC<Props> = ({
     });
   };
 
+  const requestVersionRef = useRef(0);
+  useEffect(() => () => { requestVersionRef.current += 1; }, []);
+
   const fetchTaskList = async (silent = false) => {
+    // A late filter/poll response must not overwrite a more recent query.
+    const version = ++requestVersionRef.current;
+    setLoading(!silent);
     if (!silent) {
       setLoading(true);
       setListError(undefined);
@@ -220,6 +226,8 @@ const App: React.FC<Props> = ({
         "批量数据引接任务列表请求超时，请稍后重试"
       );
 
+      if (version !== requestVersionRef.current) return;
+
       if (data?.code !== undefined && data.code !== 0) {
         throw new Error(data.message || "查询任务列表失败");
       }
@@ -238,11 +246,12 @@ const App: React.FC<Props> = ({
         total: data?.data?.pagination?.total || 0,
       }));
     } catch (error) {
+      if (version !== requestVersionRef.current) return;
       // Keep the rows of the last successful query: the list also refreshes itself while a run is
       // active, and blanking it would stop that refresh until the operator retries by hand.
       setListError(getErrorMessage(error, "查询任务列表失败，请稍后重试"));
     } finally {
-      if (!silent) {
+      if (version === requestVersionRef.current) {
         setLoading(false);
       }
     }

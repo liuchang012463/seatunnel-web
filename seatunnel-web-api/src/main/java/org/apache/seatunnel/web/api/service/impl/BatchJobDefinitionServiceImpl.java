@@ -300,7 +300,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
                 records.forEach(vo -> {
                     vo.setTaskType(TaskTypeResolver.resolve(
                             vo.getTaskType(), vo.getMode(), vo.getJobType(), vo.getSourceType()));
-                    fillScheduleFields(vo.getId(), vo);
+                    normalizePageSchedule(vo);
                 });
             }
 
@@ -917,40 +917,15 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         return config;
     }
 
-    /**
-     * Fill schedule fields for page result.
-     */
-    private void fillScheduleFields(Long definitionId, BatchJobDefinitionVO vo) {
-        if (definitionId == null || vo == null) {
-            return;
-        }
-
-        try {
-            JobSchedule schedule = scheduleApplicationService.getByTaskDefinitionId(definitionId);
-            if (schedule == null) {
-                vo.setExecutionMode(TaskExecutionMode.MANUAL);
-                return;
-            }
-
-            TaskExecutionMode executionMode = TaskExecutionMode.resolve(
-                    schedule.getExecutionMode(), schedule.getCronExpression());
-            vo.setExecutionMode(executionMode);
-            vo.setCronExpression(executionMode == TaskExecutionMode.AUTO
-                    ? schedule.getCronExpression()
-                    : null);
-
-            if (executionMode == TaskExecutionMode.MANUAL) {
-                vo.setScheduleStatus(ScheduleStatusEnum.PAUSE);
-                vo.setNextScheduleTime(null);
-            } else if (schedule.getScheduleStatus() != null) {
-                vo.setScheduleStatus(schedule.getScheduleStatus());
-            }
-
-            if (StringUtils.isNotBlank(schedule.getScheduleConfig())) {
-                vo.setScheduleConfig(schedule.getScheduleConfig());
-            }
-        } catch (Exception e) {
-            log.warn("Fill schedule fields failed, definitionId={}", definitionId, e);
+    /** Normalize the joined schedule projection without an extra query per row. */
+    private void normalizePageSchedule(BatchJobDefinitionVO vo) {
+        TaskExecutionMode mode = TaskExecutionMode.resolve(
+                vo.getExecutionMode(), vo.getCronExpression());
+        vo.setExecutionMode(mode);
+        if (mode == TaskExecutionMode.MANUAL) {
+            vo.setCronExpression(null);
+            vo.setScheduleStatus(ScheduleStatusEnum.PAUSE);
+            vo.setNextScheduleTime(null);
         }
     }
 
