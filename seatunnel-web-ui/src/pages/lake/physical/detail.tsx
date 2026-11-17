@@ -21,7 +21,6 @@ import {
   Drawer,
   Empty,
   Form,
-  Input,
   Modal,
   Select,
   Space,
@@ -90,77 +89,6 @@ const relationColumns: ProColumns<InventoryRelation>[] = [
   { title: '源 DataSource', key: 'sourceDataSource', width: 130, render: (_, row) => relationSourceDataSource(row) || '-' },
   { title: '关系状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <Tag>{row.relationStatus || 'UNKNOWN'}</Tag> },
 ];
-
-const OdsDatabaseDrawer: React.FC<{
-  open: boolean;
-  source?: PhysicalDataSource;
-  onClose: () => void;
-  onSuccess: () => void;
-}> = ({ open, source, onClose, onSuccess }) => {
-  const { unitNameByCode, systemNameByCode } = useMasterDataNames();
-  const [form] = Form.useForm<{ customName: string }>();
-  const [loading, setLoading] = useState(false);
-  const customName = Form.useWatch('customName', form) || '';
-  const unit = source?.unitCode || 'unit';
-  const system = source?.systemCode || 'system';
-  const fullName = `ods_${unit}_${system}_${customName}`;
-  const missingCode = !source?.unitCode || !source?.systemCode;
-
-  useEffect(() => {
-    if (open) form.resetFields();
-  }, [form, open]);
-
-  const submit = async ({ customName: value }: { customName: string }) => {
-    if (!source?.sourceDataSourceId) return;
-    setLoading(true);
-    try {
-      const response = await createOdsDatabase(source.sourceDataSourceId, value.trim());
-      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, 'ODS 库创建失败'));
-      message.success('ODS 库创建操作已提交');
-      onSuccess();
-      onClose();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : 'ODS 库创建失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Drawer open={open} width={520} title="创建 ODS Database" destroyOnHidden onClose={onClose}>
-      <Alert
-        type="info"
-        showIcon
-        message="先建立一个受控的 ODS 空间"
-        description="数据库名由单位、系统编码和自定义名称组成。页面只提交名称，DDL 和状态由服务端负责。"
-        className="lake-detail-alert"
-      />
-      <Descriptions bordered size="small" column={1}>
-        <Descriptions.Item label="数据源">{source?.sourceDataSourceName || '-'}</Descriptions.Item>
-        <Descriptions.Item label="单位 / 系统">{unitNameByCode(source?.unitCode) || '-'} / {systemNameByCode(source?.systemCode) || '-'}</Descriptions.Item>
-        <Descriptions.Item label="固定前缀">ods_{unit}_{system}_</Descriptions.Item>
-      </Descriptions>
-      {missingCode ? <Alert type="warning" showIcon message="单位或系统编码缺失" description="请先在数据源主数据中补齐归属编码。" className="lake-detail-alert" /> : null}
-      <Form name="lake-source-bind" form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
-        <Form.Item
-          name="customName"
-          label="自定义名称"
-          rules={[{ required: true, message: '请输入自定义名称' }, { max: 40, message: '最多 40 个字符' }, { pattern: /^[A-Za-z0-9_]+$/, message: '仅支持字母、数字和下划线' }]}
-        >
-          <Input placeholder="例如 orders" showCount maxLength={40} />
-        </Form.Item>
-        <Card size="small" title="完整名称预览" className="lake-name-card">
-          <Text code>{fullName}</Text>
-          <Text type="secondary">{fullName.length} / 64 字符</Text>
-        </Card>
-        <div className="lake-drawer-footer">
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" htmlType="submit" loading={loading} disabled={missingCode || !customName.trim()}>创建 ODS 库</Button>
-        </div>
-      </Form>
-    </Drawer>
-  );
-};
 
 const BindUnmanagedDrawer: React.FC<{
   open: boolean;
@@ -264,7 +192,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
   const [inventory, setInventory] = useState<PhysicalInventory>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [odsOpen, setOdsOpen] = useState(false);
+  const [creatingDatabase, setCreatingDatabase] = useState(false);
   const [bindTarget, setBindTarget] = useState<InventoryTable>();
   const [unbindLoadingId, setUnbindLoadingId] = useState<number>();
   const [reconcileLoading, setReconcileLoading] = useState(false);
@@ -304,6 +232,26 @@ const PhysicalResourceDetailPage: React.FC = () => {
   }, [sourceId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const startPhysical = async () => {
+    if (!source?.sourceDataSourceId) return;
+    setCreatingDatabase(true);
+    try {
+      // Use the same deterministic name as the list entry; no manual database setup is needed.
+      const response = await createOdsDatabase(source.sourceDataSourceId, `ds_${source.sourceDataSourceId}`);
+      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, 'ODS 库准备失败'));
+      if (response.data.resourceStatus === 'READY') {
+        history.push(`/lake/resources/table/create?sourceDataSourceId=${source.sourceDataSourceId}&odsDatabaseBindingId=${response.data.id}`);
+      } else {
+        message.info('ODS 库尚未就绪，请查看状态或重试');
+        await load();
+      }
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '准备入湖失败');
+    } finally {
+      setCreatingDatabase(false);
+    }
+  };
 
   const reconcile = async () => {
     const id = source?.odsDatabase?.id;
@@ -394,7 +342,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
       extra={[
         backButton,
         database ? <Button key="reconcile" icon={<ReloadOutlined />} loading={reconcileLoading} onClick={() => void reconcile()}>显式对账</Button> : null,
-        database ? <Button key="create-table" type="primary" icon={<PlusOutlined />} onClick={() => history.push(`/lake/resources/table/create?sourceDataSourceId=${source.sourceDataSourceId}&odsDatabaseBindingId=${database.id}`)}>创建 MANAGED 表</Button> : <Button key="create-db" type="primary" icon={<DatabaseOutlined />} onClick={() => setOdsOpen(true)}>创建 ODS 库</Button>,
+        database ? <Button key="create-table" type="primary" icon={<PlusOutlined />} onClick={() => history.push(`/lake/resources/table/create?sourceDataSourceId=${source.sourceDataSourceId}&odsDatabaseBindingId=${database.id}`)}>创建 MANAGED 表</Button> : <Button key="create-db" type="primary" icon={<DatabaseOutlined />} loading={creatingDatabase} disabled={source.sourceEnabled === false || !['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'].includes(source.dbType || '')} onClick={() => void startPhysical()}>开始入湖</Button>,
       ].filter(Boolean)}
     >
       <div className="lake-resource-detail">
@@ -456,7 +404,6 @@ const PhysicalResourceDetailPage: React.FC = () => {
           ]}
         />
       </div>
-      <OdsDatabaseDrawer open={odsOpen} source={source} onClose={() => setOdsOpen(false)} onSuccess={() => void load()} />
       <BindUnmanagedDrawer open={!!bindTarget} source={source} table={bindTarget} onClose={() => setBindTarget(undefined)} onSuccess={() => void load()} />
     </PageContainer>
   );

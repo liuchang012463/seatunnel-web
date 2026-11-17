@@ -79,50 +79,12 @@
   margin-bottom: 18px;
 }
 
-.lake-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
+.lake-physical-actions {
+  max-width: 100%;
 }
 
-.lake-drawer-alert {
-  margin: 16px 0;
-}
-
-.lake-ods-form {
-  margin-top: 20px;
-}
-
-.lake-name-preview {
-  margin-bottom: 20px;
-}
-
-.lake-name-preview-count {
-  margin-top: 8px;
-  color: var(--ant-color-text-secondary);
-  font-size: 14px;
-}
-
-.lake-physical-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.lake-physical-stat {
-  min-width: 0;
-  border: 1px solid var(--st-color-border-secondary, rgba(33, 135, 168, 0.2));
-}
-
-.lake-physical-stat[data-warning='true'] {
-  border-color: var(--ant-color-error-border);
-}
-
-.lake-physical-summary-note {
-  grid-column: 1 / -1;
-  padding: 2px 4px;
+.lake-physical-actions .ant-btn {
+  padding-inline: 6px;
 }
 
 
@@ -140,12 +102,14 @@
   flex-direction: column;
   min-height: 0;
 }
-.lake-physical-page {
+/* The shared content rule uses !important; keep the list panel stretched as well. */
+.ant-pro-layout .ant-pro-page-container:has(.lake-physical-page)
+  .ant-pro-page-container-children-container > .lake-physical-page {
   display: flex;
-  flex: 1;
+  flex: 1 !important;
   flex-direction: column;
   min-height: 0;
-  .lake-physical-summary, .lake-table-alert { flex: 0 0 auto; }
+  .lake-table-alert { flex: 0 0 auto; }
   .ant-pro-table, .ant-pro-card, .ant-pro-card-body, .ant-table-wrapper,
   .ant-spin-nested-loading, .ant-spin-container {
     display: flex;

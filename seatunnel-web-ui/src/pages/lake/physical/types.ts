@@ -25,12 +25,6 @@ export interface PhysicalDataSource {
   odsDatabase?: OdsDatabase;
 }
 
-export interface LakePhysicalSummary {
-  boundDataSourceCount?: number;
-  odsTableCount?: number;
-  pendingExceptionCount?: number;
-}
-
 export interface OdsDatabase {
   id: number;
   lakeDataSourceId?: number;

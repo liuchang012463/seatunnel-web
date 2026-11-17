@@ -16,31 +16,12 @@ import type {
   OdsSourceTableDetail,
   PhysicalDataSource,
   PhysicalInventory,
-  LakePhysicalSummary,
 } from './types';
 
 const PHYSICAL_API = '/api/v1/lake/physical';
 
-export interface LakeRecommendation {
-  mode?: 'PHYSICAL' | 'LOGICAL' | 'UNSUPPORTED';
-  recommendation?: 'PHYSICAL' | 'LOGICAL' | 'UNSUPPORTED';
-  reason?: string;
-  reasonCode?: string;
-  disabledReasons?: string[];
-  physicalCapability?: { supported?: boolean; disabledReasons?: string[] };
-  logicalCapability?: { supported?: boolean; disabledReasons?: string[] };
-  targetScope?: string;
-  adapter?: string;
-}
-
 export const fetchPhysicalSources = (params: Record<string, unknown>): Promise<ApiResponse<LakePage<PhysicalDataSource>>> =>
   HttpUtils.post(`${PHYSICAL_API}/datasources/page`, params);
-
-export const fetchPhysicalSummary = (): Promise<ApiResponse<LakePhysicalSummary>> =>
-  HttpUtils.get(`${PHYSICAL_API}/summary`);
-
-export const recommendLakeMode = (payload: Record<string, unknown>): Promise<ApiResponse<LakeRecommendation>> =>
-  HttpUtils.post('/api/v1/lake/recommend', payload);
 
 export const fetchPhysicalSource = (sourceDataSourceId: number): Promise<ApiResponse<PhysicalDataSource>> =>
   HttpUtils.get(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}`);
