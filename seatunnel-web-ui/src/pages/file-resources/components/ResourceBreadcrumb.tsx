@@ -1,6 +1,7 @@
 import { Breadcrumb } from 'antd';
 import React, { useMemo } from 'react';
 import { normalizeResourcePath } from '../utils';
+import './ResourceBreadcrumb.less';
 
 export interface ResourceBreadcrumbProps {
   path: string;
@@ -15,10 +16,8 @@ const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigat
     const breadcrumbItems = [
       {
         key: '/',
-        title: rootLabel,
-        // 面包屑支持目录导航，显式提示鼠标可点击。
-        style: { cursor: 'pointer' as const },
-        onClick: () => onNavigate('/'),
+        // 直接使用按钮承载导航，避免外层 cursor 被 Breadcrumb 内部文字样式覆盖。
+        title: <button type="button" className="resource-breadcrumb__link" onClick={() => onNavigate('/')}>{rootLabel}</button>,
       },
     ];
 
@@ -26,9 +25,7 @@ const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigat
       const segmentPath = `/${segments.slice(0, index + 1).join('/')}`;
       breadcrumbItems.push({
         key: segmentPath,
-        title: segment,
-        style: { cursor: 'pointer' as const },
-        onClick: () => onNavigate(segmentPath),
+        title: <button type="button" className="resource-breadcrumb__link" onClick={() => onNavigate(segmentPath)}>{segment}</button>,
       });
     });
 
