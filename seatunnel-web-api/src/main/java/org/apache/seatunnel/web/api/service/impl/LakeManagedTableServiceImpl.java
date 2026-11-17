@@ -1172,10 +1172,11 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         }
         if (rebuild) {
             LakeOdsTableMapping existingMapping = Objects.requireNonNull(mapping, "mapping");
+            Integer expectedVersion = existingMapping.getLockVersion();
             existingMapping.setDeleted(false);
             existingMapping.setResourceStatus(LakeResourceStatus.PENDING_CREATE);
             existingMapping.setOperationToken(null);
-            if (!tableMappingDao.updateById(existingMapping)) {
+            if (!tableMappingDao.updateIfTokenAndVersionIncludingDeleted(existingMapping, null, expectedVersion)) {
                 throw conflict("Deleted MANAGED mapping could not be reopened");
             }
         } else {
@@ -1253,6 +1254,10 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             }
             return reference;
         }
+        if (reference.getOperationToken() != null) {
+            throw conflict("来源登记正在更新，请稍后重试");
+        }
+        Integer expectedVersion = reference.getLockVersion();
         reference.setDeleted(false);
         reference.setResourceStatus(LakeResourceStatus.READY);
         reference.setSourceDataSourceId(sourceDataSourceId);
@@ -1263,7 +1268,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         reference.setSourceSnapshotJson(source.snapshotJson());
         reference.setUpdateUserId(userId);
         reference.initUpdate();
-        if (!sourceObjectRefDao.updateById(reference)) {
+        // Lake resources use explicit token/version CAS; updateById would require
+        // MyBatis' automatic optimistic-lock plugin and can also overwrite a newer scan.
+        if (!sourceObjectRefDao.updateIfTokenAndVersionIncludingDeleted(reference, null, expectedVersion)) {
             throw conflict("Source object reference could not be updated");
         }
         return reference;

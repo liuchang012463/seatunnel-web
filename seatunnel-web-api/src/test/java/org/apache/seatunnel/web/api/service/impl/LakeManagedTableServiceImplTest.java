@@ -260,6 +260,29 @@ class LakeManagedTableServiceImplTest {
     }
 
     @Test
+    void cachedSourceRegistrationUsesExplicitVersionCasBeforeLifecycleCreate() {
+        var writer = org.mockito.Mockito.mock(LakeManagedTableLifecycleCreatePersistenceService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "lifecycleCreatePersistenceService", writer);
+        when(sourceResolver.resolve(11L, "om-table")).thenReturn(lifecycleSource());
+        when(lifecyclePolicyDao.queryById(901L)).thenReturn(lifecyclePolicy());
+        var reference = new LakeSourceObjectRef();
+        reference.setId(401L);
+        reference.setSourceDataSourceId(11L);
+        reference.setLockVersion(3);
+        when(sourceObjectRefDao.queryByOmEntityIdIncludingDeleted("om-table")).thenReturn(reference);
+        when(sourceObjectRefDao.updateIfTokenAndVersionIncludingDeleted(reference, null, 3)).thenReturn(true);
+        when(writer.start(any(), any(), eq(7))).thenThrow(
+                new LakeServiceException(LakeErrorCode.LAKE_RESOURCE_CONFLICT, "test atomic writer boundary"));
+        var preview = service.preview(lifecyclePreviewRequest());
+        var request = new LakeManagedTableCreateDTO();
+        request.setPreviewToken(preview.getPreviewToken());
+        assertTrue(assertThrows(LakeServiceException.class, () -> service.create(request))
+                .getMessage().contains("test atomic writer boundary"));
+        verify(sourceObjectRefDao).updateIfTokenAndVersionIncludingDeleted(reference, null, 3);
+        verify(sourceObjectRefDao, never()).updateById(any(LakeSourceObjectRef.class));
+    }
+
+    @Test
     void firstLifecycleCreatePassesAnUnpersistedCandidateToTheAtomicWriter() {
         var writer = org.mockito.Mockito.mock(LakeManagedTableLifecycleCreatePersistenceService.class);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "lifecycleCreatePersistenceService", writer);
