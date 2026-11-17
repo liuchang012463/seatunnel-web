@@ -73,8 +73,7 @@ public final class LakeManagedTableContractFactory {
             }
             TargetColumn targetColumn = new TargetColumn(
                     sourceName,
-                    sourceColumn.ordinal() == null || sourceColumn.ordinal() <= 0
-                            ? bySource.size() + 1 : sourceColumn.ordinal(),
+                    effectiveOrdinal(sourceColumn, bySource.size() + 1),
                     targetName,
                     targetType,
                     nullable,
@@ -127,8 +126,12 @@ public final class LakeManagedTableContractFactory {
     public void validateAgainstSource(TargetContract contract, SourceObjectSnapshot source) {
         TargetContract normalized = TargetContractValidator.validateAndNormalize(contract);
         Map<String, SourceColumnSnapshot> sourceColumns = new HashMap<>();
+        Map<String, Integer> sourceOrdinals = new HashMap<>();
         for (SourceColumnSnapshot column : source.columns()) {
             if (column != null && column.name() != null && !column.name().isBlank()) {
+                // OM may omit ordinalPosition. Reuse the preview's stable fallback
+                // so an unchanged source can actually pass submission validation.
+                sourceOrdinals.put(normalizeSource(column.name()), effectiveOrdinal(column, sourceColumns.size() + 1));
                 sourceColumns.put(normalizeSource(column.name()), column);
             }
         }
@@ -138,7 +141,7 @@ public final class LakeManagedTableContractFactory {
         for (TargetColumn column : normalized.getColumns()) {
             SourceColumnSnapshot sourceColumn = sourceColumns.get(normalizeSource(column.getSourceName()));
             if (sourceColumn == null
-                    || !Objects.equals(effectiveOrdinal(sourceColumn), column.getSourceOrdinal())
+                    || !Objects.equals(sourceOrdinals.get(normalizeSource(column.getSourceName())), column.getSourceOrdinal())
                     || !Objects.equals(!Boolean.FALSE.equals(sourceColumn.nullable()), column.getNullable())) {
                 throw new IllegalArgumentException("Target contract does not match the current source schema");
             }
@@ -361,8 +364,8 @@ public final class LakeManagedTableContractFactory {
                 || normalized.matches("DATETIME(?:\\s*\\(\\s*\\d+\\s*\\))?");
     }
 
-    private static Integer effectiveOrdinal(SourceColumnSnapshot source) {
-        return source.ordinal() == null || source.ordinal() <= 0 ? null : source.ordinal();
+    private static int effectiveOrdinal(SourceColumnSnapshot source, int fallback) {
+        return source.ordinal() == null || source.ordinal() <= 0 ? fallback : source.ordinal();
     }
 
     private static String normalizeSource(String value) {

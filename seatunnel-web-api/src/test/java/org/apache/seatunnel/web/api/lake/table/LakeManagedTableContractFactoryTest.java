@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class LakeManagedTableContractFactoryTest {
@@ -78,6 +79,20 @@ class LakeManagedTableContractFactoryTest {
         request.setColumns(List.of(payload));
 
         assertThrows(IllegalArgumentException.class, () -> factory.build(source(), request));
+    }
+
+    @Test
+    void missingSourceOrdinalsCanBePreviewedAndSubmittedWithTheSameFallback() {
+        var source = new SourceObjectSnapshot("om-table", "svc.db.public.orders",
+                List.of(new SourceColumnSnapshot("ID", null, "BIGINT", "BIGINT", null, 19L, 0L, "PRIMARY_KEY", false),
+                        new SourceColumnSnapshot("PAYLOAD", 0, "JSON", "JSON", null, null, null, null, true)),
+                source().constraints(), "source-hash", "snapshot");
+        var contract = factory.build(source, new LakeManagedTablePreviewDTO());
+        assertEquals(1, contract.getColumns().get(0).getSourceOrdinal());
+        assertEquals(2, contract.getColumns().get(1).getSourceOrdinal());
+        assertDoesNotThrow(() -> factory.validateAgainstSource(contract, source));
+        contract.getColumns().get(1).setSourceOrdinal(99);
+        assertThrows(IllegalArgumentException.class, () -> factory.validateAgainstSource(contract, source));
     }
 
     private static SourceObjectSnapshot source() {

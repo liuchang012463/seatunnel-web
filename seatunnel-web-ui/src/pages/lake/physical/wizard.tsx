@@ -59,7 +59,13 @@ interface WizardValues {
   lifecyclePolicyId?: number;
 }
 
-const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => response.message || response.msg || fallback;
+const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => {
+  const reason = response.message || response.msg || fallback;
+  if (reason.includes('Source metadata changed')) return '源表结构已变化，请返回重新检查。';
+  if (reason.includes('planFingerprint is invalid or expired')) return '建表预览已过期，请返回重新检查。';
+  if (reason.includes('target table already exists')) return '目标表已存在，请返回修改表名。';
+  return reason;
+};
 
 const isDateType = (value?: string) => /^(DATE|DATETIME)(?:\b|\()/i.test(String(value || '').trim());
 

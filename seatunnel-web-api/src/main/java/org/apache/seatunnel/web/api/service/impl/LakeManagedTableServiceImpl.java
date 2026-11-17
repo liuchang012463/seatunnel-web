@@ -79,6 +79,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Task 6 MANAGED ODS table backend. */
+@lombok.extern.slf4j.Slf4j
 @Service
 public class LakeManagedTableServiceImpl implements LakeManagedTableService {
 
@@ -503,6 +504,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         try {
             contractFactory.validateAgainstSource(contract, source);
         } catch (IllegalArgumentException exception) {
+            log.warn("Lake source contract validation failed sourceId={} reason={}", payload.sourceDataSourceId(), exception.getMessage());
             throw conflict("Source metadata changed after preview; request a new preview");
         }
         List<LakeManagedTableFieldMapping> mappings = contractFactory.fieldMappings(contract);
