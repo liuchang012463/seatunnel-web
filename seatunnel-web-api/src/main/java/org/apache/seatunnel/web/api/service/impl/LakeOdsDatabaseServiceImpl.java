@@ -137,6 +137,8 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         query.setPageNo(safe.getPageNo() == null || safe.getPageNo() < 1 ? 1 : safe.getPageNo());
         query.setPageSize(safe.getPageSize() == null || safe.getPageSize() < 1 ? 10 : safe.getPageSize());
         query.setExcludeSystemManaged(true);
+        // Filter before pagination so target-only connections never occupy source rows or totals.
+        query.setSourceEnabled(true);
         IPage<DataSource> page = queryPage(query, safe.getResourceStatus());
         List<DataSource> records = page.getRecords() == null ? List.of() : page.getRecords();
         List<LakePhysicalDataSourceVO> result = records.stream()

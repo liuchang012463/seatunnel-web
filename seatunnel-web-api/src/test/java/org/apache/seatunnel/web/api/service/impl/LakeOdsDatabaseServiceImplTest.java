@@ -43,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
@@ -216,6 +217,20 @@ class LakeOdsDatabaseServiceImplTest {
     }
 
     @Test
+    void pageOnlyRequestsSourceConnectionsBeforePagination() {
+        Page<DataSource> sourcePage = new Page<>(1, 10);
+        sourcePage.setTotal(1);
+        sourcePage.setRecords(List.of(source(7L, "orders", 11L, DbType.MYSQL)));
+        when(dataSourceDao.queryPage(any())).thenReturn(sourcePage);
+
+        var result = service.page(new LakePhysicalDataSourcePageDTO());
+
+        assertEquals(1, result.getData().getPagination().getTotal());
+        verify(dataSourceDao).queryPage(argThat(query -> Boolean.TRUE.equals(query.getSourceEnabled())
+                && Boolean.TRUE.equals(query.getExcludeSystemManaged())));
+    }
+
+    @Test
     void pageDelegatesResourceStatusFilteringAndPreservesDaoTotalAcrossPages() {
         LakePhysicalDataSourcePageDTO request = new LakePhysicalDataSourcePageDTO();
         request.setPageNo(2);
@@ -234,7 +249,8 @@ class LakeOdsDatabaseServiceImplTest {
         assertEquals(2, result.getData().getPagination().getPageNo());
         assertEquals(1, result.getData().getPagination().getPageSize());
         assertEquals(1, result.getData().getBizData().size());
-        verify(dataSourceDao).queryPageByLakeResourceStatus(any(), eq(LakeResourceStatus.READY));
+        verify(dataSourceDao).queryPageByLakeResourceStatus(
+                argThat(query -> Boolean.TRUE.equals(query.getSourceEnabled())), eq(LakeResourceStatus.READY));
         verify(dataSourceDao, never()).queryPage(any());
     }
 

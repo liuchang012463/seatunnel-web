@@ -52,6 +52,7 @@ class DataSourceMapperResourceStatusTest {
         assertTrue(sql.contains("EXISTS ( SELECT 1 FROM T_SEATUNNEL_WEB_LAKE_ODS_DATABASE_BINDING B"), sql);
         assertTrue(sql.contains("B.RESOURCE_STATUS = ?"), sql);
         assertTrue(sql.contains("B.DELETED = 0"), sql);
+        assertTrue(sql.contains("(D.SOURCE_ENABLED = TRUE OR D.SOURCE_ENABLED IS NULL)"), sql);
         assertTrue(sql.contains("D.NAME LIKE CONCAT('%', ?, '%')"), sql);
         assertFalse(sql.contains(" IN "), sql);
     }
