@@ -12,6 +12,7 @@ import {
   Pagination,
   Segmented,
   Spin,
+  Tabs,
   Table,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
@@ -68,13 +69,16 @@ const formatDateTime = (value?: string) => (value ? dayjs(value).format('YYYY-MM
 
 type DataSourceViewMode = 'card' | 'list';
 
-/** 管理页只展示源端；目标端由后台配置，用户侧不可见 */
-const MANAGEMENT_USAGE = 'SOURCE' as const;
-
 const DataSourcePage: React.FC = () => {
   const intl = useIntl();
   const location = useLocation();
   const modalRef = useRef<DataSourceModalRef>(null);
+  // 源端 / 目标端页签：支持路径 /target-connection 与 ?usage=SINK
+  const usageView =
+    location.pathname.endsWith('/target-connection') ||
+    new URLSearchParams(location.search).get('usage') === 'SINK'
+      ? 'SINK'
+      : 'SOURCE';
 
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string>();
@@ -89,6 +93,7 @@ const DataSourcePage: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<DataSourceLifecycleStatus>();
   const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
+  const [usageCounts, setUsageCounts] = useState<Partial<Record<'SOURCE' | 'SINK', number>>>({});
 
   const refreshUnitOptions = async () => {
     try {
@@ -127,7 +132,8 @@ const DataSourcePage: React.FC = () => {
         pageSize: pagination.pageSize,
         name: searchKeyword.trim() || undefined,
         dbTypes: selectedCategory === 'ALL' ? undefined : selectedCategoryConfig?.dbTypes || [],
-        sourceEnabled: true,
+        ...(usageView === 'SOURCE' ? { sourceEnabled: true } : {}),
+        ...(usageView === 'SINK' ? { sinkEnabled: true } : {}),
         unitId: selectedUnit || undefined,
         businessSystemId: selectedBusinessSystem || undefined,
         status: selectedStatus,
@@ -136,7 +142,7 @@ const DataSourcePage: React.FC = () => {
       };
 
       const supportedTypes = new Set(
-        filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, MANAGEMENT_USAGE).map((item) => item.dbType),
+        filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usageView).map((item) => item.dbType),
       );
       const requestedTypes = requestParams.dbTypes || DATA_SOURCE_REGISTRY.map((item) => item.dbType);
       requestParams.dbTypes = requestedTypes.filter((dbType) => supportedTypes.has(dbType));
@@ -170,19 +176,41 @@ const DataSourcePage: React.FC = () => {
 
   const selectedCategoryConfig = DATA_SOURCE_CATEGORIES.find((category) => category.key === selectedCategory);
 
+  const refreshUsageCounts = async () => {
+    await Promise.all(
+      (['SOURCE', 'SINK'] as const).map(async (usage) => {
+        const dbTypes = filterDataSourceTypesByUsage(DATA_SOURCE_REGISTRY, usage).map(
+          (item) => item.dbType,
+        );
+        if (dbTypes.length === 0) {
+          setUsageCounts((current) => ({ ...current, [usage]: 0 }));
+          return;
+        }
+
+        try {
+          const response = await fetchDataSourcePage({
+            pageNo: 1,
+            pageSize: 1,
+            dbTypes,
+            ...(usage === 'SOURCE' ? { sourceEnabled: true } : { sinkEnabled: true }),
+            excludeSystemManaged: true,
+          });
+          if (response.code !== 0) return;
+
+          const page = normalizeDataSourcePageResult(response.data);
+          setUsageCounts((current) => ({ ...current, [usage]: page.pagination.total }));
+        } catch (_) {}
+      }),
+    );
+  };
+
   useEffect(() => {
     refreshUnitOptions();
   }, []);
 
-  // 旧「目标端连接」入口与 ?usage=SINK 一律回到源端管理页，避免暴露目标端列表
   useEffect(() => {
-    const seekingTarget =
-      location.pathname.endsWith('/target-connection') ||
-      new URLSearchParams(location.search).get('usage') === 'SINK';
-    if (seekingTarget) {
-      history.replace('/data-source/source-connection');
-    }
-  }, [location.pathname, location.search]);
+    refreshUsageCounts();
+  }, []);
 
   useEffect(() => {
     refreshBusinessSystemOptions(selectedUnit);
@@ -214,6 +242,7 @@ const DataSourcePage: React.FC = () => {
     selectedUnit,
     selectedBusinessSystem,
     selectedStatus,
+    usageView,
   ]);
 
   const hasActiveFilters = Boolean(
@@ -236,13 +265,28 @@ const DataSourcePage: React.FC = () => {
   const handleRefresh = () => {
     fetchList();
     refreshUnitOptions();
+    refreshUsageCounts();
+  };
+
+  const handleUsageViewChange = (nextUsage: 'SOURCE' | 'SINK') => {
+    if (nextUsage !== usageView) {
+      setSelectedCategory('ALL');
+      setPagination((current) => ({ ...current, pageNo: 1 }));
+    }
+
+    const nextPath =
+      nextUsage === 'SOURCE'
+        ? '/data-source/source-connection'
+        : '/data-source/target-connection';
+    if (`${location.pathname}${location.search}` !== nextPath) {
+      history.push(nextPath);
+    }
   };
 
   const handleCreate = () => {
     modalRef.current?.open({
       operateType: 'CREATE' as DataSourceOperateType,
-      defaultUsage: MANAGEMENT_USAGE,
-      hideSinkUsage: true,
+      defaultUsage: usageView,
       onSuccess: handleRefresh,
     });
   };
@@ -251,7 +295,6 @@ const DataSourcePage: React.FC = () => {
     modalRef.current?.open({
       operateType: 'EDIT' as DataSourceOperateType,
       currentRecord: record,
-      hideSinkUsage: true,
       onSuccess: handleRefresh,
     });
   };
@@ -661,6 +704,38 @@ const DataSourcePage: React.FC = () => {
               animate="visible"
               variants={PAGE_ANIMATION.sectionStagger}
             >
+              <motion.div variants={PAGE_ANIMATION.fadeUp}>
+                <Tabs
+                  className="datasource-usage-tabs"
+                  activeKey={usageView}
+                  onChange={(key) => handleUsageViewChange(key as 'SOURCE' | 'SINK')}
+                  items={[
+                    {
+                      key: 'SOURCE',
+                      label: (
+                        <span className="datasource-usage-tab-label">
+                          <span>源端连接</span>
+                          {usageCounts.SOURCE !== undefined ? (
+                            <span className="datasource-usage-tab-count">({usageCounts.SOURCE})</span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'SINK',
+                      label: (
+                        <span className="datasource-usage-tab-label">
+                          <span>目标端连接</span>
+                          {usageCounts.SINK !== undefined ? (
+                            <span className="datasource-usage-tab-count">({usageCounts.SINK})</span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </motion.div>
+
               <motion.div variants={PAGE_ANIMATION.fadeUp} className="datasource-page-toolbar">
                 <SearchBar
                   value={searchKeyword}
