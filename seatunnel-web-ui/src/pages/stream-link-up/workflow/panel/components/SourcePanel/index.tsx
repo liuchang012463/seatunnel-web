@@ -18,6 +18,7 @@ import { useSourcePanelLogic } from "./hooks/useSourcePanelLogic";
 import KafkaNodeConfig from "@/pages/common/workflow/KafkaNodeConfig";
 import HttpNodeConfig from "@/pages/common/workflow/HttpNodeConfig";
 import ElasticsearchNodeConfig from "@/pages/common/workflow/ElasticsearchNodeConfig";
+import "./index.less";
 
 interface Props {
   selectedNode: any;
@@ -240,8 +241,9 @@ function SourcePanel({
               数据源
             </div>
 
+            {/* 匹配面板的 flex 收缩规则，避免长数据源名撑开卡片。 */}
             <div
-              className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100"
+              className="workflow-panel__meta-card flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100"
               style={{ border: "1px solid #ebeff5" }}
             >
               <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-indigo-500">
@@ -254,7 +256,7 @@ function SourcePanel({
                 options={dataSourceOptions}
                 placeholder="请选择来源数据源"
                 showSearch
-                className="w-full"
+                className="workflow-panel__antd-select w-full"
               />
             </div>
           </div>
