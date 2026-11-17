@@ -41,6 +41,19 @@
   min-height: 0 !important;
 }
 
+/* 表体滚动依赖整条高度链可收缩；不能让 Card/body/browser 被内容撑开后由外层裁切。 */
+.ant-pro-layout .file-resources-page .file-resources-page__workspace > .ant-card-body,
+.ant-pro-layout .file-resources-page .file-resources-page__workspace .file-resource-browser {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.file-resources-page .file-resource-browser__search,
+.file-resources-page .file-resource-browser__error {
+  flex-shrink: 0;
+}
+
 .file-resources-page__selection-alert {
   margin-bottom: 16px;
 }
