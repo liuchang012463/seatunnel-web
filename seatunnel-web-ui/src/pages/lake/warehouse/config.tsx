@@ -230,7 +230,6 @@ const DorisConfigPage: React.FC = () => {
         <main className="lake-config-main">
           <div className="lake-config-section-heading">
             <div>
-              <Text className="lake-warehouse-kicker">DORIS CONNECTION</Text>
               <Title level={2}>连接参数</Title>
               <Paragraph>表单字段与数据源管理中的 Doris 连接器保持一致，保存后会同步为湖侧只读数据源。</Paragraph>
             </div>
@@ -239,7 +238,7 @@ const DorisConfigPage: React.FC = () => {
             </Tag>
           </div>
 
-          <Form form={baseForm} layout="vertical" className="lake-config-name-form">
+          <Form name="lake-warehouse-config" form={baseForm} layout="vertical" className="lake-config-name-form">
             <Form.Item
               name="name"
               label="连接名称"

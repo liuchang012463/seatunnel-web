@@ -141,7 +141,7 @@ const OdsDatabaseDrawer: React.FC<{
         <Descriptions.Item label="固定前缀">ods_{unit}_{system}_</Descriptions.Item>
       </Descriptions>
       {missingCode ? <Alert type="warning" showIcon message="单位或系统编码缺失" description="请先在数据源主数据中补齐归属编码。" className="lake-detail-alert" /> : null}
-      <Form form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
+      <Form name="lake-source-bind" form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
         <Form.Item
           name="customName"
           label="自定义名称"
@@ -237,7 +237,7 @@ const BindUnmanagedDrawer: React.FC<{
         <Descriptions.Item label="Doris 表">{table?.targetTableName || '-'}</Descriptions.Item>
         <Descriptions.Item label="数据源">{source?.sourceDataSourceName || '-'}</Descriptions.Item>
       </Descriptions>
-      <Form form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
+      <Form name="lake-source-table-picker" form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
         <Form.Item name="databaseFqn" label="源数据库" rules={[{ required: true, message: '请选择数据库' }]}>
           <Select showSearch options={databases} placeholder="选择 OpenMetadata 数据库" optionFilterProp="label" />
         </Form.Item>

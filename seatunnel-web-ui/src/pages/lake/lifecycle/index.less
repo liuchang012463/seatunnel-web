@@ -155,3 +155,23 @@
   opacity: 1;
   filter: brightness(1.8);
 }
+
+.lake-lifecycle-pagination {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding: 16px;
+  background: var(--st-color-bg-panel);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-top: 0;
+}
+.lake-lifecycle-page .ant-table { flex: 1; min-height: 0; overflow: auto; }
+.lake-lifecycle-page .ant-pro-table-list-toolbar { flex: 0 0 auto; }
+
+.ant-pro-layout .lake-lifecycle-page-container .lake-lifecycle-page {
+  flex: 1 1 0% !important;
+}
+.lake-lifecycle-page .lake-lifecycle-pagination > .ant-pagination {
+  width: auto !important;
+  justify-content: flex-end;
+}

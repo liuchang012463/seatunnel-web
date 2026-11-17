@@ -339,7 +339,6 @@ const ManagedTableDetailPage: React.FC = () => {
         <Card className="lake-table-hero" variant="borderless">
           <div className="lake-table-hero-icon"><TableOutlined /></div>
           <div className="lake-table-hero-copy">
-            <div className="lake-detail-kicker">MANAGED ODS TABLE</div>
             <Title level={3}>{table.targetTableName || '-'}</Title>
             <Paragraph type="secondary">{table.databaseName || '-'} · {table.tableModel || 'DUPLICATE'} · Source {table.omFqn || table.omEntityId || '-'}</Paragraph>
           </div>

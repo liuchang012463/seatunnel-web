@@ -55,6 +55,7 @@ const businessRoutes = [
 ].map(([path, routeComponent]) => ({
   path,
   component: routeComponent,
+  wrappers: path.startsWith('/lake/') ? ['@/wrappers/LakeLocale'] : [],
   hideInMenu: true,
 }));
 
@@ -92,6 +93,7 @@ const hiddenRoutes = [
 ].map(([path, existing, parentPath]) => ({
   path,
   component: existing,
+  wrappers: path.startsWith('/lake/') ? ['@/wrappers/LakeLocale'] : [],
   hideInMenu: true,
   parentKeys: [parentPath],
 }));

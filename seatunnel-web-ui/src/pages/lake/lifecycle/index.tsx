@@ -28,6 +28,7 @@ import {
   Space,
   Spin,
   Steps,
+  Pagination,
   Table,
   Tag,
   Typography,
@@ -130,7 +131,7 @@ const PolicyEditorDrawer: React.FC<{
   useEffect(() => {
     if (!open) return;
     form.setFieldsValue({
-      policyName: policy?.policyName || '',
+      policyName: policy?.policyName || '默认分区保留策略',
       granularity: policy?.granularity || 'DAY',
       retentionCount: policy?.retentionCount || 30,
       description: policy?.description || '',
@@ -138,7 +139,7 @@ const PolicyEditorDrawer: React.FC<{
       sourceDataSourceId: policy?.sourceDataSourceId,
       unitId: policy?.unitId,
       businessSystemId: policy?.businessSystemId,
-      status: policy?.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
+      status: policy ? (policy.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT') : 'ACTIVE',
     });
   }, [form, open, policy]);
 
@@ -296,7 +297,11 @@ const ApplyPolicyDrawer: React.FC<{
       const sources = normalizeLakePage(sourceResponse.data).data;
       const inventoryResults = await Promise.allSettled(
         sources
-          .filter((source) => source.odsDatabaseBindingId || source.odsDatabase?.id)
+          .filter((source) => (source.odsDatabaseBindingId || source.odsDatabase?.id)
+            && (!policy.dataSourceType || policy.dataSourceType === source.dbType)
+            && (!policy.sourceDataSourceId || policy.sourceDataSourceId === source.sourceDataSourceId)
+            && (!policy.unitId || policy.unitId === source.unitId)
+            && (!policy.businessSystemId || policy.businessSystemId === source.businessSystemId))
           .map(async (source) => {
             const bindingId = source.odsDatabaseBindingId || source.odsDatabase?.id;
             if (!bindingId) return [] as LifecycleTableCandidate[];
@@ -635,6 +640,11 @@ const LifecyclePage: React.FC = () => {
   const [detailMappingId, setDetailMappingId] = useState<number>();
   const [policies, setPolicies] = useState<LakeLifecyclePolicy[]>([]);
   const [listError, setListError] = useState<string>();
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [keyword, setKeyword] = useState('');
+  const [status, setStatus] = useState<string>();
 
   const reload = () => {
     actionRef.current?.reloadAndRest?.();
@@ -675,15 +685,8 @@ const LifecyclePage: React.FC = () => {
         width: 160,
         render: (_, row) => row.retentionCount ?? '-',
       },
-      {
-        title: '约等时间',
-        key: 'approximateTime',
-        width: 130,
-        responsive: ['xxl'],
-        render: (_, row) => row.retentionCount == null ? '-' : `${row.retentionCount}${granularityLabels[row.granularity || ''] || '个分区'}`,
-      },
-      { title: '作用范围', key: 'scope', width: 150, responsive: ['xxl'], render: () => <Text type="secondary">可复用模板</Text> },
-      { title: '应用表', key: 'appliedTables', width: 100, responsive: ['xxl'], render: () => <Text type="secondary">-</Text>, tooltip: '当前策略接口不返回应用表计数' },
+      { title: '适用范围', dataIndex: 'scopeDescription', key: 'scope', width: 240, ellipsis: true,
+        render: (_, row) => row.scopeDescription || '全部数据源' },
       {
         title: '状态',
         dataIndex: 'status',
@@ -755,9 +758,14 @@ const LifecyclePage: React.FC = () => {
           columns={columns}
           scroll={{ x: '100%' }}
           tableLayout="fixed"
-          search={{ labelWidth: 'auto' }}
+          search={false}
+          toolBarRender={() => [
+            <Input.Search key="keyword" aria-label="搜索生命周期策略" placeholder="搜索策略名称" allowClear value={keyword} onChange={(event) => setKeyword(event.target.value)} onSearch={() => { setPageNumber(1); actionRef.current?.reload(); }} style={{ width: 240 }} />,
+            <Select key="status" aria-label="筛选策略状态" allowClear placeholder="全部状态" style={{ width: 160 }} value={status} options={[{ value: 'ACTIVE', label: '启用' }, { value: 'DRAFT', label: '草稿' }, { value: 'DISABLED', label: '已停用' }]} onChange={(value) => { setStatus(value); setPageNumber(1); }} />,
+          ]}
           options={false}
-          pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个策略` }}
+          pagination={false}
+          params={{ current: pageNumber, pageSize, status }}
           request={async (params) => {
             setListError(undefined);
             try {
@@ -765,7 +773,7 @@ const LifecyclePage: React.FC = () => {
                 fetchLifecyclePolicies({
                   pageNo: params.current || 1,
                   pageSize: params.pageSize || 10,
-                  policyName: typeof params.policyName === 'string' ? params.policyName : undefined,
+                  policyName: keyword || undefined,
                   status: typeof params.status === 'string' ? params.status : undefined,
                   granularity: typeof params.granularity === 'string' ? params.granularity : undefined,
                 }),
@@ -774,15 +782,17 @@ const LifecyclePage: React.FC = () => {
               );
               if (response.code !== 0) throw new Error(responseError(response, '生命周期策略列表加载失败'));
               const page = normalizeLakePage(response.data);
-              setPolicies(page.data);
+              setTotal(page.total);
               return { data: page.data, success: true, total: page.total };
             } catch (error) {
+              setTotal(0);
               setListError(error instanceof Error ? error.message : '生命周期策略列表加载失败');
               return { data: [], success: false, total: 0 };
             }
           }}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生命周期策略，请先新建策略" /> }}
         />
+        <div className="lake-lifecycle-pagination"><Pagination current={pageNumber} pageSize={pageSize} total={total} showSizeChanger showTotal={(count) => `共 ${count} 个策略`} onChange={(next, size) => { setPageNumber(next); setPageSize(size); }} /></div>
       </div>
       <PolicyEditorDrawer open={editorOpen} policy={editingPolicy} onClose={() => setEditorOpen(false)} onSuccess={reload} />
       <ApplyPolicyDrawer open={applyOpen} policy={applyPolicy} onClose={() => setApplyOpen(false)} onSuccess={reload} onOpenTable={(mappingId) => { setApplyOpen(false); setDetailMappingId(mappingId); }} />
