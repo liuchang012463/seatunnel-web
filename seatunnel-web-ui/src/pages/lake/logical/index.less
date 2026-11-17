@@ -68,12 +68,47 @@
 
 .lake-capability-result {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 16px;
   padding: 10px 12px;
   border-radius: 6px;
   background: #fafafa;
+}
+
+/* 深色主题采用低亮度状态底色，避免浅黄色提示块和浅色文字产生眩光。 */
+html[data-st-theme='dark'] .lake-capability-result {
+  color: var(--st-color-text-secondary);
+  background: var(--st-color-bg-control);
+  border: 1px solid var(--st-color-border);
+
+  &.is-supported {
+    background: rgba(61, 214, 140, 0.06);
+    border-color: rgba(61, 214, 140, 0.24);
+  }
+
+  &.is-disabled,
+  &.is-pending {
+    background: rgba(245, 184, 61, 0.06);
+    border-color: rgba(245, 184, 61, 0.24);
+  }
+
+  > .anticon {
+    color: var(--st-color-warning);
+  }
+
+  &.is-supported > .anticon {
+    color: var(--st-color-success);
+  }
+
+  .ant-typography {
+    color: var(--st-color-text-secondary);
+  }
+
+  .ant-typography strong {
+    color: var(--st-color-text-primary);
+  }
 }
 
 .lake-capability-result.is-supported {
