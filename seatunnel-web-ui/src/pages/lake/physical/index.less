@@ -125,42 +125,48 @@
   padding: 2px 4px;
 }
 
-@media (max-width: 768px) {
-  .lake-page-intro {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
 
-  .lake-page-intro > .ant-btn {
-    width: 100%;
-    padding-left: 0;
-    text-align: left;
+/* Keep source rows independently scrollable while pagination remains available. */
+.ant-pro-page-container:has(.lake-physical-page) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ant-pro-page-container:has(.lake-physical-page) .ant-pro-page-container-children-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.lake-physical-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  .lake-physical-summary, .lake-table-alert { flex: 0 0 auto; }
+  .ant-pro-table, .ant-pro-card, .ant-pro-card-body, .ant-table-wrapper,
+  .ant-spin-nested-loading, .ant-spin-container {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
   }
-
-  .lake-physical-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .lake-physical-summary-note {
-    grid-column: auto;
-  }
+  .ant-table { flex: 1; min-height: 0; overflow: auto; }
+  .ant-pro-table-list-toolbar { flex: 0 0 auto; }
+}
+.lake-fixed-pagination {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding: 16px;
+  background: var(--st-color-bg-panel);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-top: 0;
 }
 
-@media (max-width: 360px) {
-  .lake-physical-page .ant-pro-table-list-toolbar-right {
-    width: 100%;
-  }
-
-  .lake-physical-page .ant-pro-table-list-toolbar-right .ant-space {
-    flex-wrap: wrap;
-    width: 100%;
-  }
-
-  .lake-modal-footer {
-    flex-wrap: wrap;
-  }
-
-  .lake-modal-footer .ant-btn {
-    flex: 1;
-  }
+.lake-physical-page .lake-fixed-pagination > .ant-pagination {
+  width: auto !important;
+  justify-content: flex-end;
 }

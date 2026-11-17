@@ -1,5 +1,16 @@
 import type { OdsSourceColumn, OdsSourceTableDetail } from './types';
 
+/** One ODS database serves a source; namespace prefixes avoid table collisions. */
+export const suggestedTableName = (database: string, schema: string, table: string): string => {
+  const parts = [database, schema === database ? '' : schema, table].filter(Boolean);
+  const raw = parts.join('_');
+  const safe = raw.replace(/[^A-Za-z0-9_]/g, '_');
+  if (safe.length <= 64 && safe === raw) return safe;
+  let hash = 2166136261;
+  for (const char of raw) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return `${safe.slice(0, 54)}_${(hash >>> 0).toString(36)}`;
+};
+
 /** OM may publish a primary key on the table only; it still implies NOT NULL. */
 export const primaryKeyNames = (table: OdsSourceTableDetail): Set<string> => new Set([
   ...(table.tableConstraints || []).filter((item) => /PRIMARY/i.test(item.constraintType || '')).flatMap((item) => item.columns || []),

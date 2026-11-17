@@ -1,11 +1,8 @@
 import {
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   LinkOutlined,
-  PlusOutlined,
   ReloadOutlined,
   RightOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
@@ -24,6 +21,9 @@ import {
   Select,
   Space,
   Statistic,
+  Tooltip,
+  Pagination,
+  Dropdown,
   Tag,
   Typography,
   message,
@@ -32,6 +32,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createOdsDatabase,
   fetchPhysicalSummary,
+  fetchPhysicalSource,
   fetchPhysicalSources,
   recommendLakeMode,
   reconcileOdsDatabase,
@@ -71,15 +72,9 @@ const statusColor: Record<string, string> = {
   DELETED: 'default',
 };
 
-const adapterOptions = [
-  { label: 'MySQL', value: 'MYSQL' },
-  { label: 'PostgreSQL', value: 'POSTGRESQL' },
-  { label: 'Oracle', value: 'ORACLE' },
-];
-
 const inferAdapter = (source?: PhysicalDataSource): string | undefined => {
   const type = String((source as PhysicalDataSource & { dbType?: string })?.dbType || '').toUpperCase();
-  if (type.includes('POSTGRES')) return 'POSTGRESQL';
+  if (type === 'POSTGRE_SQL' || type.includes('POSTGRES')) return 'POSTGRESQL';
   if (type.includes('ORACLE')) return 'ORACLE';
   if (type.includes('MYSQL')) return 'MYSQL';
   return undefined;
@@ -105,150 +100,49 @@ const recommendationModeLabel: Record<string, string> = {
   UNSUPPORTED: '暂不支持',
 };
 
-interface RecommendationValues {
-  moveData: boolean;
-  physicalGovernance: boolean;
-  joinOnly: boolean;
-  targetScope: 'ALL' | 'DATABASE' | 'TABLE';
-  adapter: string;
-}
-
-const initialRecommendationValues: RecommendationValues = {
-  moveData: true,
-  physicalGovernance: true,
-  joinOnly: false,
-  targetScope: 'ALL',
-  adapter: 'MYSQL',
-};
-
 const RecommendationModal: React.FC<{
   open: boolean;
   source?: PhysicalDataSource;
   onClose: () => void;
   onContinue: (mode: string) => void;
 }> = ({ open, source, onClose, onContinue }) => {
-  const [form] = Form.useForm<RecommendationValues>();
+  const [intent, setIntent] = useState('PHYSICAL');
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<LakeRecommendation>();
-  const [selectedAdapter, setSelectedAdapter] = useState<string>();
-
-  const sourceAdapter = inferAdapter(source);
-  useEffect(() => {
-    const nextAdapter = sourceAdapter || initialRecommendationValues.adapter;
-    setSelectedAdapter(nextAdapter);
-    form.setFieldValue('adapter', nextAdapter);
-  }, [form, open, sourceAdapter]);
-
-  const capabilityText = (capability?: { supported?: boolean; disabledReasons?: string[] }) => {
-    if (!capability) return '尚未检查';
-    if (capability.supported) return '当前能力可用';
-    return capability.disabledReasons?.map(capabilityReasonLabel).join('、') || '服务端能力不可用';
-  };
-
-  const submit = async (values: RecommendationValues) => {
+  useEffect(() => { setRecommendation(undefined); setIntent('PHYSICAL'); }, [open, source?.sourceDataSourceId]);
+  const submit = async () => {
     if (!source?.sourceDataSourceId) return;
     setLoading(true);
     setRecommendation(undefined);
     try {
+      const physical = intent === 'PHYSICAL';
       const response = await recommendLakeMode({
-        ...values,
         sourceDataSourceId: source.sourceDataSourceId,
+        adapter: inferAdapter(source) || 'MYSQL', targetScope: 'ALL',
+        moveData: physical, physicalGovernance: physical, joinOnly: !physical,
       });
       if (response.code !== 0 || !response.data) throw new Error(response.message || response.msg || '推荐服务暂不可用');
       setRecommendation(response.data);
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '推荐服务暂不可用');
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { message.error(error instanceof Error ? error.message : '推荐服务暂不可用'); }
+    finally { setLoading(false); }
   };
-
-  return (
-    <Modal
-      open={open}
-      title="智能推荐入湖方式"
-      width={720}
-      forceRender
-      destroyOnHidden
-      onCancel={onClose}
-      footer={null}
-    >
-      <Paragraph type="secondary">
-        选择使用方式，系统将检查当前数据源支持的能力。
-      </Paragraph>
-      <Card size="small" className="lake-capability-card">
-        <Descriptions size="small" column={2}>
-          <Descriptions.Item label="数据源">{source?.sourceDataSourceName || '-'}</Descriptions.Item>
-          <Descriptions.Item label="源端适配器">
-            <Select
-              size="small"
-              value={selectedAdapter}
-              placeholder="选择适配器"
-              options={adapterOptions}
-              onChange={(value) => {
-                setSelectedAdapter(value);
-                form.setFieldValue('adapter', value);
-              }}
-              style={{ width: 150 }}
-            />
-          </Descriptions.Item>
-          <Descriptions.Item label="物理能力">
-            {recommendation ? capabilityText(recommendation.physicalCapability) : '选择后检查'}
-          </Descriptions.Item>
-          <Descriptions.Item label="逻辑能力">
-            {recommendation ? capabilityText(recommendation.logicalCapability) : '选择后检查'}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{ ...initialRecommendationValues, adapter: sourceAdapter || initialRecommendationValues.adapter }}
-        onFinish={submit}
-        className="lake-recommendation-form"
-      >
-        <Form.Item name="moveData" label="1. 是否需要把数据移动到 Doris 管理的 ODS 存储？" rules={[{ required: true }]}>
-          <Radio.Group optionType="button" buttonStyle="solid" options={[{ label: '是', value: true }, { label: '否', value: false }]} />
-        </Form.Item>
-        <Form.Item name="physicalGovernance" label="2. 是否需要 Web 管理 ODS 表结构和生命周期？" rules={[{ required: true }]}>
-          <Radio.Group optionType="button" buttonStyle="solid" options={[{ label: '是', value: true }, { label: '否', value: false }]} />
-        </Form.Item>
-        <Form.Item name="joinOnly" label="3. 是否只需要跨 Catalog 联合查询，不落地数据？" rules={[{ required: true }]}>
-          <Radio.Group optionType="button" buttonStyle="solid" options={[{ label: '是', value: true }, { label: '否', value: false }]} />
-        </Form.Item>
-        <Form.Item name="targetScope" label="4. 需要检查的逻辑元数据范围" rules={[{ required: true }]}>
-          <Radio.Group options={[{ label: '全部', value: 'ALL' }, { label: '数据库', value: 'DATABASE' }, { label: '表', value: 'TABLE' }]} />
-        </Form.Item>
-        {recommendation ? (
-          <Alert
-            type={recommendation.mode === 'UNSUPPORTED' || recommendation.disabledReasons?.length ? 'warning' : 'success'}
-            showIcon
-            icon={recommendation.mode === 'UNSUPPORTED' ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
-            message={`推荐：${recommendationModeLabel[recommendation.mode || recommendation.recommendation || 'UNSUPPORTED'] || '暂不支持'}`}
-            description={
-              <>
-                <div>{recommendation.mode === 'LOGICAL' ? '无需复制源数据，通过外部挂载直接查询。' : recommendation.mode === 'PHYSICAL' ? '将数据复制到湖内，便于集中存储与访问。' : '当前条件暂不满足，请处理下面的问题。'}</div>
-                {recommendation.disabledReasons?.length ? <div>限制：{recommendation.disabledReasons.map(capabilityReasonLabel).join('、')}</div> : null}
-              </>
-            }
-          />
-        ) : null}
-        <div className="lake-modal-footer">
-          <Button onClick={onClose}>取消</Button>
-          <Button htmlType="submit" loading={loading} type="default">
-            检查并推荐
-          </Button>
-          <Button
-            type="primary"
-            disabled={!recommendation || (recommendation.mode || recommendation.recommendation) === 'UNSUPPORTED'}
-            onClick={() => onContinue(recommendation?.mode || recommendation?.recommendation || 'UNSUPPORTED')}
-          >
-            按推荐方式继续
-          </Button>
-        </div>
-      </Form>
-    </Modal>
-  );
+  return <Modal open={open} title="选择入湖方式" width={600} onCancel={onClose} footer={<Space>
+    <Button onClick={onClose}>取消</Button>
+    <Button onClick={submit} loading={loading}>检查可用性</Button>
+    <Button type="primary" disabled={!recommendation || recommendation.mode === 'UNSUPPORTED'} onClick={() => onContinue(recommendation?.mode || 'UNSUPPORTED')}>继续</Button>
+  </Space>}>
+    <Paragraph>数据源：{source?.sourceDataSourceName}</Paragraph>
+    <Radio.Group value={intent} onChange={(event) => { setIntent(event.target.value); setRecommendation(undefined); }}>
+      <Space direction="vertical" size="middle">
+        <Radio value="PHYSICAL">复制到湖内，集中存储和管理</Radio>
+        <Radio value="LOGICAL" disabled={!inferAdapter(source)}>保留在原数据源，通过外部挂载查询</Radio>
+      </Space>
+    </Radio.Group>
+    {!inferAdapter(source) && <Paragraph type="secondary" style={{ marginTop: 12 }}>当前逻辑入湖支持 MySQL、PostgreSQL 和 Oracle。</Paragraph>}
+    {recommendation && <Alert style={{ marginTop: 20 }} type={recommendation.disabledReasons?.length || recommendation.mode === 'UNSUPPORTED' ? 'warning' : 'success'} showIcon
+      message={`建议：${recommendationModeLabel[recommendation.mode || 'UNSUPPORTED']}`}
+      description={recommendation.disabledReasons?.map(capabilityReasonLabel).join('、')} />}
+  </Modal>;
 };
 
 const OdsDatabaseDrawer: React.FC<{
@@ -314,7 +208,7 @@ const OdsDatabaseDrawer: React.FC<{
           className="lake-drawer-alert"
         />
       ) : null}
-      <Form form={form} layout="vertical" onFinish={submit} className="lake-ods-form">
+      <Form name="lake-ods-custom" form={form} layout="vertical" onFinish={submit} className="lake-ods-form">
         <Form.Item
           name="customName"
           label="自定义名称"
@@ -350,6 +244,10 @@ const PhysicalResourcesPage: React.FC = () => {
   const [operationId, setOperationId] = useState<number>();
   const [operationLoading, setOperationLoading] = useState(false);
   const [recommendOpen, setRecommendOpen] = useState(false);
+  const [startingId, setStartingId] = useState<number>();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
   const [resourceStatus, setResourceStatus] = useState<LakeResourceStatus>();
   const [loadedSources, setLoadedSources] = useState<PhysicalDataSource[]>([]);
@@ -363,6 +261,7 @@ const PhysicalResourcesPage: React.FC = () => {
 
   const loadSummary = () => {
     setSummaryError(undefined);
+    setSummary(undefined);
     void withTimeout(fetchPhysicalSummary(), 10000, '物理入湖汇总请求超时，请稍后重试')
       .then((response) => {
         if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖汇总加载失败');
@@ -406,6 +305,29 @@ const PhysicalResourcesPage: React.FC = () => {
       setOperationLoading(false);
       setOperationId(undefined);
     }
+  };
+
+  const physicalTypes = ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'];
+  const startPhysical = async (record: PhysicalDataSource) => {
+    setStartingId(record.sourceDataSourceId);
+    try {
+      // Re-read before creating so a stale list cannot produce a second binding.
+      const latest = await fetchPhysicalSource(record.sourceDataSourceId);
+      if (latest.code !== 0 || !latest.data) throw new Error(latest.message || latest.msg || '数据源读取失败');
+      let database = latest.data.odsDatabase;
+      if (!database || database.resourceStatus === 'DELETED') {
+        const created = await createOdsDatabase(record.sourceDataSourceId, `ds_${record.sourceDataSourceId}`);
+        if (created.code !== 0 || !created.data) throw new Error(created.message || created.msg || 'ODS 库准备失败，请检查数据源的单位和业务系统归属');
+        database = created.data;
+      }
+      if (database.resourceStatus !== 'READY') {
+        message.info('ODS 库尚未就绪，请在资源详情中查看状态或重试');
+        history.push(`/lake/resources/${record.sourceDataSourceId}`);
+        return;
+      }
+      history.push(`/lake/resources/table/create?sourceDataSourceId=${record.sourceDataSourceId}&odsDatabaseBindingId=${database.id}`);
+    } catch (error) { message.error(error instanceof Error ? error.message : '准备入湖失败'); }
+    finally { setStartingId(undefined); reload(); }
   };
 
   const columns = useMemo<ProColumns<PhysicalDataSource>[]>(
@@ -465,34 +387,25 @@ const PhysicalResourcesPage: React.FC = () => {
           const database = record.odsDatabase;
           const canRetry = !!database && ['ERROR', 'CREATE_FAILED', 'MISSING', 'UNKNOWN', 'PENDING_CREATE'].includes(database.resourceStatus || '');
           const canReconcile = !!database && database.resourceStatus !== 'DELETED';
-          return (
-            <Space wrap size={4}>
-              {!database ? (
-                <Button type="link" icon={<PlusOutlined />} onClick={() => setCreateSource(record)}>
-                  创建 ODS 库
-                </Button>
-              ) : null}
-              {database ? (
-                <Button type="link" icon={<ThunderboltOutlined />} onClick={() => { setRecommendSource(record); setRecommendOpen(true); }}>
-                  智能推荐
-                </Button>
-              ) : null}
-              {canRetry ? (
-                <Button type="link" loading={operationLoading && operationId === database?.id} onClick={() => void operate('retry', database)}>
-                  重试
-                </Button>
-              ) : null}
-              {canReconcile ? (
-                <Button type="link" icon={<ReloadOutlined />} loading={operationLoading && operationId === database?.id} onClick={() => void operate('reconcile', database)}>
-                  对账
-                </Button>
-              ) : null}
-            </Space>
-          );
+          const supported = physicalTypes.includes(String(record.dbType || ''));
+          const busy = !!database && ['CREATING', 'DELETING'].includes(database.resourceStatus || '');
+          return <Space wrap size={4}>
+            <Tooltip title={!supported ? '此数据类型尚不支持可视化创建 ODS 表' : busy ? '资源正在处理，可查看详情' : undefined}>
+              <Button type="link" disabled={!supported || busy} loading={startingId === record.sourceDataSourceId}
+                onClick={() => void startPhysical(record)}>{database?.resourceStatus === 'READY' ? '继续建表' : '开始入湖'}</Button>
+            </Tooltip>
+            <Button type="link" onClick={() => { setRecommendSource(record); setRecommendOpen(true); }}>选择方式</Button>
+            <Dropdown menu={{ items: [
+              { key: 'detail', label: '查看资源详情', onClick: () => history.push(`/lake/resources/${record.sourceDataSourceId}`) },
+              ...(!database ? [{ key: 'custom', label: '自定义 ODS 库名', onClick: () => setCreateSource(record) }] : []),
+              ...(canRetry ? [{ key: 'retry', label: '重试', onClick: () => void operate('retry', database) }] : []),
+              ...(canReconcile ? [{ key: 'reconcile', label: '刷新实际状态', onClick: () => void operate('reconcile', database) }] : []),
+            ] }}><Button type="link" loading={operationLoading && operationId === database?.id}>更多</Button></Dropdown>
+          </Space>;
         },
       },
     ],
-    [operationId, operationLoading, unitNameByCode, systemNameByCode],
+    [operationId, operationLoading, startingId, unitNameByCode, systemNameByCode],
   );
 
   return (
@@ -509,9 +422,9 @@ const PhysicalResourcesPage: React.FC = () => {
     >
       <div className="lake-physical-page">
         <div className="lake-physical-summary">
-          <Card size="small" className="lake-physical-stat"><Statistic title="已绑定数据源" value={summary?.boundDataSourceCount ?? 0} /></Card>
-          <Card size="small" className="lake-physical-stat"><Statistic title="ODS 表总数" value={summary?.odsTableCount ?? 0} /></Card>
-          <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? 0} /></Card>
+          <Card size="small" className="lake-physical-stat"><Statistic title="已建立 ODS 关联" value={summary?.boundDataSourceCount ?? '—'} /></Card>
+          <Card size="small" className="lake-physical-stat"><Statistic title="平台纳管 ODS 表" value={summary?.odsTableCount ?? '—'} /></Card>
+          <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? '—'} /></Card>
         </div>
         {summaryError ? (
           <Alert
@@ -542,7 +455,8 @@ const PhysicalResourcesPage: React.FC = () => {
           tableLayout="fixed"
           search={false}
           options={false}
-          pagination={{ showSizeChanger: true, showTotal: (total) => `共 ${total} 个数据源` }}
+          pagination={false}
+          params={{ current: page, pageSize }}
           request={async (params) => {
             setListError(undefined);
             try {
@@ -559,8 +473,10 @@ const PhysicalResourcesPage: React.FC = () => {
               if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖列表加载失败');
               const page = unwrapPage(response.data);
               setLoadedSources(page.rows);
+              setTotal(page.total);
               return { data: page.rows, success: true, total: page.total };
             } catch (error) {
+              setTotal(0);
               setListError(error instanceof Error ? error.message : '物理入湖列表加载失败');
               return { data: [], success: false, total: 0 };
             }
@@ -572,7 +488,7 @@ const PhysicalResourcesPage: React.FC = () => {
               placeholder="搜索数据源名称"
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
-              onSearch={() => actionRef.current?.reload(true)}
+              onSearch={() => { setPage(1); actionRef.current?.reload(); }}
               style={{ width: 'min(240px, 100%)' }}
             />,
             <Select
@@ -583,6 +499,7 @@ const PhysicalResourcesPage: React.FC = () => {
               options={RESOURCE_STATUS.map((item) => ({ label: item.label, value: item.value }))}
               onChange={(value) => {
                 setResourceStatus(value);
+                setPage(1);
                 window.setTimeout(() => actionRef.current?.reload(true), 0);
               }}
               style={{ width: 'min(130px, 100%)' }}
@@ -591,6 +508,7 @@ const PhysicalResourcesPage: React.FC = () => {
           tableAlertRender={false}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已接入的数据源" /> }}
         />
+        <div className="lake-fixed-pagination"><Pagination current={page} pageSize={pageSize} total={total} showSizeChanger showTotal={(count) => `共 ${count} 个数据源`} onChange={(next, size) => { setPage(next); setPageSize(size); }} /></div>
       </div>
       <OdsDatabaseDrawer
         open={!!createSource}
@@ -606,7 +524,8 @@ const PhysicalResourcesPage: React.FC = () => {
           const id = recommendSource?.sourceDataSourceId;
           setRecommendOpen(false);
           if (!id) return;
-          history.push(mode === 'LOGICAL' ? `/lake/logical-access?sourceDataSourceId=${id}` : `/lake/resources/${id}`);
+          if (mode === 'LOGICAL') history.push(`/lake/logical-access?sourceDataSourceId=${id}`);
+          else if (recommendSource) void startPhysical(recommendSource);
         }}
       />
     </PageContainer>

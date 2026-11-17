@@ -1,13 +1,4 @@
-import {
-  ArrowLeftOutlined,
-  CheckCircleOutlined,
-  FileSearchOutlined,
-  InfoCircleOutlined,
-  LeftOutlined,
-  RightOutlined,
-  SafetyCertificateOutlined,
-  TableOutlined,
-} from '@ant-design/icons';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import {
@@ -17,7 +8,6 @@ import {
   Checkbox,
   Collapse,
   Descriptions,
-  Empty,
   Form,
   Input,
   InputNumber,
@@ -27,14 +17,12 @@ import {
   Steps,
   Switch,
   Table,
-  Tag,
-  Tooltip,
   Typography,
   message,
 } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchLifecyclePolicies, normalizeLakePage } from '@/services/lake';
-import type { LakeLifecyclePolicy, LakePage } from '@/services/lake';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchApplicableLifecyclePolicies } from '@/services/lake';
+import type { LakeLifecyclePolicy } from '@/services/lake';
 import {
   createManagedTable,
   fetchPhysicalSource,
@@ -45,10 +33,10 @@ import {
   previewManagedTable,
 } from './service';
 import type { ApiResponse, OdsSourceTable, OdsSourceTableDetail, PhysicalDataSource } from './types';
-import { primaryKeyNames, sourceNullable, suggestedDorisType } from './tableDefaults';
+import { primaryKeyNames, sourceNullable, suggestedDorisType, suggestedTableName } from './tableDefaults';
 import './wizard.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text } = Typography;
 
 interface WizardColumn {
   sourceField: string;
@@ -87,6 +75,9 @@ const ManagedTableWizard: React.FC = () => {
   const bindingId = Number(query.get('odsDatabaseBindingId'));
   const [form] = Form.useForm<WizardValues>();
   const [current, setCurrent] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [advanced, setAdvanced] = useState<string[]>([]);
+  const tableRequest = useRef(0);
   const [source, setSource] = useState<PhysicalDataSource>();
   const [databases, setDatabases] = useState<Array<{ value: string; label: string }>>([]);
   const [schemas, setSchemas] = useState<Array<{ value: string; label: string }>>([]);
@@ -101,9 +92,9 @@ const ManagedTableWizard: React.FC = () => {
   const [createLoading, setCreateLoading] = useState(false);
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof previewManagedTable>>['data']>();
   const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
-  const databaseFqn = Form.useWatch('databaseFqn', form);
-  const schemaFqn = Form.useWatch('schemaFqn', form);
-  const partitionEnabled = Form.useWatch('partitionEnabled', form);
+  const databaseFqn = Form.useWatch('databaseFqn', { form, preserve: true });
+  const schemaFqn = Form.useWatch('schemaFqn', { form, preserve: true });
+  const partitionEnabled = Form.useWatch('partitionEnabled', { form, preserve: true });
 
   const load = useCallback(async () => {
     if (!sourceId || !bindingId) {
@@ -111,56 +102,75 @@ const ManagedTableWizard: React.FC = () => {
       return;
     }
     setLoading(true);
+    setLoadError('');
     try {
       const [sourceResponse, databaseResponse, policyResponse] = await Promise.all([
         fetchPhysicalSource(sourceId),
         fetchSourceDatabases(sourceId),
-        fetchLifecyclePolicies({ pageNo: 1, pageSize: 100 }),
+        fetchApplicableLifecyclePolicies(sourceId),
       ]);
       if (sourceResponse.code !== 0 || !sourceResponse.data) throw new Error(responseMessage(sourceResponse, '数据源加载失败'));
       setSource(sourceResponse.data);
-      if (databaseResponse.code === 0) setDatabases((databaseResponse.data || []).map((item) => ({ value: item.fullyQualifiedName || item.name, label: item.name || item.fullyQualifiedName })));
-      if (policyResponse.code === 0) setPolicies(normalizeLakePage(policyResponse.data as LakePage<LakeLifecyclePolicy>).data);
+      if (databaseResponse.code !== 0) throw new Error(responseMessage(databaseResponse, '源数据库读取失败'));
+      const nextDatabases = (databaseResponse.data || []).map((item) => ({ value: item.fullyQualifiedName || item.name, label: item.name || item.fullyQualifiedName }));
+      setDatabases(nextDatabases);
+      if (nextDatabases.length === 1) form.setFieldValue('databaseFqn', nextDatabases[0].value);
+      if (policyResponse.code === 0) setPolicies(policyResponse.data || []);
     } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '建表向导初始化失败');
+      setLoadError(reason instanceof Error ? reason.message : '建表向导初始化失败');
     } finally {
       setLoading(false);
     }
-  }, [bindingId, sourceId]);
+  }, [bindingId, sourceId, form]);
 
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
-    if (!databaseFqn || !sourceId) {
-      setSchemas([]);
-      setTables([]);
-      return;
-    }
-    form.setFieldValue('schemaFqn', undefined);
-    form.setFieldValue('tableId', undefined);
-    void fetchSourceSchemas(sourceId, databaseFqn).then((response) => {
-      if (response.code === 0) setSchemas((response.data || []).map((item) => ({ value: item.fullyQualifiedName, label: item.name || item.fullyQualifiedName })));
-    });
+    let cancelled = false;
+    tableRequest.current += 1;
+    setSelectedTable(undefined);
+    setTableDetail(undefined);
+    setColumns([]);
+    setSchemas([]);
+    setTables([]);
+    form.setFieldsValue({ schemaFqn: undefined, tableId: undefined });
+    if (databaseFqn && sourceId) void fetchSourceSchemas(sourceId, databaseFqn).then((response) => {
+      if (cancelled) return;
+      if (response.code !== 0) throw new Error(responseMessage(response, 'Schema 读取失败'));
+      const next = (response.data || []).map((item) => ({ value: item.fullyQualifiedName, label: item.name || item.fullyQualifiedName }));
+      setSchemas(next);
+      if (next.length === 1) form.setFieldValue('schemaFqn', next[0].value);
+    }).catch((error) => { if (!cancelled) message.error(error.message); });
+    return () => { cancelled = true; };
   }, [databaseFqn, form, sourceId]);
 
   useEffect(() => {
-    if (!databaseFqn || !schemaFqn || !sourceId) {
-      setTables([]);
-      return;
-    }
+    let cancelled = false;
+    tableRequest.current += 1;
+    setSelectedTable(undefined);
+    setTableDetail(undefined);
+    setColumns([]);
+    setTables([]);
     form.setFieldValue('tableId', undefined);
-    void fetchSourceTables(sourceId, databaseFqn, schemaFqn).then((response) => {
-      if (response.code === 0) setTables(response.data?.records || []);
-    });
+    if (databaseFqn && schemaFqn && sourceId) void fetchSourceTables(sourceId, databaseFqn, schemaFqn).then((response) => {
+      if (cancelled) return;
+      if (response.code !== 0) throw new Error(responseMessage(response, '源表列表读取失败'));
+      setTables(response.data?.records || []);
+    }).catch((error) => { if (!cancelled) message.error(error.message); });
+    return () => { cancelled = true; };
   }, [databaseFqn, form, schemaFqn, sourceId]);
 
   const selectTable = async (tableId: string) => {
     const table = tables.find((item) => item.id === tableId);
     if (!table || !sourceId) return;
+    const request = ++tableRequest.current;
     setSelectedTable(table);
+    setTableDetail(undefined);
+    setColumns([]);
     setTableLoading(true);
     try {
       const response = await fetchSourceTableDetail(sourceId, table.id);
+      if (request !== tableRequest.current) return;
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '源表结构读取失败'));
       setTableDetail(response.data);
       const keys = primaryKeyNames(response.data);
@@ -175,19 +185,25 @@ const ManagedTableWizard: React.FC = () => {
           key,
         };
       });
+      if (!nextColumns.some((column) => column.key)) {
+        const fallback = nextColumns.find((column) => !column.sourceNullable && !isKeyForbiddenType(column.targetType));
+        if (fallback) fallback.key = true;
+      }
       setColumns(nextColumns);
       form.setFieldsValue({
-        targetTableName: table.name,
+        targetTableName: suggestedTableName(databases.find((item) => item.value === databaseFqn)?.label || '', schemas.find((item) => item.value === schemaFqn)?.label || '', table.name),
         tableModel: 'DUPLICATE',
         partitionEnabled: false,
         partitionColumn: undefined,
         granularity: 'DAY',
+        lifecyclePolicyId: undefined,
       });
     } catch (reason) {
+      if (request !== tableRequest.current) return;
       setTableDetail(undefined);
       message.error(reason instanceof Error ? reason.message : '源表结构读取失败');
     } finally {
-      setTableLoading(false);
+      if (request === tableRequest.current) setTableLoading(false);
     }
   };
 
@@ -225,14 +241,23 @@ const ManagedTableWizard: React.FC = () => {
     try {
       await form.validateFields(['databaseFqn', 'schemaFqn', 'tableId', 'targetTableName', 'tableModel']);
       if (!selectedTable || !tableDetail || !columns.length) throw new Error('请先选择并读取源表结构');
-      if (form.getFieldValue('partitionEnabled') && !form.getFieldValue('partitionColumn')) throw new Error('启用分区后请选择分区字段');
+      const names = columns.map((column) => column.targetField.trim().toUpperCase());
+      if (names.some((name) => !name) || new Set(names).size !== names.length) throw new Error('目标字段名不能为空或重复，请检查高级配置');
+      if (!columns.some((column) => column.key)) throw new Error('请在高级配置中至少选择一个非空字段作为排序键');
+      if (columns.some((column) => column.key && column.sourceNullable)) throw new Error('排序键必须是源端非空字段，请检查高级配置');
+      if (form.getFieldValue('partitionEnabled')) {
+        const partitionColumn = form.getFieldValue('partitionColumn');
+        if (!columns.some((column) => column.targetField === partitionColumn && !column.sourceNullable && isDateType(column.targetType))) throw new Error('请选择非空的日期或时间字段作为分区字段');
+        if (form.getFieldValue('tableModel') === 'UNIQUE' && !columns.some((column) => column.targetField === partitionColumn && column.key)) throw new Error('按键合并时，分区字段也必须是排序键');
+      }
       setPreviewLoading(true);
       const response = await previewManagedTable(payload());
-      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, 'Preview 失败'));
+      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '建表检查失败'));
       setPreview(response.data);
       setWarningsAcknowledged(false);
-      setCurrent(3);
+      setCurrent(1);
     } catch (reason) {
+      setAdvanced(['structure', 'partition']);
       message.error(reason instanceof Error ? reason.message : '请完善当前步骤');
     } finally {
       setPreviewLoading(false);
@@ -248,8 +273,8 @@ const ManagedTableWizard: React.FC = () => {
     setCreateLoading(true);
     try {
       const response = await createManagedTable(preview.planFingerprint);
-      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '创建 MANAGED 表失败'));
-      message.success('MANAGED 表创建操作已提交');
+      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '创建 ODS 表失败'));
+      message.success('ODS 表已提交创建，正在准备全量任务');
       if (response.data.resourceStatus !== 'READY') {
         history.replace(`/lake/resources/table/${response.data.id}`);
         return;
@@ -262,76 +287,94 @@ const ManagedTableWizard: React.FC = () => {
       const jobId = typeof allocated.data === 'object' ? (allocated.data as any).id : allocated.data;
       history.replace(`/sync/batch-link-up/${jobId}/detail?lakeMappingId=${response.data.id}`);
     } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '创建 MANAGED 表失败');
+      message.error(reason instanceof Error ? reason.message : '创建 ODS 表失败');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  const advance = async () => {
-    try {
-      if (current === 0) {
-        await form.validateFields(['databaseFqn', 'schemaFqn', 'tableId']);
-        if (!selectedTable || !tableDetail || !columns.length) throw new Error('请先选择并读取源表结构');
-      } else if (current === 1) {
-        await form.validateFields(['targetTableName', 'tableModel']);
-        if (!columns.length) throw new Error('源表没有可编辑字段');
-        const names = columns.map((column) => column.targetField.trim().toUpperCase());
-        if (names.some((name) => !name)) throw new Error('目标字段名不能为空');
-        if (new Set(names).size !== names.length) throw new Error('目标字段名不能重复，请检查字段映射');
-        if (!columns.some((column) => column.key)) throw new Error('请至少选择一个 Key 字段');
-        if (columns.some((column) => column.key && column.sourceNullable)) throw new Error('Key 字段必须是源端 NOT NULL 字段');
-      } else if (current === 2) {
-        if (partitionEnabled) {
-          await form.validateFields(['partitionColumn', 'granularity']);
-          const partitionColumn = form.getFieldValue('partitionColumn');
-          if (!columns.some((column) => column.targetField === partitionColumn && !column.sourceNullable && isDateType(column.targetType))) {
-            throw new Error('分区字段必须是源端非空的 DATE/DATETIME 字段');
-          }
-          if (form.getFieldValue('tableModel') === 'UNIQUE' && !columns.some((column) => column.targetField === partitionColumn && column.key)) {
-            throw new Error('Unique 模型的分区字段必须位于排序 Key 中');
-          }
-        }
-      }
-      setCurrent((step) => step + 1);
-    } catch (reason) {
-      message.error(reason instanceof Error ? reason.message : '请完善当前步骤');
-    }
-  };
-
   const sourceColumns = useMemo(() => [
-    { title: 'Key', dataIndex: 'key', width: 72, render: (_: unknown, row: WizardColumn, index: number) => <Checkbox checked={row.key} onChange={(event) => updateColumn(index, { key: event.target.checked })} /> },
+    { title: '排序键', dataIndex: 'key', width: 72, render: (_: unknown, row: WizardColumn, index: number) => <Checkbox aria-label={`${row.sourceField}设为排序键`} checked={row.key} onChange={(event) => updateColumn(index, { key: event.target.checked })} /> },
     { title: '源字段', dataIndex: 'sourceField', width: 180 },
     { title: '源类型', dataIndex: 'sourceType', width: 160, render: (value: string) => <Text type="secondary">{value || '-'}</Text> },
     { title: '允许空值', dataIndex: 'sourceNullable', width: 100, render: (value: boolean) => value ? '是' : '否' },
-    { title: '目标字段', dataIndex: 'targetField', width: 190, render: (_: unknown, row: WizardColumn, index: number) => <Input value={row.targetField} onChange={(event) => updateColumn(index, { targetField: event.target.value })} /> },
-    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={Array.from(new Set([row.targetType, 'STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'])).map((value) => ({ value, label: value, disabled: row.key && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
+    { title: '目标字段', dataIndex: 'targetField', width: 190, render: (_: unknown, row: WizardColumn, index: number) => <Input aria-label={`${row.sourceField}的目标字段名`} value={row.targetField} onChange={(event) => updateColumn(index, { targetField: event.target.value })} /> },
+    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select aria-label={`${row.sourceField}的目标类型`} value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={Array.from(new Set([row.targetType, 'STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'])).map((value) => ({ value, label: value, disabled: row.key && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
     { title: '说明', key: 'hint', render: (_: unknown, row: WizardColumn) => row.key && row.targetType === 'VARCHAR(255)' ? <Text type="warning"><InfoCircleOutlined /> Key 不使用 STRING</Text> : null },
   ], [columns]);
 
-  if (loading) return <PageContainer title="创建 MANAGED 表"><Spin /></PageContainer>;
-  if (!source || !source.odsDatabaseBindingId) return <PageContainer title="创建 MANAGED 表"><Alert type="warning" showIcon message="尚未准备 ODS Database" description="请先返回物理资源详情创建并等待 ODS Database READY。" action={<Button onClick={() => history.back()}>返回</Button>} /></PageContainer>;
+  if (loading) return <PageContainer title={false}><Spin /></PageContainer>;
+  if (loadError) return <PageContainer title={false}><Alert type="error" showIcon message={loadError} action={<Button onClick={load}>重新加载</Button>} /></PageContainer>;
+  if (!source || !source.odsDatabaseBindingId) return <PageContainer title={false}><Alert type="warning" showIcon message="ODS 库尚未就绪" action={<Button onClick={() => history.push('/lake/resources')}>返回物理入湖</Button>} /></PageContainer>;
 
-  return (
-    <PageContainer title="创建 MANAGED 表" subTitle="从 OpenMetadata 源表生成受控的 Doris ODS 表" onBack={() => history.back()} extra={<Button icon={<ArrowLeftOutlined />} onClick={() => history.back()}>返回资源详情</Button>}>
-      <div className="lake-wizard-page">
-        <Card className="lake-wizard-intro" variant="borderless">
-          <div className="lake-wizard-intro-icon"><SafetyCertificateOutlined /></div>
-          <div><div className="lake-detail-kicker">SAFE TABLE CREATION</div><Title level={3}>创建一张可追溯的 MANAGED 表</Title><Paragraph type="secondary">源表、字段映射、分区和生命周期会先在服务端校验，再生成计划指纹。提交时服务端会重新校验当前资源版本，页面不会执行 SQL。</Paragraph></div>
-        </Card>
-        <Card className="lake-wizard-card">
-          <Steps current={current} items={[{ title: '选择源表', description: 'OpenMetadata 结构' }, { title: '编辑表结构', description: '字段与 Key' }, { title: '分区与生命周期', description: 'Auto Range' }, { title: 'Preview 并创建', description: '确认后提交' }]} />
-          <div className="lake-wizard-body">
-            {current === 0 ? <div className="lake-step-panel"><Alert type="info" showIcon message={`当前数据源：${source.sourceDataSourceName || source.sourceDataSourceId}`} description="列表来自现有 OpenMetadata 探查结果；如果没有数据库，请先在数据源页完成 Metadata 探查。" /><Form form={form} layout="vertical" className="lake-step-form"><Space align="start" wrap className="lake-cascade-row"><Form.Item name="databaseFqn" label="数据库" rules={[{ required: true, message: '请选择数据库' }]}><Select showSearch options={databases} placeholder="选择数据库" optionFilterProp="label" style={{ minWidth: 240 }} /></Form.Item><Form.Item name="schemaFqn" label="Schema" rules={[{ required: true, message: '请选择 Schema' }]}><Select showSearch options={schemas} placeholder="选择 Schema" optionFilterProp="label" disabled={!databaseFqn} style={{ minWidth: 240 }} /></Form.Item><Form.Item name="tableId" label="源表" rules={[{ required: true, message: '请选择源表' }]}><Select showSearch options={tables.map((item) => ({ value: item.id, label: `${item.name} · ${item.fullyQualifiedName}` }))} placeholder="选择源表" optionFilterProp="label" disabled={!schemaFqn} onChange={(value) => void selectTable(value)} style={{ minWidth: 320 }} /></Form.Item></Space></Form>{tableLoading ? <Spin /> : selectedTable && tableDetail ? <Card size="small" className="lake-source-summary" title={<Space><TableOutlined />{selectedTable.fullyQualifiedName}</Space>}><Descriptions size="small" column={{ xs: 1, sm: 2, md: 4 }}><Descriptions.Item label="字段数">{tableDetail.columns?.length || 0}</Descriptions.Item><Descriptions.Item label="约束">{tableDetail.tableConstraints?.length || 0}</Descriptions.Item><Descriptions.Item label="探查状态">已读取源端最新结构</Descriptions.Item><Descriptions.Item label="表类型">TABLE</Descriptions.Item></Descriptions></Card> : <Empty description="选择源表后读取结构" />}</div> : null}
-            {current === 1 ? <div className="lake-step-panel"><Form form={form} layout="vertical" className="lake-step-form"><Space align="start" wrap><Form.Item name="targetTableName" label="目标表名" rules={[{ required: true, message: '请输入目标表名' }, { pattern: /^[A-Za-z0-9_]+$/, message: '仅支持字母、数字和下划线' }]}><Input prefix={<TableOutlined />} placeholder="例如 orders" style={{ width: 300 }} /></Form.Item><Form.Item name="tableModel" label="表模型" rules={[{ required: true }]}><Select options={[{ value: 'DUPLICATE', label: 'Duplicate（排序 Key）' }, { value: 'UNIQUE', label: 'Unique（唯一 Key）' }]} style={{ width: 240 }} /></Form.Item></Space></Form><Card size="small" title="字段映射" extra={<Text type="secondary">Key 字段会自动避开 STRING</Text>}><Table rowKey="sourceField" columns={sourceColumns} dataSource={columns} pagination={false} scroll={{ x: 1100 }} locale={{ emptyText: <Empty description="请返回上一步选择源表" /> }} /></Card></div> : null}
-            {current === 2 ? <div className="lake-step-panel"><Form form={form} layout="vertical" className="lake-step-form"><Card size="small" title="时间分区" extra={<Switch checked={partitionEnabled} onChange={(value) => { form.setFieldValue('partitionEnabled', value); if (!value) { form.setFieldValue('partitionColumn', undefined); form.setFieldValue('lifecyclePolicyId', undefined); } }} />}><Paragraph type="secondary">开启后由 Doris Auto Range 管理历史分区；分区字段必须是源端和目标端均非空的 DATE/DATETIME。</Paragraph>{partitionEnabled ? <Space align="start" wrap><Form.Item name="partitionColumn" label="分区字段" rules={[{ required: true, message: '请选择分区字段' }]}><Select options={columns.filter((column) => !column.sourceNullable && isDateType(column.targetType)).map((column) => ({ value: column.targetField, label: `${column.targetField} · ${column.targetType}` }))} placeholder="选择时间字段" notFoundContent="没有符合条件的 DATE/DATETIME 非空字段" style={{ width: 280 }} /></Form.Item><Form.Item name="granularity" label="粒度" rules={[{ required: true }]}><Select options={[{ value: 'DAY', label: '按天' }, { value: 'MONTH', label: '按月' }, { value: 'YEAR', label: '按年' }]} style={{ width: 160 }} /></Form.Item><Form.Item name="lifecyclePolicyId" label="生命周期策略"><Select allowClear options={policies.filter((policy) => policy.status === 'ACTIVE').map((policy) => ({ value: policy.id, label: `${policy.policyName} · 保留 ${policy.retentionCount} 个历史分区` }))} placeholder="可选策略" style={{ width: 300 }} /></Form.Item></Space> : <Text type="secondary">未开启分区时，生命周期只能保持永久。</Text>}</Card></Form></div> : null}
-            {current === 3 ? <div className="lake-step-panel"><Alert type={preview?.errors?.length ? 'error' : 'success'} showIcon icon={preview?.errors?.length ? undefined : <CheckCircleOutlined />} message={preview?.errors?.length ? 'Preview 未通过' : 'Preview 已生成，可提交创建'} description={preview?.errors?.length ? preview.errors.join('；') : '服务端已校验源快照、合同、字段映射和目标命名。提交时还会校验计划指纹是否过期。'} /><div className="lake-preview-grid"><Card size="small" title="Source Summary"><Descriptions size="small" column={1}><Descriptions.Item label="源表">{selectedTable?.fullyQualifiedName || '-'}</Descriptions.Item><Descriptions.Item label="Schema Hash">{preview?.sourceSchemaHash || '-'}</Descriptions.Item></Descriptions></Card><Card size="small" title="Target Contract"><Descriptions size="small" column={1}><Descriptions.Item label="目标表">{preview?.targetTableName || '-'}</Descriptions.Item><Descriptions.Item label="字段数">{preview?.targetContract?.columns?.length || 0}</Descriptions.Item><Descriptions.Item label="Key">{preview?.targetContract?.keyColumns?.join(', ') || '无'}</Descriptions.Item><Descriptions.Item label="分区">{preview?.targetContract?.partition?.enabled ? `${preview.targetContract.partition.column} · ${preview.targetContract.partition.granularity}` : '永久'}</Descriptions.Item></Descriptions></Card></div>{preview?.warnings?.length ? <Alert type="warning" showIcon message="请确认以下提醒" description={<><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul><Checkbox checked={warningsAcknowledged} onChange={(event) => setWarningsAcknowledged(event.target.checked)}>我已了解写入转换风险</Checkbox></>} /> : null}<Collapse className="lake-ddl-collapse" items={[{ key: 'ddl', label: '查看脱敏 DDL Preview', children: <pre>{preview?.ddl || '服务端未返回 DDL'}</pre> }]} /><div className="lake-create-footer"><Button onClick={() => { setCurrent(2); setWarningsAcknowledged(false); }}>返回修改</Button><Tooltip title={preview?.errors?.length ? '请先解决 Preview errors' : preview?.warnings?.length && !warningsAcknowledged ? '请先确认提醒' : undefined}><Button type="primary" loading={createLoading} disabled={!preview?.planFingerprint || Boolean(preview?.errors?.length) || Boolean(preview?.warnings?.length && !warningsAcknowledged)} onClick={() => void create()}>确认创建 MANAGED 表</Button></Tooltip></div></div> : null}
-          </div>
-          {current < 3 ? <div className="lake-wizard-footer"><Button icon={<LeftOutlined />} disabled={current === 0} onClick={() => setCurrent((step) => step - 1)}>上一步</Button><Button type="primary" icon={current === 2 ? <FileSearchOutlined /> : <RightOutlined />} loading={previewLoading} onClick={() => { if (current === 2) void runPreview(); else void advance(); }}>{current === 2 ? '生成 Preview' : '下一步'}</Button></div> : null}
-        </Card>
-      </div>
-    </PageContainer>
-  );
+  return <PageContainer title={false}>
+    <div className="lake-wizard-page">
+      <Card className="lake-wizard-card">
+        <Steps current={current} items={[{ title: '选表与配置' }, { title: '确认并创建任务' }]} />
+        <div className="lake-wizard-body">
+          <Form name="lake-managed-table" form={form} layout="vertical" preserve>
+            {current === 0 && <div className="lake-step-panel">
+              <Text type="secondary">数据源：{source.sourceDataSourceName}　目标库：{source.odsDatabase?.databaseName}</Text>
+              <Space align="start" wrap className="lake-cascade-row">
+                <Form.Item name="databaseFqn" label="来源数据库" rules={[{ required: true, message: '请选择数据库' }]}>
+                  <Select showSearch options={databases} placeholder="选择数据库" optionFilterProp="label" style={{ width: 240 }} /></Form.Item>
+                <Form.Item name="schemaFqn" label="Schema" rules={[{ required: true, message: '请选择 Schema' }]}>
+                  <Select showSearch options={schemas} placeholder="选择 Schema" optionFilterProp="label" disabled={!databaseFqn} style={{ width: 220 }} /></Form.Item>
+                <Form.Item name="tableId" label="来源表" rules={[{ required: true, message: '请选择来源表' }]}>
+                  <Select showSearch options={tables.map((item) => ({ value: item.id, label: item.name }))} placeholder="选择来源表" optionFilterProp="label" disabled={!schemaFqn} loading={tableLoading} onChange={(value) => void selectTable(value)} style={{ width: 280 }} /></Form.Item>
+              </Space>
+              {!tables.length && schemaFqn && <Alert type="info" message="此范围暂无已采集的表结构" description="可在数据源管理中采集元数据后，返回此处刷新。" action={<Button onClick={() => history.push('/data-source')}>查看数据源</Button>} />}
+              {tableDetail && !tableLoading && <>
+                <Form.Item name="targetTableName" label="ODS 表名" extra={`已按源结构生成 ${columns.length} 个字段；默认自动分桶、长期保留。`} rules={[{ required: true, message: '请输入表名' }, { pattern: /^[A-Za-z0-9_]+$/, message: '仅支持字母、数字和下划线' }]}>
+                  <Input style={{ maxWidth: 560 }} /></Form.Item>
+                <Form.Item name="lifecyclePolicyId" label="生命周期策略" extra="只展示适用于当前数据源的启用策略。选定策略后自动开启时间分区。">
+                  <Select allowClear style={{ maxWidth: 560 }} placeholder="长期保留（默认）"
+                    options={policies.map((policy, index) => ({ value: policy.id, label: `${index === 0 ? '推荐 · ' : ''}${policy.policyName} · ${policy.retentionCount} 个历史${({ DAY: '日', MONTH: '月', YEAR: '年' })[policy.granularity || 'DAY']}分区` }))}
+                    onChange={(id) => {
+                      const policy = policies.find((item) => item.id === id);
+                      form.setFieldsValue({ partitionEnabled: !!id, granularity: policy?.granularity || 'DAY', partitionColumn: id ? columns.find((column) => !column.sourceNullable && isDateType(column.targetType))?.targetField : undefined });
+                      if (id) setAdvanced(['partition']);
+                    }} /></Form.Item>
+                <Collapse activeKey={advanced} onChange={(keys) => setAdvanced(Array.isArray(keys) ? keys : [keys])} items={[
+                  { key: 'structure', forceRender: true, label: `字段映射与表模型（${columns.length} 个字段，自动分桶）`, children: <>
+                    <Form.Item name="tableModel" label="表模型"><Select style={{ width: 320 }} options={[{ value: 'DUPLICATE', label: '保留明细（默认）' }, { value: 'UNIQUE', label: '按键合并（相同键保留最新记录）' }]} /></Form.Item>
+                    <Table rowKey="sourceField" columns={sourceColumns} dataSource={columns} pagination={false} scroll={{ x: 1100 }} />
+                  </> },
+                  { key: 'partition', forceRender: true, label: '时间分区与存储设置', children: <>
+                    <Space style={{ marginBottom: 16 }}><Switch aria-label="启用时间分区" checked={!!partitionEnabled} onChange={(enabled) => {
+                      form.setFieldsValue({ partitionEnabled: enabled, ...(enabled ? {} : { partitionColumn: undefined, lifecyclePolicyId: undefined }) });
+                    }} />启用时间分区</Space>
+                    {partitionEnabled && <Space align="start" wrap>
+                      <Form.Item name="partitionColumn" label="分区时间字段" rules={[{ required: true, message: '请选择分区字段' }]}>
+                        <Select style={{ width: 280 }} placeholder="选择非空时间字段" options={columns.filter((column) => !column.sourceNullable && isDateType(column.targetType)).map((column) => ({ value: column.targetField, label: column.targetField }))} /></Form.Item>
+                      <Form.Item name="granularity" label="分区粒度"><Select style={{ width: 160 }} options={[{ value: 'DAY', label: '按天' }, { value: 'MONTH', label: '按月' }, { value: 'YEAR', label: '按年' }]} onChange={() => form.setFieldValue('lifecyclePolicyId', undefined)} /></Form.Item>
+                    </Space>}
+                    {partitionEnabled && !columns.some((column) => !column.sourceNullable && isDateType(column.targetType)) && <Alert type="warning" message="没有可用的非空日期或时间字段；请保持长期保留，或先调整源表结构。" />}
+                  </> },
+                ]} />
+              </>}
+            </div>}
+          </Form>
+          {current === 1 && <div className="lake-step-panel">
+            <Alert type={preview?.valid ? 'success' : 'error'} showIcon message={preview?.valid ? '检查通过，创建后将进入全量任务配置' : '检查未通过'} description={preview?.errors?.join('；')} />
+            <Descriptions bordered column={1} style={{ marginTop: 20 }}>
+              <Descriptions.Item label="来源表">{selectedTable?.fullyQualifiedName}</Descriptions.Item>
+              <Descriptions.Item label="目标表">{source.odsDatabase?.databaseName}.{preview?.targetTableName}</Descriptions.Item>
+              <Descriptions.Item label="字段数">{preview?.targetContract?.columns?.length}</Descriptions.Item>
+              <Descriptions.Item label="保留方式">{form.getFieldValue('lifecyclePolicyId') ? policies.find((policy) => policy.id === form.getFieldValue('lifecyclePolicyId'))?.policyName : '长期保留'}</Descriptions.Item>
+            </Descriptions>
+            {preview?.warnings?.length ? <Alert style={{ marginTop: 16 }} type="warning" showIcon message="请确认转换提醒" description={<><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul><Checkbox checked={warningsAcknowledged} onChange={(event) => setWarningsAcknowledged(event.target.checked)}>我已了解转换提醒</Checkbox></>} /> : null}
+            <Collapse className="lake-ddl-collapse" items={[{ key: 'ddl', label: '查看建表 SQL', children: <pre>{preview?.ddl}</pre> }]} />
+          </div>}
+        </div>
+        <div className="lake-wizard-footer">
+          <Button onClick={() => current ? setCurrent(0) : history.push('/lake/resources')}>{current ? '返回修改' : '取消'}</Button>
+          {current === 0 ? <Button type="primary" loading={previewLoading} disabled={!tableDetail || tableLoading} onClick={runPreview}>检查并继续</Button>
+            : <Button type="primary" loading={createLoading} disabled={!preview?.valid || !preview?.planFingerprint || (!!preview?.warnings?.length && !warningsAcknowledged)} onClick={create}>创建并配置全量任务</Button>}
+        </div>
+      </Card>
+    </div>
+  </PageContainer>;
 };
 
 export default ManagedTableWizard;
