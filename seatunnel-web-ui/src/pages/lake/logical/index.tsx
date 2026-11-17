@@ -41,6 +41,8 @@ const statusLabel = (status?: string) => {
   const labels: Record<string, string> = {
     READY: '就绪',
     VALID: '已通过',
+    MATCH: '已通过',
+    MISMATCH: '配置不一致',
     CONSISTENT: '一致',
     ERROR: '错误',
     FAILED: '失败',
@@ -59,8 +61,8 @@ const statusLabel = (status?: string) => {
 
 const responseMessage = (response: LakeApiResponse<unknown>) => response.msg || response.message || '请求失败，请稍后重试';
 const statusColor = (status?: string) => {
-  if (status === 'READY' || status === 'VALID' || status === 'CONSISTENT') return 'success';
-  if (status === 'ERROR' || status === 'FAILED' || status === 'INVALID') return 'error';
+  if (status === 'READY' || status === 'VALID' || status === 'CONSISTENT' || status === 'MATCH') return 'success';
+  if (status === 'ERROR' || status === 'FAILED' || status === 'INVALID' || status === 'MISMATCH') return 'error';
   if (status === 'CREATING' || status === 'PENDING_CREATE' || status === 'RUNNING') return 'processing';
   return 'default';
 };
@@ -303,7 +305,8 @@ const LogicalAccessPage: React.FC = () => {
       dataIndex: 'sourceDataSourceId',
       width: 260,
       ellipsis: true,
-      render: (value) => sourceLabelById.get(Number(value)) || `数据源 #${value || '未知'}`,
+      // ProTable's first argument can be a formatted React node; read the source ID from the record.
+      render: (_, row) => sourceLabelById.get(Number(row.sourceDataSourceId)) || `数据源 #${row.sourceDataSourceId || '未知'}`,
     },
     { title: '数据库类型', dataIndex: 'adapter', width: 120, render: (value) => optionLabel(adapterOptions, String(value || '')) },
     { title: '挂载范围', dataIndex: 'scope', width: 120, render: (value) => optionLabel(scopeOptions, String(value || '')) },
