@@ -20,7 +20,7 @@ export default {
       pathRewrite: { '^/api': '/api' },
     },
     '/v3/': {
-      target: 'http://192.168.100.95:9527',
+      target: process.env.DEV_API_TARGET || 'http://localhost:9527',
       changeOrigin: true,
     },
     '/profile/avatar/': {
