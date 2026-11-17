@@ -1158,7 +1158,9 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         }
         if (!rebuild) {
             mapping = new LakeOdsTableMapping();
-            mapping.initInsert();
+            // The atomic lifecycle writer allocates the id when it inserts;
+            // a preallocated id would be mistaken for a deleted-row rebuild.
+            if (persist) mapping.initInsert();
             mapping.setGeneration(1);
             mapping.setLockVersion(1);
             mapping.setDeleted(false);

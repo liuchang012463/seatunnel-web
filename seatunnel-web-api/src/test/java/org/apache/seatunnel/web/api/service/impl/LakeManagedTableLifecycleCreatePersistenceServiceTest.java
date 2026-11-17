@@ -33,6 +33,40 @@ import static org.mockito.Mockito.when;
 class LakeManagedTableLifecycleCreatePersistenceServiceTest {
 
     @Test
+    void firstCreateAllocatesTheMappingIdAndPersistsOneSharedLease() {
+        var mappings = mock(LakeOdsTableMappingDao.class);
+        var lifecycles = mock(LakeTableLifecycleBindingDao.class);
+        var operations = mock(LakeResourceOperationDao.class);
+        when(mappings.insert(any(LakeOdsTableMapping.class))).thenReturn(1);
+        when(lifecycles.insert(any(LakeTableLifecycleBinding.class))).thenReturn(1);
+        when(operations.insert(any(LakeResourceOperation.class))).thenReturn(1);
+        when(mappings.updateIfTokenAndVersionIncludingDeleted(any(), eq(null), eq(1)))
+                .thenAnswer(invocation -> {
+                    invocation.<LakeOdsTableMapping>getArgument(0).setLockVersion(2);
+                    return true;
+                });
+        var writer = new LakeManagedTableLifecycleCreatePersistenceService(mappings, lifecycles, operations,
+                new LakeOperationTransactionBoundary() {
+                    @Override
+                    public <T> T requiresNew(java.util.function.Supplier<T> action) { return action.get(); }
+                },
+                Clock.systemUTC());
+        var candidate = new LakeOdsTableMapping();
+        candidate.setOdsDatabaseBindingId(21L);
+        candidate.setSourceObjectRefId(41L);
+        candidate.setTargetTableName("orders");
+        var result = writer.start(candidate,
+                new LakeManagedTableLifecycleCreatePersistenceService.LifecycleSpec(
+                        901L, 1, "event_time", LakePartitionGranularity.DAY, 2, "{}"), 7);
+        assertNotNull(result.mapping().getId());
+        assertEquals(result.mapping().getId(), result.handle().resourceId());
+        assertEquals(2, result.handle().lockVersion());
+        assertNotNull(result.publication().lifecycleBindingId());
+        assertEquals(result.mapping().getOperationToken(), result.handle().operationToken());
+        verify(mappings).insert(candidate);
+    }
+
+    @Test
     void retryReopensMappingAndLifecycleBindingWithOneSharedLease() {
         LakeOdsTableMappingDao mappingDao = mock(LakeOdsTableMappingDao.class);
         LakeTableLifecycleBindingDao lifecycleDao = mock(LakeTableLifecycleBindingDao.class);

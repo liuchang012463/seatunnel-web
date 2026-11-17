@@ -35,6 +35,7 @@ import java.util.UUID;
  * coordinator; no Doris call is made while this transaction is open.</p>
  */
 @Service
+@lombok.extern.slf4j.Slf4j
 public class LakeManagedTableLifecycleCreatePersistenceService {
 
     private final LakeOdsTableMappingDao tableMappingDao;
@@ -165,6 +166,8 @@ public class LakeManagedTableLifecycleCreatePersistenceService {
         if (operationDao.insert(operation) <= 0) {
             throw invalid("lake operation journal");
         }
+        log.info("Prepared lake lifecycle create mappingId={} bindingId={} policyId={} operationId={}",
+                mapping.getId(), binding.getId(), lifecycle.policyId(), operation.getId());
         Integer handleVersion = mapping.getLockVersion() == null
                 ? mappingVersion + 1 : mapping.getLockVersion();
         return new StartResult(
@@ -276,6 +279,7 @@ public class LakeManagedTableLifecycleCreatePersistenceService {
                     mapping.getOdsDatabaseBindingId(), mapping.getSourceObjectRefId()) != null) {
                 throw invalid("MANAGED mapping already exists");
             }
+            mapping.initInsert();
             mapping.setCreateUserId(operatorId);
             mapping.setUpdateUserId(operatorId);
             mapping.setGeneration(positive(mapping.getGeneration()) != null ? mapping.getGeneration() : 1);

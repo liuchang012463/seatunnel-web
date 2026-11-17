@@ -260,6 +260,28 @@ class LakeManagedTableServiceImplTest {
     }
 
     @Test
+    void firstLifecycleCreatePassesAnUnpersistedCandidateToTheAtomicWriter() {
+        var writer = org.mockito.Mockito.mock(LakeManagedTableLifecycleCreatePersistenceService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "lifecycleCreatePersistenceService", writer);
+        when(sourceResolver.resolve(11L, "om-table")).thenReturn(lifecycleSource());
+        when(lifecyclePolicyDao.queryById(901L)).thenReturn(lifecyclePolicy());
+        var preview = service.preview(lifecyclePreviewRequest());
+        when(sourceObjectRefDao.insert(any(LakeSourceObjectRef.class))).thenReturn(1);
+        when(writer.start(any(), any(), eq(7))).thenAnswer(invocation -> {
+            LakeOdsTableMapping candidate = invocation.getArgument(0);
+            // An allocated id is reserved for rebuilding an existing deleted row.
+            assertNull(candidate.getId());
+            assertEquals("orders", candidate.getTargetTableName());
+            throw new LakeServiceException(LakeErrorCode.LAKE_RESOURCE_CONFLICT, "test atomic writer boundary");
+        });
+        LakeManagedTableCreateDTO request = new LakeManagedTableCreateDTO();
+        request.setPreviewToken(preview.getPreviewToken());
+        assertTrue(assertThrows(LakeServiceException.class, () -> service.create(request))
+                .getMessage().contains("test atomic writer boundary"));
+        verify(writer).start(any(), any(), eq(7));
+    }
+
+    @Test
     void lifecycleCreateUsesRetentionPropertyInSingleCreateAndNeverAltersAfterward() {
         when(sourceResolver.resolve(11L, "om-table")).thenReturn(lifecycleSource());
         when(lifecyclePolicyDao.queryById(901L)).thenReturn(lifecyclePolicy());
