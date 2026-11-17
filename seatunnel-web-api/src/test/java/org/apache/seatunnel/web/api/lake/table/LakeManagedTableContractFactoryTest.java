@@ -21,14 +21,13 @@ class LakeManagedTableContractFactoryTest {
     private final LakeManagedTableContractFactory factory = new LakeManagedTableContractFactory();
 
     @Test
-    void keyDefaultsToVarcharAndValueDefaultsToStringFromFreshSource() {
+    void keyPreservesNumericTypeAndUnknownValueRemainsString() {
         LakeManagedTablePreviewDTO request = new LakeManagedTablePreviewDTO();
         request.setTableModel(LakeTableModel.DUPLICATE);
 
         TargetContract contract = factory.build(source(), request);
 
-        assertEquals(DorisTypeBase.VARCHAR, contract.getColumns().get(0).getTargetType().getBase());
-        assertEquals(255, contract.getColumns().get(0).getTargetType().getLength());
+        assertEquals(DorisTypeBase.BIGINT, contract.getColumns().get(0).getTargetType().getBase());
         assertEquals(DorisTypeBase.STRING, contract.getColumns().get(1).getTargetType().getBase());
         assertEquals(List.of("id"), contract.getKeyColumns());
         assertEquals("id", contract.getColumns().get(0).getTargetName());

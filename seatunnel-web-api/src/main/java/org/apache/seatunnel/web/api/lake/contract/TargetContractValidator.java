@@ -191,6 +191,11 @@ public final class TargetContractValidator {
         if (TargetDistribution.RANDOM.equals(type) && !columns.isEmpty()) {
             throw new IllegalArgumentException("Random distribution must not declare columns");
         }
+        // Doris only supports RANDOM on DUPLICATE tables. Reject at preview,
+        // rather than issuing a CREATE that can never succeed.
+        if (tableModel == LakeTableModel.UNIQUE && TargetDistribution.RANDOM.equals(type)) {
+            throw new IllegalArgumentException("Unique 表必须使用 Key 字段进行 Hash 分桶");
+        }
         for (String column : columns) {
             if (!byName.containsKey(column)) {
                 throw new IllegalArgumentException("Distribution column is not declared");

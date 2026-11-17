@@ -123,6 +123,14 @@ class DorisContractTest {
     }
 
     @Test
+    void rejectsUniqueRandomBeforeIssuingDorisDdl() {
+        TargetContract invalid = contract(LakeTableModel.UNIQUE, TargetPartition.disabled(),
+                TargetDistribution.random());
+        assertThrows(IllegalArgumentException.class,
+                () -> new DorisDdlBuilder().buildCreateTable("lake_db", "invalid", invalid));
+    }
+
+    @Test
     void capabilityIsEnabledOnlyWhenAllSixChecksPass() {
         DorisCapability result = DorisCapabilityResolver.evaluate(
                 new DorisCapabilityChecks(true, true, true, true, true, true));

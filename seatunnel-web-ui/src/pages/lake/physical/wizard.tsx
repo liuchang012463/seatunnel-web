@@ -45,6 +45,7 @@ import {
   previewManagedTable,
 } from './service';
 import type { ApiResponse, OdsSourceTable, OdsSourceTableDetail, PhysicalDataSource } from './types';
+import { primaryKeyNames, sourceNullable, suggestedDorisType } from './tableDefaults';
 import './wizard.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -72,25 +73,11 @@ interface WizardValues {
 
 const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => response.message || response.msg || fallback;
 
-/**
- * The contract deliberately does not guess a generic source-to-Doris type
- * conversion.  Ordinary columns therefore start at STRING and OM primary
- * keys start at the safe VARCHAR key type; users can opt into a supported
- * scalar type explicitly in the mapping table.
- */
-const normalizeType = (_value?: string, key = false) => key ? 'VARCHAR(255)' : 'STRING';
-
 const isDateType = (value?: string) => /^(DATE|DATETIME)(?:\b|\()/i.test(String(value || '').trim());
 
 const isKeyForbiddenType = (value?: string) => {
   const type = String(value || '').toUpperCase();
   return !type || /STRING|TEXT|FLOAT|DOUBLE|ARRAY|MAP|STRUCT|JSON/.test(type);
-};
-
-const sourceKeyColumns = (detail: OdsSourceTableDetail) => {
-  const primary = (detail.tableConstraints || []).find((constraint) => /PRIMARY/i.test(constraint.constraintType || ''));
-  const constrained = new Set(primary?.columns || []);
-  return new Set((detail.columns || []).filter((column) => constrained.has(column.name) || /PRIMARY/i.test(column.constraint || '')).map((column) => column.name));
 };
 
 const ManagedTableWizard: React.FC = () => {
@@ -176,15 +163,15 @@ const ManagedTableWizard: React.FC = () => {
       const response = await fetchSourceTableDetail(sourceId, table.id);
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '源表结构读取失败'));
       setTableDetail(response.data);
-      const keys = sourceKeyColumns(response.data);
+      const keys = primaryKeyNames(response.data);
       const nextColumns = (response.data.columns || []).map((column) => {
-        const key = keys.has(column.name);
+        const key = keys.has(column.name.toLowerCase());
         return {
           sourceField: column.name,
           sourceType: column.dataTypeDisplay || column.dataType,
-          sourceNullable: column.constraint ? !/NOT_NULL|NOT NULL/i.test(column.constraint) : true,
+          sourceNullable: sourceNullable(column, keys),
           targetField: column.name,
-          targetType: normalizeType(column.dataTypeDisplay || column.dataType, key),
+          targetType: suggestedDorisType(column, key),
           key,
         };
       });
@@ -208,7 +195,7 @@ const ManagedTableWizard: React.FC = () => {
     setColumns((currentColumns) => currentColumns.map((column, columnIndex) => {
       if (columnIndex !== index) return column;
       const next = { ...column, ...patch };
-      if (patch.key !== undefined && patch.key) next.targetType = normalizeType(next.targetType, true);
+      if (patch.key && isKeyForbiddenType(next.targetType)) next.targetType = 'VARCHAR(255)';
       if (patch.targetType !== undefined && next.key && isKeyForbiddenType(next.targetType)) {
         next.targetType = 'VARCHAR(255)';
       }
@@ -217,7 +204,7 @@ const ManagedTableWizard: React.FC = () => {
   };
 
   const payload = () => {
-    const values = form.getFieldsValue();
+    const values = form.getFieldsValue(true);
     return {
       sourceDataSourceId: sourceId,
       omEntityId: selectedTable?.id,
@@ -228,7 +215,9 @@ const ManagedTableWizard: React.FC = () => {
       columns: columns.map((column) => ({ sourceField: column.sourceField, targetField: column.targetField, targetType: column.targetType, key: column.key })),
       keyColumns: columns.filter((column) => column.key).map((column) => column.targetField),
       partition: { enabled: Boolean(values.partitionEnabled), column: values.partitionEnabled ? values.partitionColumn : undefined, granularity: values.partitionEnabled ? values.granularity : undefined },
-      distribution: { type: 'RANDOM', columns: [], buckets: 'AUTO' },
+      distribution: values.tableModel === 'UNIQUE'
+        ? { type: 'HASH', columns: columns.filter((column) => column.key).map((column) => column.targetField), buckets: 'AUTO' }
+        : { type: 'RANDOM', columns: [], buckets: 'AUTO' },
     };
   };
 
@@ -304,9 +293,9 @@ const ManagedTableWizard: React.FC = () => {
     { title: 'Key', dataIndex: 'key', width: 72, render: (_: unknown, row: WizardColumn, index: number) => <Checkbox checked={row.key} onChange={(event) => updateColumn(index, { key: event.target.checked })} /> },
     { title: '源字段', dataIndex: 'sourceField', width: 180 },
     { title: '源类型', dataIndex: 'sourceType', width: 160, render: (value: string) => <Text type="secondary">{value || '-'}</Text> },
-    { title: 'Nullable', dataIndex: 'sourceNullable', width: 100, render: (value: boolean) => value ? 'YES' : 'NO' },
+    { title: '允许空值', dataIndex: 'sourceNullable', width: 100, render: (value: boolean) => value ? '是' : '否' },
     { title: '目标字段', dataIndex: 'targetField', width: 190, render: (_: unknown, row: WizardColumn, index: number) => <Input value={row.targetField} onChange={(event) => updateColumn(index, { targetField: event.target.value })} /> },
-    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={['STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'].map((value) => ({ value, label: value, disabled: row.key && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
+    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={Array.from(new Set([row.targetType, 'STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'])).map((value) => ({ value, label: value, disabled: row.key && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
     { title: '说明', key: 'hint', render: (_: unknown, row: WizardColumn) => row.key && row.targetType === 'VARCHAR(255)' ? <Text type="warning"><InfoCircleOutlined /> Key 不使用 STRING</Text> : null },
   ], [columns]);
 

@@ -66,7 +66,7 @@ public final class LakeManagedTableContractFactory {
             }
             String targetName = override == null || isBlank(override.getTargetField())
                     ? DorisIdentifier.normalize(sourceName) : DorisIdentifier.normalize(override.getTargetField());
-            TargetType targetType = targetType(override == null ? null : override.getTargetType(), key);
+            TargetType targetType = targetType(override == null ? null : override.getTargetType(), key, sourceColumn);
             boolean nullable = !Boolean.FALSE.equals(sourceColumn.nullable());
             if (key && nullable) {
                 throw new IllegalArgumentException("Key columns must be NOT NULL in the source");
@@ -258,11 +258,44 @@ public final class LakeManagedTableContractFactory {
                 source.getKey().booleanValue(), ordinal);
     }
 
-    private static TargetType targetType(String type, boolean key) {
-        if (isBlank(type)) {
-            return key ? TargetType.varchar(255) : new TargetType(DorisTypeBase.STRING);
+    private static TargetType targetType(String type, boolean key, SourceColumnSnapshot source) {
+        if (!isBlank(type)) {
+            return TargetType.parseDorisType(type);
         }
-        return TargetType.parseDorisType(type);
+        // Keep known scalar types instead of coercing every key to VARCHAR
+        // and every time/value field to STRING. Unknown types remain explicit strings.
+        String base = String.valueOf(source.dataType()).toUpperCase(Locale.ROOT).split("\\(")[0].trim();
+        String mapped = switch (base) {
+            case "BYTE", "TINYINT" -> "TINYINT";
+            case "SHORT", "SMALLINT" -> "SMALLINT";
+            case "INT", "INTEGER" -> "INT";
+            case "BIGINT", "LONG" -> "BIGINT";
+            case "BOOLEAN", "BOOL" -> "BOOLEAN";
+            case "FLOAT" -> key ? null : "FLOAT";
+            case "DOUBLE", "REAL" -> key ? null : "DOUBLE";
+            case "DATE" -> "DATE";
+            case "DATETIME", "DATETIMEV2", "TIMESTAMP" -> "DATETIME";
+            default -> null;
+        };
+        if (mapped != null) {
+            if (mapped.equals("DATETIME") && source.scale() != null
+                    && source.scale() > 0 && source.scale() <= 6) {
+                return new TargetType(DorisTypeBase.DATETIME, null, null, source.scale().intValue());
+            }
+            return TargetType.parseDorisType(mapped);
+        }
+        if (List.of("DECIMAL", "NUMERIC", "NUMBER").contains(base)
+                && source.precision() != null && source.scale() != null
+                && source.precision() >= 1 && source.precision() <= 38
+                && source.scale() >= 0 && source.scale() <= source.precision()) {
+            return TargetType.decimal(source.precision().intValue(), source.scale().intValue());
+        }
+        if (key || base.equals("VARCHAR") || base.equals("CHAR")) {
+            int length = source.dataLength() == null ? 255
+                    : (int) Math.max(1, Math.min(1_048_576, source.dataLength()));
+            return TargetType.varchar(length);
+        }
+        return new TargetType(DorisTypeBase.STRING);
     }
 
     private static TargetPartition partition(LakeManagedTablePartitionDTO source) {
@@ -323,6 +356,8 @@ public final class LakeManagedTableContractFactory {
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return normalized.equals("DATE")
+                || normalized.equals("TIMESTAMP")
+                || normalized.equals("DATETIMEV2")
                 || normalized.matches("DATETIME(?:\\s*\\(\\s*\\d+\\s*\\))?");
     }
 
