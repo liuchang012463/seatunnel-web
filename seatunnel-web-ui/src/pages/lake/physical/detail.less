@@ -3,14 +3,26 @@
 }
 
 .lake-detail-hero {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+  flex: 0 0 auto;
   min-height: 132px;
-  padding: 24px;
+  height: auto;
+  padding: 0;
   margin-bottom: 18px;
   background: linear-gradient(110deg, rgba(33, 135, 168, 0.28), rgba(0, 46, 65, 0.72));
   border: 1px solid rgba(77, 210, 255, 0.28);
+}
+
+/* Card 会包裹 ant-card-body，布局必须施加在实际承载图标和文字的这一层。 */
+.lake-detail-hero > .ant-card-body {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  width: 100%;
+  min-height: 132px;
+  height: auto;
+  box-sizing: border-box;
+  padding: 24px;
 }
 
 .lake-detail-hero-icon {
@@ -27,11 +39,13 @@
 }
 
 .lake-detail-hero-copy {
-  flex: 1;
+  flex: 1 1 240px;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .lake-detail-hero-copy .ant-typography {
+  margin-top: 0;
   margin-bottom: 0;
 }
 
@@ -45,6 +59,7 @@
 
 .lake-detail-hero-status {
   align-self: flex-start;
+  flex-shrink: 0;
 }
 
 .lake-summary-grid {
