@@ -41,7 +41,7 @@ public class TimeVariableController {
 
     @GetMapping("/{id}")
     @Operation(summary = "查询时间变量详情")
-    public Result<TimeVariableVO> getById(@PathVariable Long id) {
+    public Result<TimeVariableVO> getById(@PathVariable("id") Long id) {
         return Result.buildSuc(timeVariableService.getById(id));
     }
 
@@ -53,13 +53,13 @@ public class TimeVariableController {
 
     @PutMapping("/{id}")
     @Operation(summary = "修改时间变量")
-    public Result<Boolean> update(@PathVariable Long id, @RequestBody TimeVariableUpdateDTO dto) {
+    public Result<Boolean> update(@PathVariable("id") Long id, @RequestBody TimeVariableUpdateDTO dto) {
         return Result.buildSuc(timeVariableService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除时间变量")
-    public Result<Boolean> delete(@PathVariable Long id) {
+    public Result<Boolean> delete(@PathVariable("id") Long id) {
         timeVariableService.delete(id);
         return Result.buildSuc(true);
     }
