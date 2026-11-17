@@ -40,12 +40,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
+import static org.apache.seatunnel.web.api.metadata.MetadataPageCollector.collectPages;
 
 /**
  * User and scheduler operations on the existing DataSource binding. Every external
@@ -56,7 +55,6 @@ import java.util.function.Function;
 public class MetadataPipelineOperationService {
 
     private static final int MAX_OM_PAGE_SIZE = 1000;
-    private static final int MAX_OM_PAGES = 10_000;
     private static final long RESERVATION_TIME_TOLERANCE_MILLIS = 5_000L;
     private static final int MAX_PIPELINE_TRIGGER_ATTEMPTS = 32;
     private static final long INITIAL_PIPELINE_TRIGGER_RETRY_DELAY_MILLIS = 2_000L;
@@ -1712,25 +1710,6 @@ public class MetadataPipelineOperationService {
                 .max(Comparator.comparing(run -> firstNonNull(run.startDate(), run.timestamp(), 0L)))
                 .map(run -> OpenMetadataRunStatusMapper.fromPipelineState(run.pipelineState()))
                 .orElse(MetadataRunStatus.NEVER);
-    }
-
-    private static <T> List<T> collectPages(Function<String, OpenMetadataPage<T>> loader) {
-        List<T> result = new ArrayList<>();
-        String after = null;
-        Set<String> seen = new HashSet<>();
-        for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
-            OpenMetadataPage<T> page = loader.apply(after);
-            if (page == null) {
-                break;
-            }
-            result.addAll(page.data() == null ? List.of() : page.data());
-            String next = page.after();
-            if (next == null || next.isBlank() || !seen.add(next)) {
-                break;
-            }
-            after = next;
-        }
-        return result;
     }
 
     private static MetadataRunStateVO runState(

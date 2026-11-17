@@ -48,6 +48,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Core tests exercise SPI discovery; production implementations are assembled by api. -->
+        <dependency>
+            <groupId>org.apache.seatunnel.web</groupId>
+            <artifactId>seatunnel-web-datasource-all</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 

@@ -1,5 +1,6 @@
 import { Link } from '@umijs/max';
-import AnimatedMetric from './AnimatedMetric';
+import MetricsGrid from './MetricsGrid';
+import { integerFormat, numberFormat, asNumber, toRecords, toBytes, chartRecordsToRaw, chartBytesToRaw, formatRecords, formatBytes, formatTime } from './metricFormat';
 import { Spin } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -37,7 +38,7 @@ import type {
   DataInventorySummary,
 } from '@/pages/data-source/types';
 import { fetchChartData, fetchSummaryData } from '@/pages/metrics/api';
-import type { ApiChartData, ChartDataItem, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
+import type { ApiChartData, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
 import './index.less';
 
 type TaskTypeMeta = {
@@ -137,68 +138,6 @@ const layoutColumnYs = (count: number, top = 96, bottom = 500) => {
 const topologyTopPercent = (y: number) => (y / 5.6) + '%';
 
 const SOURCE_TONES = ['cyan', 'green', 'amber', 'blue', 'pink', 'violet'];
-const integerFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 0 });
-const numberFormat = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
-const RECORD_FACTORS: Record<string, number> = { '100M': 100_000_000, '万': 10_000 };
-const BYTE_FACTORS: Record<string, number> = {
-  B: 1,
-  KB: 2 ** 10,
-  MB: 2 ** 20,
-  GB: 2 ** 30,
-  TB: 2 ** 40,
-};
-
-const asNumber = (value: number | string | null | undefined) => {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const recordFactorForUnit = (unit: unknown) => {
-  const normalized = String(unit || '').trim();
-  if (normalized.startsWith('100M')) return RECORD_FACTORS['100M'];
-  if (normalized.includes('万')) return RECORD_FACTORS['万'];
-  return 1;
-};
-
-const byteFactorForUnit = (unit: unknown) => BYTE_FACTORS[String(unit || 'B').trim().toUpperCase()] || 1;
-
-const toRecords = (summary: SummaryData) =>
-  asNumber(summary.totalRecords) * recordFactorForUnit(summary.totalRecordsUnit);
-
-const toBytes = (summary: SummaryData) =>
-  asNumber(summary.totalBytes) * byteFactorForUnit(summary.totalBytesUnit);
-
-const chartRecordsToRaw = (point: ChartDataItem) =>
-  asNumber(point.value) * recordFactorForUnit(point.unit);
-
-const chartBytesToRaw = (point: ChartDataItem) =>
-  asNumber(point.value) * byteFactorForUnit(point.unit);
-
-const formatRecords = (value: number) => {
-  if (value >= 100_000_000) return { value: numberFormat.format(value / 100_000_000), unit: '亿条' };
-  if (value >= 10_000) return { value: numberFormat.format(value / 10_000), unit: '万条' };
-  return { value: integerFormat.format(value), unit: '条' };
-};
-
-const formatBytes = (value: number) => {
-  const units = ['字节', 'KB', 'MB', 'GB', 'TB'];
-  let unitIndex = 0;
-  let scaledValue = Math.max(0, value);
-  while (scaledValue >= 1024 && unitIndex < units.length - 1) {
-    scaledValue /= 1024;
-    unitIndex += 1;
-  }
-  return { value: numberFormat.format(scaledValue), unit: units[unitIndex] };
-};
-
-const formatTime = (date: Date) =>
-  new Intl.DateTimeFormat('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(date);
-
 const sourceIcon = (name: string): ReactNode => {
   const type = name.toUpperCase();
   if (/SFTP|FTP|S3|MINIO|HDFS|OSS/.test(type)) return <FileText size={16} strokeWidth={1.8} />;
@@ -921,17 +860,7 @@ const IngestionSituationPage: React.FC = () => {
         </aside>
 
         <section className="center-stage">
-          <div className="metrics-grid" aria-label="引接指标汇总">
-            {kpis.map((metric) => (
-              <article key={metric.label} className={'metric-card ' + metric.tone}>
-                <span className="metric-name">{metric.label}</span>
-                <span className="metric-value">
-                  <AnimatedMetric value={metric.value} />
-                  {metric.unit ? <small>{metric.unit}</small> : null}
-                </span>
-              </article>
-            ))}
-          </div>
+          <MetricsGrid metrics={kpis} />
 
           <section className="panel topology-panel">
             <div className="topology-heading">
