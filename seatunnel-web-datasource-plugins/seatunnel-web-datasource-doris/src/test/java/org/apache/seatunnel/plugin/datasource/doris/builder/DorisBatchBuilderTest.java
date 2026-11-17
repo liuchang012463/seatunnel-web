@@ -88,4 +88,29 @@ class DorisBatchBuilderTest {
                 .nodeConfig(ConfigFactory.parseString(nodeConfig))
                 .build();
     }
+
+    @Test
+    void lakeJdbcProjectionResolvesStreamLoadEndpointWithoutUsingQueryPort() {
+        Config config = builder.buildSinkHocon(HoconBuildContext.builder()
+                .connectionConfig(ConfigFactory.parseString(
+                        "url = \"jdbc:mysql://doris.example:19030/ods?useSSL=false\"\n"
+                                + "user = test\npassword = test\ndatabase = ods"))
+                .nodeConfig(ConfigFactory.parseString("table = orders"))
+                .build());
+
+        assertEquals("doris.example:8030", config.getString("fenodes"));
+    }
+
+    @Test
+    void explicitStreamLoadEndpointOverridesJdbcProjectionDefault() {
+        Config config = builder.buildSinkHocon(HoconBuildContext.builder()
+                .connectionConfig(ConfigFactory.parseString(
+                        "url = \"jdbc:mysql://doris.example:9030/ods\"\n"
+                                + "fenodes = \"stream.example:18030\"\n"
+                                + "user = test\npassword = test\ndatabase = ods"))
+                .nodeConfig(ConfigFactory.parseString("table = orders"))
+                .build());
+
+        assertEquals("stream.example:18030", config.getString("fenodes"));
+    }
 }

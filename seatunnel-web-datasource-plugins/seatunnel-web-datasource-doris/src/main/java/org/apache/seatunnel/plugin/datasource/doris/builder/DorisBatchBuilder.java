@@ -11,6 +11,7 @@ import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.JdbcConfigReaders;
 import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -219,6 +220,18 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
     private void putDorisConnConfig(Config conn, Map<String, Object> map) {
         // fenodes - FE HTTP地址，用于 StreamLoad 读写
         String fenodes = JdbcConfigReaders.getString(conn, FENODES, "");
+        if (fenodes.isBlank()) {
+            // Existing lake projections contain only the JDBC URL. Resolve
+            // their default FE HTTP endpoint without requiring users to
+            // re-save the warehouse; explicit FE nodes always take priority.
+            String jdbcUrl = JdbcConfigReaders.getString(conn, "url", "");
+            if (jdbcUrl.startsWith("jdbc:mysql://")) {
+                URI endpoint = URI.create(jdbcUrl.substring("jdbc:".length()));
+                if (endpoint.getHost() != null) {
+                    fenodes = endpoint.getHost() + ":8030";
+                }
+            }
+        }
         if (!fenodes.isEmpty()) {
             map.put(FENODES, fenodes);
         }

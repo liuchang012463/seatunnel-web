@@ -651,6 +651,10 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
     private String connectionJson(ValidConfig config, String password, String requestedLocation) {
         ObjectNode node = JSONUtils.createObjectNode();
         node.put("url", config.jdbcUrl());
+        // StreamLoad uses the FE HTTP endpoint, independently of JDBC's
+        // query port. Keep both in the task-compatible projection.
+        node.put("fenodes", jdbcHost(config.jdbcUrl(), "localhost") + ":" + DEFAULT_FE_HTTP_PORT);
+        node.put("queryPort", jdbcPort(config.jdbcUrl(), "9030"));
         node.put("user", config.username());
         node.put("password", password);
         node.put("driver", config.driverClass());
