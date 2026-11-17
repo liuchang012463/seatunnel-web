@@ -77,3 +77,5 @@ preview-request.json
 
 # Project docs & reference binaries (kept locally, not versioned)
 /docs/
+
+/review
