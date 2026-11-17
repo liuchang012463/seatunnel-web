@@ -9,6 +9,13 @@ import {
 } from '../iframeLayout';
 
 describe('iframe layout route prefix', () => {
+  it.each(['/bi', '/metrics', '/data-source'])(
+    'keeps chrome hidden inside an actual iframe on %s',
+    (pathname) => {
+      expect(shouldHideLayout(pathname, { self: {}, top: {} })).toBe(true);
+    },
+  );
+
   it.each([
     '/iframe',
     '/iframe/',

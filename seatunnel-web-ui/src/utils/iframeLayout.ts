@@ -47,10 +47,14 @@ const splitPathAndRest = (pathOrUrl: string): { path: string; rest: string } => 
 
 export const shouldHideLayout = (
   pathname = typeof window === 'undefined' ? '' : window.location.pathname,
+  context: Pick<IframeWindowContext, 'self' | 'top'> | undefined =
+    typeof window === 'undefined' ? undefined : window,
 ): boolean => {
   const normalizedPathname = normalizePathname(pathname);
 
   return (
+    // 嵌入状态由窗口关系决定，返回或刷新到普通路由后也不能恢复宿主菜单。
+    Boolean(context && context.self !== context.top) ||
     normalizedPathname === HIDDEN_LAYOUT_ROUTE_PREFIX ||
     normalizedPathname.startsWith(`${HIDDEN_LAYOUT_ROUTE_PREFIX}/`)
   );
@@ -85,7 +89,8 @@ export const prefixLayoutPath = (pathOrUrl: string): string => {
   const { path, rest } = splitPathAndRest(pathOrUrl);
   const normalizedPath = normalizePathname(path);
 
-  if (shouldHideLayout(normalizedPath)) {
+  // 这里只检查路径前缀，不能用包含窗口嵌入状态的布局判断，否则会漏加前缀。
+  if (normalizedPath === HIDDEN_LAYOUT_ROUTE_PREFIX || normalizedPath.startsWith(`${HIDDEN_LAYOUT_ROUTE_PREFIX}/`)) {
     return pathOrUrl;
   }
 
@@ -141,6 +146,9 @@ export const rewriteInAppLocation = <T extends InAppLocationTo>(
 export const applyLayoutVisibility = (hidden: boolean): void => {
   if (typeof document === 'undefined') {
     return;
+  }
+  if (document.documentElement.dataset.hideSidebar !== String(hidden)) {
+    console.debug('[iframe-layout] 布局可见性更新', { hidden });
   }
   document.documentElement.dataset.hideSidebar = String(hidden);
   document.documentElement.dataset.hideHeader = String(hidden);
