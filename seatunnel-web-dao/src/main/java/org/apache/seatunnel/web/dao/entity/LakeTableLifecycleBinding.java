@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.LakeLifecycleBindingStatus;
@@ -35,14 +37,18 @@ public class LakeTableLifecycleBinding extends BaseEntity {
 
     private LakeLifecycleBindingStatus status;
 
+    // Lifecycle operations share the same explicit lease-release semantics as lake resources.
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String operationToken;
 
     private Integer generation = 1;
 
     private Integer lockVersion = 1;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorCode;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorMessage;
 
     private Integer createUserId;

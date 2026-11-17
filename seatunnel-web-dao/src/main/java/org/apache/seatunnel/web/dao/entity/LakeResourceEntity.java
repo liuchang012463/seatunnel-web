@@ -1,6 +1,8 @@
 package org.apache.seatunnel.web.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.Version;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -17,12 +19,16 @@ public abstract class LakeResourceEntity extends BaseEntity {
 
     private Integer generation = 1;
 
+    // Completion must persist NULL; MyBatis' default NOT_NULL strategy leaves a stale lease.
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String operationToken;
 
     private LakeResourceStatus resourceStatus = LakeResourceStatus.PENDING_CREATE;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorCode;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String errorMessage;
 
     private Date lastReconcileAt;
