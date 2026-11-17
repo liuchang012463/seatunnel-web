@@ -1,13 +1,10 @@
-import {
-  PlusOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
-import { PageContainer, ProTable } from '@ant-design/pro-components';
-import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Button, Card, Drawer, Empty, Form, Input, message, Select, Space, Tag, Typography, Pagination } from 'antd';
-import { history } from '@umijs/max';
-import { useLocation } from '@umijs/max';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  LakeApiResponse,
+  LakeCatalog,
+  LakeCatalogScope,
+  LakeLogicalCapability,
+  LakePhysicalDataSource,
+} from '@/services/lake';
 import {
   createCatalog,
   fetchCatalogCapability,
@@ -16,56 +13,48 @@ import {
   normalizeLakePage,
   probeCatalogCapability,
 } from '@/services/lake';
-import type { LakeApiResponse, LakeCatalog, LakeCatalogScope, LakeLogicalCapability, LakePhysicalDataSource } from '@/services/lake';
+import { withTimeout } from '@/utils/withTimeout';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
+import { history, useLocation } from '@umijs/max';
+import {
+  Alert,
+  Button,
+  Card,
+  Collapse,
+  Drawer,
+  Empty,
+  Form,
+  Input,
+  message,
+  Pagination,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CapabilityReason } from '../components/LakeStatus';
 import { useMasterDataNames, type MasterDataNames } from '../useMasterDataNames';
-import { withTimeout } from '@/utils/withTimeout';
 import CatalogScopePicker from './CatalogScopePicker';
 import './index.less';
+import {
+  adapterLabel,
+  catalogScopeLabel,
+  catalogStatusColor as statusColor,
+  catalogStatusLabel as statusLabel,
+} from './presentation';
 
 const adapterOptions = [
   { label: 'MySQL', value: 'MYSQL' },
   { label: 'PostgreSQL', value: 'POSTGRESQL' },
   { label: 'Oracle', value: 'ORACLE' },
 ];
-const scopeOptions = [
-  { label: '全部库表', value: 'ALL' },
-  { label: '指定数据库', value: 'DATABASE' },
-  { label: '指定表', value: 'TABLE' },
-];
 
-const optionLabel = (options: Array<{ label: string; value: string }>, value?: string) =>
-  options.find((option) => option.value === value)?.label || value || '未设置';
-
-const statusLabel = (status?: string) => {
-  const labels: Record<string, string> = {
-    READY: '就绪',
-    VALID: '已通过',
-    MATCH: '已通过',
-    MISMATCH: '配置不一致',
-    CONSISTENT: '一致',
-    ERROR: '错误',
-    FAILED: '失败',
-    CREATE_FAILED: '创建失败',
-    INVALID: '未通过',
-    MISSING: '远端缺失',
-    CREATING: '创建中',
-    PENDING_CREATE: '等待创建',
-    RUNNING: '运行中',
-    DELETING: '删除中',
-    DELETED: '已删除',
-    UNKNOWN: '状态未知',
-  };
-  return labels[status || ''] || '未知';
-};
-
-const responseMessage = (response: LakeApiResponse<unknown>) => response.msg || response.message || '请求失败，请稍后重试';
-const statusColor = (status?: string) => {
-  if (status === 'READY' || status === 'VALID' || status === 'CONSISTENT' || status === 'MATCH') return 'success';
-  if (status === 'ERROR' || status === 'FAILED' || status === 'INVALID' || status === 'MISMATCH') return 'error';
-  if (status === 'CREATING' || status === 'PENDING_CREATE' || status === 'RUNNING') return 'processing';
-  return 'default';
-};
+const responseMessage = (response: LakeApiResponse<unknown>) =>
+  response.msg || response.message || '请求失败，请稍后重试';
 
 interface CatalogFormValues {
   sourceDataSourceId?: number;
@@ -78,7 +67,9 @@ interface CatalogFormValues {
 
 const sourceOption = (source: LakePhysicalDataSource, names?: MasterDataNames) => ({
   value: source.sourceDataSourceId,
-  label: `${source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`} · ${source.dbType || '未知类型'} · ${names?.unitNameByCode(source.unitCode) || '未归属'}/${names?.systemNameByCode(source.systemCode) || '未归属'}`,
+  label: `${source.sourceDataSourceName || `数据源 #${source.sourceDataSourceId}`} · ${adapterLabel(source.dbType)} · ${
+    names?.unitNameByCode(source.unitCode) || '未归属'
+  }/${names?.systemNameByCode(source.systemCode) || '未归属'}`,
 });
 
 const adapterForDbType = (dbType?: string): string | undefined => {
@@ -89,19 +80,21 @@ const adapterForDbType = (dbType?: string): string | undefined => {
   return undefined;
 };
 
-const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCreated: () => void; sources: LakePhysicalDataSource[]; initialSourceId?: number; masterNames: MasterDataNames }> = ({
-  open,
-  onClose,
-  onCreated,
-  sources,
-  initialSourceId,
-  masterNames,
-}) => {
+const CreateCatalogDrawer: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+  sources: LakePhysicalDataSource[];
+  initialSourceId?: number;
+  masterNames: MasterDataNames;
+}> = ({ open, onClose, onCreated, sources, initialSourceId, masterNames }) => {
   const [form] = Form.useForm<CatalogFormValues>();
   const [loading, setLoading] = useState(false);
   const [capabilityLoading, setCapabilityLoading] = useState(false);
   const [capability, setCapability] = useState<LakeLogicalCapability>();
   const [capabilityError, setCapabilityError] = useState<string>();
+  const [existingCatalog, setExistingCatalog] = useState<LakeCatalog>();
+  const [checkingExisting, setCheckingExisting] = useState(false);
   const sourceDataSourceId = Form.useWatch('sourceDataSourceId', form);
   const adapter = Form.useWatch('adapter', form);
   const scope = Form.useWatch('scope', form);
@@ -120,7 +113,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
     form.setFieldsValue({
       sourceDataSourceId: initialSourceId,
       adapter: initialSourceAdapter,
-      scope: 'TABLE',
+      scope: 'DATABASE',
       targetCatalogName: initialSourceId ? `ext_ds_${initialSourceId}` : '',
       databaseInclude: [],
       tableInclude: [],
@@ -128,6 +121,24 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
     setCapability(undefined);
     setCapabilityError(undefined);
   }, [form, initialSourceAdapter, initialSourceId, open, sources]);
+
+  useEffect(() => {
+    let active = true;
+    setExistingCatalog(undefined);
+    if (!open || !sourceDataSourceId) return;
+    setCheckingExisting(true);
+    void fetchCatalogs({ pageNo: 1, pageSize: 1, sourceDataSourceId })
+      .then((response) => {
+        if (active && response.code === 0) setExistingCatalog(normalizeLakePage(response.data).data[0]);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setCheckingExisting(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, sourceDataSourceId]);
 
   useEffect(() => {
     if (!open || !sourceDataSourceId || !adapter || !scope) return;
@@ -150,14 +161,19 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
       .finally(() => {
         if (!cancelled) setCapabilityLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [adapter, open, scope, sourceDataSourceId]);
 
-  const supported = capability?.logicalSupported === true || capability?.supported === true || capability?.enabled === true;
+  const supported =
+    capability?.logicalSupported === true || capability?.supported === true || capability?.enabled === true;
   const reasons = capability?.reasonCodes?.length ? capability.reasonCodes : capability?.disabledReasons || [];
-  const sourceNetworkPending = !supported && reasons.length > 0 && reasons.every((reason) => reason.endsWith('_UNKNOWN'));
+  const sourceNetworkPending =
+    !supported && reasons.length > 0 && reasons.every((reason) => reason.endsWith('_UNKNOWN'));
   const canAttempt = supported || sourceNetworkPending;
   const submit = async (values: CatalogFormValues) => {
+    if (existingCatalog || checkingExisting) return;
     if (!canAttempt || !sourceDataSourceId || !adapter || !scope) {
       message.warning(sourceNetworkPending ? '源端网络将在创建时验证，请稍候重试' : '当前数据源不满足逻辑挂载条件');
       return;
@@ -165,10 +181,14 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
     setLoading(true);
     try {
       if (sourceNetworkPending) {
-        const checked = await probeCatalogCapability(sourceDataSourceId, { adapter, scope });
+        const checked = await probeCatalogCapability(sourceDataSourceId, {
+          adapter,
+          scope,
+        });
         if (checked.code !== 0 || !checked.data) throw new Error(responseMessage(checked));
         setCapability(checked.data);
-        if (!(checked.data.logicalSupported || checked.data.supported || checked.data.enabled)) throw new Error('连接验证未通过，请查看上方原因后重试');
+        if (!(checked.data.logicalSupported || checked.data.supported || checked.data.enabled))
+          throw new Error('连接验证未通过，请查看上方原因后重试');
       }
       const response = await createCatalog({
         ...values,
@@ -192,30 +212,62 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
   return (
     <Drawer
       open={open}
-      title="创建逻辑挂载"
+      title="创建挂载"
       width={760}
       destroyOnHidden
       onClose={onClose}
-      footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={loading} disabled={capabilityLoading || !canAttempt} onClick={() => form.submit()}>创建并验证</Button></Space>}
+      footer={
+        <Space>
+          <Button onClick={onClose}>取消</Button>
+          <Button
+            type="primary"
+            loading={loading}
+            disabled={capabilityLoading || checkingExisting || Boolean(existingCatalog) || !canAttempt}
+            onClick={() => form.submit()}
+          >
+            创建挂载
+          </Button>
+        </Space>
+      }
     >
       <Typography.Paragraph type="secondary">
         选择已有数据源，勾选要挂载的库表。数据保留在源端，可直接通过 Doris 查询。
       </Typography.Paragraph>
       {capabilityLoading ? <Alert type="info" showIcon message="正在检查数据源能力…" /> : null}
       {capabilityError ? <Alert type="error" showIcon message="能力检查失败" description={capabilityError} /> : null}
-      {!capabilityLoading && !capabilityError && capability ? <Alert
-        type={supported ? 'success' : canAttempt ? 'info' : 'error'}
-        showIcon
-        message={supported ? '连接检查通过' : sourceNetworkPending ? '创建时将自动验证湖端到源端的连接' : '当前不可创建逻辑挂载'}
-        description={canAttempt ? undefined : <CapabilityReason reasons={reasons} fallback="服务端未返回可用原因" />}
-        action={!canAttempt && reasons.some((reason) => /DRIVER|ADAPTER_DISABLED|CONTROL_PLANE/.test(reason))
-          ? <Button onClick={() => history.push('/lake/warehouse/config')}>配置数据湖</Button> : undefined}
-      /> : null}
-      <Form name="lake-catalog-create" form={form} layout="vertical" onFinish={submit} onFinishFailed={({ errorFields }) => message.warning(errorFields[0]?.errors[0] || '请完善挂载配置')} initialValues={{ scope: 'TABLE' }}>
+      {!capabilityLoading && !capabilityError && capability ? (
+        <Alert
+          type={supported ? 'success' : canAttempt ? 'info' : 'error'}
+          showIcon
+          message={
+            supported
+              ? '连接检查通过'
+              : sourceNetworkPending
+              ? '创建时将自动验证湖端到源端的连接'
+              : '当前不可创建逻辑挂载'
+          }
+          description={canAttempt ? undefined : <CapabilityReason reasons={reasons} fallback="服务端未返回可用原因" />}
+          action={
+            !canAttempt && reasons.some((reason) => /DRIVER|ADAPTER_DISABLED|CONTROL_PLANE/.test(reason)) ? (
+              <Button onClick={() => history.push('/lake/warehouse/config')}>配置数据湖</Button>
+            ) : undefined
+          }
+        />
+      ) : null}
+      <Form
+        name="lake-catalog-create"
+        form={form}
+        layout="vertical"
+        onFinish={submit}
+        onFinishFailed={({ errorFields }) => message.warning(errorFields[0]?.errors[0] || '请完善挂载配置')}
+        initialValues={{ scope: 'DATABASE' }}
+      >
         <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
           <Select
             showSearch
-            options={sources.filter((source) => adapterForDbType(source.dbType)).map((source) => sourceOption(source, masterNames))}
+            options={sources
+              .filter((source) => adapterForDbType(source.dbType))
+              .map((source) => sourceOption(source, masterNames))}
             placeholder="选择已有数据源"
             optionFilterProp="label"
             onChange={(value) => {
@@ -224,7 +276,7 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
               const currentAdapter = form.getFieldValue('adapter');
               form.setFieldsValue({
                 sourceDataSourceId: value,
-                scope: 'TABLE',
+                scope: 'DATABASE',
                 targetCatalogName: `ext_ds_${value}`,
                 databaseInclude: [],
                 tableInclude: [],
@@ -235,12 +287,54 @@ const CreateCatalogDrawer: React.FC<{ open: boolean; onClose: () => void; onCrea
             }}
           />
         </Form.Item>
-        <Form.Item name="targetCatalogName" label="挂载名称" rules={[{ required: true, max: 128, message: '请输入 128 字符以内的名称' }]}>
-          <Input maxLength={128} />
+        <Form.Item name="adapter" label="数据库类型" hidden>
+          <Select options={adapterOptions} />
         </Form.Item>
-        <Form.Item name="adapter" label="数据库类型" hidden><Select options={adapterOptions} /></Form.Item>
-        {adapter && <Typography.Paragraph type="secondary">数据库类型：{optionLabel(adapterOptions, adapter)}（随数据源自动确定）</Typography.Paragraph>}
+        {existingCatalog ? (
+          <Alert
+            type="info"
+            showIcon
+            message="此数据源已有挂载，可直接查看数据或调整范围"
+            action={
+              <Button
+                onClick={() => {
+                  onClose();
+                  history.push(`/lake/logical-access/${existingCatalog.id}`);
+                }}
+              >
+                打开已有挂载
+              </Button>
+            }
+          />
+        ) : null}
         <CatalogScopePicker form={form} sourceId={sourceDataSourceId} adapter={adapter} />
+        <Collapse
+          ghost
+          style={{ marginTop: 16 }}
+          items={[
+            {
+              key: 'advanced',
+              label: '高级设置（系统已自动配置）',
+              forceRender: true,
+              children: (
+                <Form.Item
+                  name="targetCatalogName"
+                  label="挂载标识"
+                  extra="系统自动生成，通常无需修改。创建后保持不变。"
+                  rules={[
+                    {
+                      required: true,
+                      pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/,
+                      message: '请使用字母开头、64 位以内的字母、数字、下划线或短横线',
+                    },
+                  ]}
+                >
+                  <Input maxLength={64} />
+                </Form.Item>
+              ),
+            },
+          ]}
+        />
       </Form>
     </Drawer>
   );
@@ -292,30 +386,67 @@ const LogicalAccessPage: React.FC = () => {
       }
     };
     void loadSources();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [sourcesReloadKey]);
-  const sourceLabelById = useMemo(
-    () => new Map(sources.map((source) => [source.sourceDataSourceId, sourceOption(source, masterNames).label])),
-    [masterNames, sources],
-  );
   const columns: ProColumns<LakeCatalog>[] = [
-    { title: '挂载名称', dataIndex: 'targetCatalogName', width: 200, ellipsis: true },
     {
-      title: '数据源',
+      title: '数据来源',
       dataIndex: 'sourceDataSourceId',
-      width: 260,
+      width: 250,
       ellipsis: true,
-      // ProTable's first argument can be a formatted React node; read the source ID from the record.
-      render: (_, row) => sourceLabelById.get(Number(row.sourceDataSourceId)) || `数据源 #${row.sourceDataSourceId || '未知'}`,
+      render: (_, row) => {
+        const source = sources.find((item) => item.sourceDataSourceId === row.sourceDataSourceId);
+        const name = source?.sourceDataSourceName || '数据源 #' + row.sourceDataSourceId;
+        return (
+          <div className="lake-source-cell">
+            <Tooltip title={name}>
+              <Button type="link" onClick={() => history.push('/lake/logical-access/' + row.id)}>
+                {name}
+              </Button>
+            </Tooltip>
+            <Typography.Text type="secondary">{adapterLabel(row.adapter)}</Typography.Text>
+          </div>
+        );
+      },
     },
-    { title: '数据库类型', dataIndex: 'adapter', width: 120, render: (value) => optionLabel(adapterOptions, String(value || '')) },
-    { title: '挂载范围', dataIndex: 'scope', width: 120, render: (value) => optionLabel(scopeOptions, String(value || '')) },
-    { title: '挂载状态', dataIndex: 'resourceStatus', width: 120, render: (_, row) => <Tag color={statusColor(row.resourceStatus)}>{statusLabel(row.resourceStatus)}</Tag> },
-    { title: '核验状态', dataIndex: 'validationStatus', width: 130, render: (_, row) => <Tag color={statusColor(row.validationStatus)}>{statusLabel(row.validationStatus)}</Tag> },
-    { title: '最近验证', dataIndex: 'lastObservedAt', valueType: 'dateTime', width: 170 },
     {
-      title: '操作', valueType: 'option', width: 110,
-      render: (_, row) => row.id ? <Button type="link" onClick={() => history.push(`/lake/logical-access/${row.id}`)}>查看详情</Button> : null,
+      title: '挂载范围',
+      dataIndex: 'scope',
+      width: 200,
+      ellipsis: true,
+      render: (_, row) => <Tooltip title={catalogScopeLabel(row)}>{catalogScopeLabel(row)}</Tooltip>,
+    },
+    {
+      title: '查询状态',
+      dataIndex: 'resourceStatus',
+      width: 110,
+      render: (_, row) => <Tag color={statusColor(row.resourceStatus)}>{statusLabel(row.resourceStatus)}</Tag>,
+    },
+    {
+      title: '配置检查',
+      dataIndex: 'validationStatus',
+      width: 120,
+      render: (_, row) => <Tag color={statusColor(row.validationStatus)}>{statusLabel(row.validationStatus)}</Tag>,
+    },
+    {
+      title: '最近检查',
+      dataIndex: 'lastObservedAt',
+      valueType: 'dateTime',
+      width: 170,
+    },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 100,
+      fixed: 'right',
+      render: (_, row) =>
+        row.id ? (
+          <Button type="link" onClick={() => history.push('/lake/logical-access/' + row.id)}>
+            查看数据
+          </Button>
+        ) : null,
     },
   ];
   return (
@@ -327,7 +458,11 @@ const LogicalAccessPage: React.FC = () => {
           showIcon
           message="业务数据源加载失败"
           description={sourcesError}
-          action={<Button type="link" onClick={() => setSourcesReloadKey((value) => value + 1)}>重试</Button>}
+          action={
+            <Button type="link" onClick={() => setSourcesReloadKey((value) => value + 1)}>
+              重试
+            </Button>
+          }
         />
       ) : null}
       {catalogError ? (
@@ -337,7 +472,11 @@ const LogicalAccessPage: React.FC = () => {
           showIcon
           message="逻辑入湖列表加载失败"
           description={catalogError}
-          action={<Button type="link" onClick={() => actionRef.current?.reloadAndRest?.()}>重试</Button>}
+          action={
+            <Button type="link" onClick={() => actionRef.current?.reloadAndRest?.()}>
+              重试
+            </Button>
+          }
         />
       ) : null}
       <ProTable<LakeCatalog>
@@ -345,7 +484,7 @@ const LogicalAccessPage: React.FC = () => {
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
         actionRef={actionRef}
         columns={columns}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 950 }}
         search={false}
         // The default toolbar renders refresh/settings as non-focusable spans; the explicit
         // refresh button below is keyboard accessible.
@@ -353,8 +492,18 @@ const LogicalAccessPage: React.FC = () => {
         pagination={false}
         params={{ current: pageNumber, pageSize }}
         toolBarRender={() => [
-          <Button key="create" type="primary" icon={<PlusOutlined />} disabled={sourcesLoading || !sources.length} onClick={() => setCreateOpen(true)}>创建挂载</Button>,
-          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>刷新</Button>,
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            disabled={sourcesLoading || !sources.length}
+            onClick={() => setCreateOpen(true)}
+          >
+            创建挂载
+          </Button>,
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>
+            刷新
+          </Button>,
         ]}
         request={async (params) => {
           setCatalogError(undefined);
@@ -382,10 +531,34 @@ const LogicalAccessPage: React.FC = () => {
             return { data: [], success: false, total: 0 };
           }
         }}
+      />
+      <div className="lake-logical-pagination">
+        <Pagination
+          current={pageNumber}
+          pageSize={pageSize}
+          total={total}
+          showSizeChanger
+          showTotal={(count) => `共 ${count} 个挂载`}
+          onChange={(next, size) => {
+            setPageNumber(next);
+            setPageSize(size);
+          }}
         />
-      <div className="lake-logical-pagination"><Pagination current={pageNumber} pageSize={pageSize} total={total} showSizeChanger showTotal={(count) => `共 ${count} 个挂载`} onChange={(next, size) => { setPageNumber(next); setPageSize(size); }} /></div>
-      {!sourcesLoading && !sources.length ? <Card className="lake-logical-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" /><Typography.Text type="secondary">请先在数据源管理中创建 MySQL、PostgreSQL 或 Oracle 连接。</Typography.Text></Card> : null}
-      <CreateCatalogDrawer open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => actionRef.current?.reloadAndRest?.()} sources={sources} initialSourceId={selectedSourceId} masterNames={masterNames} />
+      </div>
+      {!sourcesLoading && !sources.length ? (
+        <Card className="lake-logical-empty">
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" />
+          <Typography.Text type="secondary">请先在数据源管理中创建 MySQL、PostgreSQL 或 Oracle 连接。</Typography.Text>
+        </Card>
+      ) : null}
+      <CreateCatalogDrawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => actionRef.current?.reloadAndRest?.()}
+        sources={sources}
+        initialSourceId={selectedSourceId}
+        masterNames={masterNames}
+      />
     </PageContainer>
   );
 };
