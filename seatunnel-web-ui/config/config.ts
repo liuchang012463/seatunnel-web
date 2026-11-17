@@ -117,8 +117,9 @@ export default defineConfig({
     // default zh-CN
     default: "zh-CN",
     antd: true,
-    // default true, when it is true, will use `navigator.language` overwrite default
-    baseNavigator: true,
+    // Keep the first visit consistent with the Chinese navigation. A locale
+    // explicitly selected by the user still takes priority via umi_locale.
+    baseNavigator: false,
   },
   /**
    * @name antd 插件

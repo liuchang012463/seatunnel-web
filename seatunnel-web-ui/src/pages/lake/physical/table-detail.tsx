@@ -30,7 +30,7 @@ import {
 } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { seatunnelJobDefinitionApi } from '../../batch-link-up/api';
-import { fetchLakeOperations, fetchLifecycleDetail } from '@/services/lake';
+import { fetchLakeOperations, fetchLifecycleDetail, validateLifecycle } from '@/services/lake';
 import type { LakeResourceOperation } from '@/services/lake';
 import {
   deleteManagedTable,
@@ -60,7 +60,15 @@ const { Text } = Typography;
 
 const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => response.message || response.msg || fallback;
 
-const formatTime = (value?: string) => (value ? value.replace('T', ' ').replace(/\.\d+Z$/, '') : '-');
+const formatTime = (value?: string) => {
+  if (!value) return '-';
+  // Observations are UTC instants; convert to local time before hiding the
+  // timezone suffix, otherwise a successful refresh appears eight hours old.
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
 
 const formatTargetType = (value: unknown) => {
   if (typeof value === 'string') return value;
@@ -174,6 +182,7 @@ const ManagedTableDetailPage: React.FC = () => {
   const [error, setError] = useState<string>();
   const [actionLoading, setActionLoading] = useState<string>();
   const [unbindLoading, setUnbindLoading] = useState(false);
+  const [lifecycleRefreshing, setLifecycleRefreshing] = useState(false);
   const [structureView, setStructureView] = useState<'desired' | 'actual'>('desired');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [operations, setOperations] = useState<LakeResourceOperation[]>([]);
@@ -242,6 +251,26 @@ const ManagedTableDetailPage: React.FC = () => {
       message.error(reason instanceof Error ? reason.message : `${name}失败`);
     } finally {
       setActionLoading(undefined);
+    }
+  };
+
+  const refreshLifecycle = async () => {
+    const binding = lifecycle?.existingBinding as { policyId?: number } | undefined;
+    if (!binding?.policyId) return;
+    setLifecycleRefreshing(true);
+    try {
+      // Explicit validation reads Doris and refreshes the observation cache;
+      // it does not change the retention policy or delete any partitions.
+      const response = await validateLifecycle({ mappingId: id, policyId: binding.policyId });
+      if (response.code !== 0 || !response.data) {
+        throw new Error(responseMessage(response, '生命周期状态读取失败'));
+      }
+      setLifecycle(response.data as Record<string, unknown>);
+      message.success('生命周期状态已更新');
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : '生命周期状态读取失败');
+    } finally {
+      setLifecycleRefreshing(false);
     }
   };
 
@@ -370,9 +399,9 @@ const ManagedTableDetailPage: React.FC = () => {
               </Card>,
             },
             {
-              key: 'lifecycle', label: '分区与生命周期', children: <Card title={<Space><SafetyCertificateOutlined />生命周期状态</Space>}>
+              key: 'lifecycle', label: '分区与生命周期', children: <Card title={<Space><SafetyCertificateOutlined />生命周期状态</Space>} extra={lifecycleBinding?.id ? <Button icon={<ReloadOutlined />} loading={lifecycleRefreshing} onClick={() => void refreshLifecycle()}>刷新生命周期</Button> : null}>
                 {!lifecycleBinding?.id ? <Empty description="未绑定生命周期策略" /> : <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                  {lifecycleData?.valid === true ? <Alert type="success" showIcon message="生命周期配置与 Doris 实际状态一致" /> : <Alert type="warning" showIcon message={lifecycleData?.code || '生命周期需要处理'} description={lifecycleReasons.length ? lifecycleReasons.join(' · ') : '请执行一次显式校验以获取最新状态'} />}
+                  {lifecycleData?.valid === true ? <Alert type="success" showIcon message="生命周期配置与 Doris 实际状态一致" /> : lifecycleData?.code === 'LAKE_LIFECYCLE_CACHE_UNAVAILABLE' ? <Alert type="info" showIcon message="尚未读取最新分区状态" description="点击“刷新生命周期”，查看 Doris 中的实际保留配置和分区数量。" /> : <Alert type="warning" showIcon message="生命周期需要处理" description={lifecycleReasons.length ? lifecycleReasons.join(' · ') : '点击“刷新生命周期”获取最新状态'} />}
                   <Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }}>
                     <Descriptions.Item label="策略">{lifecyclePolicy?.policyName || `Policy #${lifecycleBinding.policyId || lifecycleData?.policyId || '-'}`}</Descriptions.Item>
                     <Descriptions.Item label="策略版本">{lifecyclePolicy?.version || lifecycleBinding.policyVersion || '-'}</Descriptions.Item>
