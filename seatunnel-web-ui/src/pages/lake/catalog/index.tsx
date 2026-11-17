@@ -871,6 +871,9 @@ const DataLakeCatalogPage: React.FC = () => {
                 />
               ) : null}
             </div>
+            <div className="lake-catalog-note">
+              <InfoCircleOutlined /> 来自 Doris 实际目录，包含未纳管的库表。
+            </div>
           </aside>
 
           <section className="lake-catalog-inspector" aria-label="数据表详情">

@@ -431,6 +431,7 @@ const PhysicalResourcesPage: React.FC = () => {
           <Card size="small" className="lake-physical-stat"><Statistic title="已建立 ODS 关联" value={summary?.boundDataSourceCount ?? '—'} /></Card>
           <Card size="small" className="lake-physical-stat"><Statistic title="平台纳管 ODS 表" value={summary?.odsTableCount ?? '—'} /></Card>
           <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? '—'} /></Card>
+          <Text type="secondary" className="lake-physical-summary-note"><CheckCircleOutlined /> 统计为平台已纳管资源，实际库表请查看数据湖目录。</Text>
         </div>
         {summaryError ? (
           <Alert
