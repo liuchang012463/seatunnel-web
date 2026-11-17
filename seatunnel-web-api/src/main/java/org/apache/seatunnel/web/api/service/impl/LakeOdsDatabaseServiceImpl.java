@@ -221,7 +221,10 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
             throw new LakeServiceException(LakeErrorCode.LAKE_MASTER_DATA_CODE_INVALID,
                     "customName must not be blank");
         }
-        requireSource(sourceDataSourceId);
+        DataSource source = requireSource(sourceDataSourceId);
+        if (Boolean.FALSE.equals(source.getSourceEnabled())) {
+            throw conflict("该数据源未开启来源用途，请在数据源管理中开启后再入湖");
+        }
         OdsDatabaseName name = masterDataResolver.resolve(sourceDataSourceId, request.getCustomName());
         Long lakeDataSourceId = requireConfiguredLakeDataSource();
         LakeOdsDatabaseBinding active = bindingDao.queryBySourceDataSourceId(sourceDataSourceId);
@@ -562,6 +565,7 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
         result.setSourceDataSourceId(source.getId());
         result.setSourceDataSourceName(source.getName());
         result.setDbType(source.getDbType() == null ? null : source.getDbType().getCode());
+        result.setSourceEnabled(source.getSourceEnabled());
         result.setBusinessSystemId(source.getBusinessSystemId());
         if (source.getBusinessSystemId() != null) {
             BusinessSystem system = businessSystemDao.queryById(source.getBusinessSystemId());

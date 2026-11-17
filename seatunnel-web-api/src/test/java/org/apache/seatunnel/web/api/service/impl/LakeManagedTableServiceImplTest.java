@@ -40,6 +40,7 @@ import org.apache.seatunnel.web.common.enums.ReleaseState;
 import org.apache.seatunnel.web.common.enums.ScheduleStatusEnum;
 import org.apache.seatunnel.web.common.enums.LakeTableModel;
 import org.apache.seatunnel.web.dao.entity.JobDefinitionEntity;
+import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.JobSchedule;
 import org.apache.seatunnel.web.dao.entity.LakeJobRelation;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
@@ -93,6 +94,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -155,6 +157,16 @@ class LakeManagedTableServiceImplTest {
                 .thenReturn(null);
         lenient().when(tableMappingDao.queryByBindingIdAndSourceObjectIncludingDeleted(anyLong(), anyLong()))
                 .thenReturn(null);
+    }
+
+    @Test
+    void previewRejectsAnExplicitlyDisabledSourceBeforeAnyDorisOperation() {
+        DataSource disabled = new DataSource();
+        disabled.setSourceEnabled(false);
+        when(dataSourceDao.queryById(11L)).thenReturn(disabled);
+        assertTrue(assertThrows(LakeServiceException.class, () -> service.preview(previewRequest()))
+                .getMessage().contains("来源用途"));
+        verifyNoInteractions(dorisClient);
     }
 
     @Test

@@ -502,8 +502,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
   const [sourceVerifyItems, setSourceVerifyItems] = useState<VerifyItem[]>([]);
   const [targetVerifyItems, setTargetVerifyItems] = useState<VerifyItem[]>([]);
 
-  const [sourceLoading, setSourceLoading] = useState(false);
-  const [targetLoading, setTargetLoading] = useState(false);
+  const [sourceLoading, setSourceLoading] = useState(true);
+  const [targetLoading, setTargetLoading] = useState(true);
 
   const [clientOptions, setClientOptions] = useState<SelectOption[]>([]);
   const [clientLoading, setClientLoading] = useState(false);
@@ -915,6 +915,8 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
 
   useEffect(() => {
     if (sourceManaged) return;
+    // An empty list during the async request does not invalidate a prefilled endpoint.
+    if (sourceLoading) return;
     if (!sourceOptions.length) {
       if (sourceDataSourceId) {
         setSourceDataSourceId(undefined);
@@ -944,9 +946,11 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     setSourceDataSourceId,
     resetSourceTestStatus,
     sourceManaged,
+    sourceLoading,
   ]);
 
   useEffect(() => {
+    if (targetLoading) return;
     if (!targetOptions.length) {
       if (targetDataSourceId) {
         setTargetDataSourceId(undefined);
@@ -975,6 +979,7 @@ const CommonClientLinkSection: React.FC<CommonClientLinkSectionProps> = ({
     form,
     setTargetDataSourceId,
     resetTargetTestStatus,
+    targetLoading,
   ]);
 
   useEffect(() => {

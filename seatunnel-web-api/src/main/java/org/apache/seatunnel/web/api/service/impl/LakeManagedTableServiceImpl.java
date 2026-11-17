@@ -373,6 +373,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         Integer userId = requireCurrentUserId();
         LakeOdsDatabaseBinding binding = requireReadyBinding(
                 request.getOdsDatabaseBindingId(), request.getSourceDataSourceId());
+        requireSourceUsage(request.getSourceDataSourceId());
         SourceObjectSnapshot source = sourceResolver.resolve(
                 request.getSourceDataSourceId(), request.getOmEntityId());
         String targetTableName = normalizeTableName(request.getTargetTableName());
@@ -578,6 +579,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 || result.getSourceDataSourceId() == null || result.getOmEntityId() == null) {
             throw invalid("ODS 表尚未就绪或没有来源关联，请先检查表状态");
         }
+        requireSourceUsage(result.getSourceDataSourceId());
         SourceObjectSnapshot source = sourceResolver.resolve(result.getSourceDataSourceId(), result.getOmEntityId());
         try {
             var snapshot = MAPPER.readTree(source.snapshotJson());
@@ -599,6 +601,14 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
             return result;
         } catch (java.io.IOException exception) {
             throw invalid("来源快照无法读取，请刷新元数据后重试");
+        }
+    }
+
+    /** Never replace a disabled source with a different connection during task creation. */
+    private void requireSourceUsage(Long sourceId) {
+        DataSource source = dataSourceDao.queryById(sourceId);
+        if (source != null && Boolean.FALSE.equals(source.getSourceEnabled())) {
+            throw invalid("该数据源未开启来源用途，请在数据源管理中开启后再创建入湖任务");
         }
     }
 

@@ -16,6 +16,7 @@ export interface PhysicalDataSource {
   sourceDataSourceId: number;
   sourceDataSourceName?: string;
   dbType?: string;
+  sourceEnabled?: boolean;
   businessSystemId?: number;
   unitId?: number;
   unitCode?: string;

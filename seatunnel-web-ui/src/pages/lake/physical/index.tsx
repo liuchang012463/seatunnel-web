@@ -314,6 +314,11 @@ const PhysicalResourcesPage: React.FC = () => {
       // Re-read before creating so a stale list cannot produce a second binding.
       const latest = await fetchPhysicalSource(record.sourceDataSourceId);
       if (latest.code !== 0 || !latest.data) throw new Error(latest.message || latest.msg || '数据源读取失败');
+      if (latest.data.sourceEnabled === false) {
+        message.warning('请先在数据源管理中为该连接开启来源用途');
+        history.push('/data-source');
+        return;
+      }
       let database = latest.data.odsDatabase;
       if (!database || database.resourceStatus === 'DELETED') {
         const created = await createOdsDatabase(record.sourceDataSourceId, `ds_${record.sourceDataSourceId}`);
@@ -390,14 +395,15 @@ const PhysicalResourcesPage: React.FC = () => {
           const supported = physicalTypes.includes(String(record.dbType || ''));
           const busy = !!database && ['CREATING', 'DELETING'].includes(database.resourceStatus || '');
           return <Space wrap size={4}>
-            <Tooltip title={!supported ? '此数据类型尚不支持可视化创建 ODS 表' : busy ? '资源正在处理，可查看详情' : undefined}>
-              <Button type="link" disabled={!supported || busy} loading={startingId === record.sourceDataSourceId}
+            <Tooltip title={record.sourceEnabled === false ? '该连接未开启来源用途，请先到数据源管理中开启' : !supported ? '此数据类型尚不支持可视化创建 ODS 表' : busy ? '资源正在处理，可查看详情' : undefined}>
+              <Button type="link" disabled={!supported || busy || record.sourceEnabled === false} loading={startingId === record.sourceDataSourceId}
                 onClick={() => void startPhysical(record)}>{database?.resourceStatus === 'READY' ? '继续建表' : '开始入湖'}</Button>
             </Tooltip>
             <Button type="link" onClick={() => { setRecommendSource(record); setRecommendOpen(true); }}>选择方式</Button>
             <Dropdown menu={{ items: [
               { key: 'detail', label: '查看资源详情', onClick: () => history.push(`/lake/resources/${record.sourceDataSourceId}`) },
-              ...(!database ? [{ key: 'custom', label: '自定义 ODS 库名', onClick: () => setCreateSource(record) }] : []),
+              ...(!database && record.sourceEnabled !== false ? [{ key: 'custom', label: '自定义 ODS 库名', onClick: () => setCreateSource(record) }] : []),
+              ...(record.sourceEnabled === false ? [{ key: 'usage', label: '配置数据源用途', onClick: () => history.push('/data-source') }] : []),
               ...(canRetry ? [{ key: 'retry', label: '重试', onClick: () => void operate('retry', database) }] : []),
               ...(canReconcile ? [{ key: 'reconcile', label: '刷新实际状态', onClick: () => void operate('reconcile', database) }] : []),
             ] }}><Button type="link" loading={operationLoading && operationId === database?.id}>更多</Button></Dropdown>

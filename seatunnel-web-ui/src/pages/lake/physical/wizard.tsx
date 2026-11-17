@@ -23,6 +23,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchApplicableLifecyclePolicies } from '@/services/lake';
 import type { LakeLifecyclePolicy } from '@/services/lake';
+import { seatunnelJobDefinitionApi } from '../../batch-link-up/api';
 import {
   createManagedTable,
   fetchPhysicalSource,
@@ -286,7 +287,7 @@ const ManagedTableWizard: React.FC = () => {
         history.replace(`/lake/resources/table/${response.data.id}`);
         return;
       }
-      const allocated = await import('../../batch-link-up/api').then(({ seatunnelJobDefinitionApi }) => seatunnelJobDefinitionApi.getUniqueId());
+      const allocated = await seatunnelJobDefinitionApi.getUniqueId();
       if (allocated.code !== 0 || !allocated.data) {
         history.replace(`/lake/resources/table/${response.data.id}`);
         return;

@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -84,6 +85,18 @@ class LakeOdsDatabaseServiceImplTest {
         lenient().when(masterDataResolver.resolve(7L, "orders")).thenReturn(
                 new OdsDatabaseName("unit", "system", "orders", "ods_unit_system_orders"));
         lenient().when(dorisClientProvider.get(99L)).thenReturn(dorisClient);
+    }
+
+    @Test
+    void disabledSourceCannotCreateAnOdsDatabase() {
+        DataSource disabled = source(7L, "orders", 11L, DbType.MYSQL);
+        disabled.setSourceEnabled(false);
+        when(dataSourceDao.queryById(7L)).thenReturn(disabled);
+        LakeOdsDatabaseCreateDTO request = new LakeOdsDatabaseCreateDTO();
+        request.setCustomName("orders");
+        assertTrue(assertThrows(LakeServiceException.class, () -> service.create(7L, request))
+                .getMessage().contains("来源用途"));
+        verifyNoInteractions(dorisClient);
     }
 
     @Test
