@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeJdbcDriverLoader;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.catalog.LakeJdbcAdapterType;
+import org.apache.seatunnel.web.api.lake.doris.LakeDorisConnectionParams;
 import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.common.enums.ConnStatus;
@@ -205,6 +206,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         registerDriver(LakeJdbcAdapterType.MYSQL.code(),
                 Paths.get(effective.driverLocation()).getFileName().toString(),
                 effective.driverLocation(), effective.driverClass(), effective.driverSha256(), null);
+        log.info("Saved Doris cluster connection configId={} dataSourceId={} configVersion={}",
+                target.getId(), target.getSystemDataSourceId(), target.getConfigVersion());
         return toVO(target);
     }
 
@@ -229,7 +232,8 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         }
         driverLocation = validateDriverLocation(driverLocation, null);
         try {
-            try (Connection ignored = LakeJdbcDriverLoader.connect(valid.jdbcUrl(), valid.username(), password,
+            try (Connection ignored = LakeJdbcDriverLoader.connect(
+                    LakeDorisConnectionParams.withoutDefaultDatabase(valid.jdbcUrl()), valid.username(), password,
                     driverClass, driverLocation)) {
                 LakeWarehouseConfigVO result = toVO(existing);
                 if (result == null) {
@@ -285,7 +289,7 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         }
 
         try (Connection connection = LakeJdbcDriverLoader.connect(
-                config.getJdbcUrl(), config.getUsername(), password,
+                LakeDorisConnectionParams.withoutDefaultDatabase(config.getJdbcUrl()), config.getUsername(), password,
                 config.getDriverClass(), config.getDriverLocation());
              Statement statement = connection.createStatement()) {
             List<Map<String, String>> frontendRows = readRows(statement, "SHOW FRONTENDS");
@@ -617,6 +621,12 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
                 || containsCredential(url)) {
             throw invalid("jdbcUrl");
         }
+        try {
+            // Persist cluster scope too, so projected task and metadata connections need no anchor database.
+            url = LakeDorisConnectionParams.withoutDefaultDatabase(url);
+        } catch (IllegalArgumentException exception) {
+            throw invalid("jdbcUrl");
+        }
         if (username == null) {
             throw invalid("username");
         }
@@ -662,33 +672,9 @@ public class LakeWarehouseServiceImpl implements LakeWarehouseService {
         if (StringUtils.isNotBlank(location)) {
             node.put("driverLocation", location);
         }
-        // Keep the JDBC database as a connection anchor for SeaTunnel/JDBC
-        // clients. OpenMetadata discovery deliberately ignores this field for
-        // Doris so the anchor does not narrow metadata discovery.
-        node.put("database", jdbcDatabase(config.jdbcUrl()));
+        // Physical ingestion supplies each target database; configuration never creates or selects one.
+        node.put("database", "");
         return node.toString();
-    }
-
-    static String jdbcDatabase(String jdbcUrl) {
-        if (StringUtils.isBlank(jdbcUrl)) {
-            return "";
-        }
-        String normalized = jdbcUrl.trim();
-        int schemeEnd = normalized.indexOf("://");
-        if (schemeEnd < 0 || schemeEnd + 3 >= normalized.length()) {
-            return "";
-        }
-        String authorityAndPath = normalized.substring(schemeEnd + 3);
-        int slash = authorityAndPath.indexOf('/');
-        if (slash < 0 || slash + 1 >= authorityAndPath.length()) {
-            return "";
-        }
-        String database = authorityAndPath.substring(slash + 1);
-        int query = database.indexOf('?');
-        if (query >= 0) {
-            database = database.substring(0, query);
-        }
-        return StringUtils.trimToEmpty(database);
     }
 
     private String validateDriverLocation(String location, String fallbackFileName) {

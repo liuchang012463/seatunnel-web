@@ -594,10 +594,17 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
 
     private ConnectionParam buildConnectionParam(DataSource dataSource) {
         try {
-            return DataSourceUtils.buildConnectionParams(
+            ConnectionParam param = DataSourceUtils.buildConnectionParams(
                     dataSource.getDbType(),
                     dataSource.getConnectionParams()
             );
+            if (dataSource.getDbType() == DbType.DORIS && Boolean.TRUE.equals(dataSource.getSystemManaged())
+                    && param instanceof org.apache.seatunnel.web.spi.datasource.BaseConnectionParam jdbc) {
+                // Directory browsing spans all lake databases, even if the configured default was dropped.
+                org.apache.seatunnel.web.api.lake.doris.LakeDorisConnectionParams.withoutDefaultDatabase(jdbc);
+                log.debug("Using cluster connection for lake directory, datasourceId={}", dataSource.getId());
+            }
+            return param;
         } catch (Exception e) {
             log.error("Failed to build connection param, datasourceId={}", dataSource.getId(), e);
             throw new ServiceException(Status.DATASOURCE_METADATA_ERROR, e.getMessage());

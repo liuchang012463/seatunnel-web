@@ -1,6 +1,9 @@
 package org.apache.seatunnel.web.api.lake;
 
+import com.zaxxer.hikari.HikariDataSource;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.dao.entity.DataSource;
+import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
@@ -105,5 +108,27 @@ class LakeSecurityFoundationTest {
         assertEquals("Lake Doris data source configuration is invalid", error.getMessage());
         assertEquals(null, error.getCause());
         assertFalse(error.toString().contains("do-not-log"));
+    }
+
+    @Test
+    void warehousePoolsDoNotRequireTheConfiguredOdsDatabaseToExist() {
+        LakeWarehouseService warehouse = mock(LakeWarehouseService.class);
+        LakeWarehouseConfig config = new LakeWarehouseConfig();
+        config.setId(1L);
+        config.setJdbcUrl("jdbc:mysql://127.0.0.1:9030/deleted_ods?useSSL=false");
+        config.setUsername("lake");
+        config.setPassword("test-password");
+        when(warehouse.requireConfig()).thenReturn(config);
+        LakeProperties properties = new LakeProperties();
+        properties.getConnectionPool().setMinimumIdle(0);
+
+        try (LakeDataSourceResolver resolver = new LakeDataSourceResolver(warehouse, properties)) {
+            HikariDataSource write = (HikariDataSource) resolver.resolveConfigured();
+            HikariDataSource read = (HikariDataSource) resolver.resolveReadOnly(7L);
+            assertEquals("jdbc:mysql://127.0.0.1:9030/?useSSL=false", write.getJdbcUrl());
+            assertEquals(write.getJdbcUrl(), read.getJdbcUrl());
+            assertTrue(read.isReadOnly());
+            assertEquals("jdbc:mysql://127.0.0.1:9030/deleted_ods?useSSL=false", config.getJdbcUrl());
+        }
     }
 }

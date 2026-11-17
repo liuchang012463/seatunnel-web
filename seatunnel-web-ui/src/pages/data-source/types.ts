@@ -341,6 +341,8 @@ export interface DynamicDataSourceFormProps {
   initialConfig?: Record<string, unknown>;
   /** Render only connector fields when a page owns the base metadata. */
   hideBaseFields?: boolean;
+  /** Omit connector fields that do not apply to a dedicated connection page. */
+  excludedConfigFields?: string[];
   /** Keep an existing server-side password when the input is empty. */
   allowExistingPassword?: boolean;
   configuredSecretFields?: string[];

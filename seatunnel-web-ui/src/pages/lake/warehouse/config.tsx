@@ -13,21 +13,13 @@ import DynamicDataSourceForm from '@/pages/data-source/components/DynamicDataSou
 import type { DataSourceFormValues, DataSourceOperateType } from '@/pages/data-source/types';
 import { fetchLakeWarehouse, saveLakeWarehouse, testLakeWarehouse } from '@/services/lake';
 import type { LakeApiResponse, LakeWarehouseConfig } from '@/services/lake';
-import { INITIAL_DORIS_PASSWORD_MESSAGE, isInitialDorisPasswordMissing } from './configUtils';
+import { buildWarehouseJdbcUrl, INITIAL_DORIS_PASSWORD_MESSAGE, isInitialDorisPasswordMissing } from './configUtils';
+import type { DorisConnectionValues } from './configUtils';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
 const DEFAULT_DRIVER_CLASS = 'com.mysql.cj.jdbc.Driver';
-
-interface DorisConnectionValues extends Record<string, unknown> {
-  fenodes?: string;
-  queryPort?: string | number;
-  database?: string;
-  user?: string;
-  password?: string;
-  driverLocation?: string;
-  other?: Array<{ key?: string; value?: string }>;
-}
+const EXCLUDED_CONNECTION_FIELDS = ['database'];
 
 interface LakeBaseFormValues extends Pick<DataSourceFormValues, 'name'> {
   name: string;
@@ -36,52 +28,25 @@ interface LakeBaseFormValues extends Pick<DataSourceFormValues, 'name'> {
 const responseError = (response: LakeApiResponse<unknown>, fallback: string) =>
   response.msg || response.message || fallback;
 
-const getHostFromFenodes = (fenodes?: string) => {
-  const firstNode = String(fenodes || '')
-    .split(',')[0]
-    .trim()
-    .replace(/^https?:\/\//i, '')
-    .replace(/\/.*$/, '');
-  return firstNode.replace(/:\d+$/, '') || '127.0.0.1';
-};
-
 const parseExistingConnection = (config?: LakeWarehouseConfig): DorisConnectionValues | undefined => {
   if (!config) return undefined;
 
-  const match = config.jdbcUrl?.match(/^jdbc:[^:]+:\/\/([^/]+)\/([^?]*)?(?:\?(.*))?$/i);
+  const match = config.jdbcUrl?.match(/^jdbc:[^:]+:\/\/([^/?]+)(?:\/[^?]*)?(?:\?(.*))?$/i);
   const authority = match?.[1] || '';
   const host = authority.replace(/:\d+$/, '') || '127.0.0.1';
   const queryPort = authority.match(/:(\d+)$/)?.[1] || '9030';
   const other: Array<{ key: string; value: string }> = [];
-  if (match?.[3]) {
-    new URLSearchParams(match[3]).forEach((value, key) => other.push({ key, value }));
+  if (match?.[2]) {
+    new URLSearchParams(match[2]).forEach((value, key) => other.push({ key, value }));
   }
 
   return {
     fenodes: `${host}:8030`,
     queryPort: Number(queryPort),
-    database: match?.[2] ? decodeURIComponent(match[2]) : '',
     user: config.username,
     driverLocation: config.driverLocation,
     other,
   };
-};
-
-const buildJdbcUrl = (values: DorisConnectionValues) => {
-  const host = getHostFromFenodes(values.fenodes);
-  const queryPort = String(values.queryPort || '9030').trim();
-  const database = String(values.database || '').trim();
-  const params = new URLSearchParams();
-
-  if (Array.isArray(values.other)) {
-    values.other.forEach((item) => {
-      const key = String(item?.key || '').trim();
-      if (key) params.set(key, String(item?.value || '').trim());
-    });
-  }
-
-  const query = params.toString();
-  return `jdbc:mysql://${host}:${queryPort}/${database}${query ? `?${query}` : ''}`;
 };
 
 const toWarehousePayload = (
@@ -90,7 +55,7 @@ const toWarehousePayload = (
   currentConfig?: LakeWarehouseConfig,
 ) => ({
   name: base.name?.trim() || 'Doris 数据湖',
-  jdbcUrl: buildJdbcUrl(connection),
+  jdbcUrl: buildWarehouseJdbcUrl(connection),
   username: String(connection.user || '').trim(),
   password: String(connection.password || '').trim() || undefined,
   driverClass: currentConfig?.driverClass || DEFAULT_DRIVER_CLASS,
@@ -221,7 +186,7 @@ const DorisConfigPage: React.FC = () => {
           </div>
           <div>
             <Title level={1}>Doris 配置</Title>
-            <Paragraph>配置数据湖唯一的 Doris ODS 连接，保存后自动同步湖侧只读投影。</Paragraph>
+            <Paragraph>配置 Doris 集群连接，无需预先创建数据库。</Paragraph>
           </div>
         </div>
       </header>
@@ -231,7 +196,7 @@ const DorisConfigPage: React.FC = () => {
           <div className="lake-config-section-heading">
             <div>
               <Title level={2}>连接参数</Title>
-              <Paragraph>表单字段与数据源管理中的 Doris 连接器保持一致，保存后会同步为湖侧只读数据源。</Paragraph>
+              <Paragraph>填写 Doris 集群地址、账号和驱动，业务数据库由物理入湖流程创建。</Paragraph>
             </div>
             <Tag color={config?.configured ? 'success' : 'default'}>
               {config?.configured ? '已配置' : '待配置'}
@@ -256,11 +221,12 @@ const DorisConfigPage: React.FC = () => {
               configForm={connectionForm}
               operateType={'CREATE' as DataSourceOperateType}
               hideBaseFields
+              excludedConfigFields={EXCLUDED_CONNECTION_FIELDS}
               allowExistingPassword={Boolean(config?.passwordConfigured)}
               initialConfig={initialConnection}
             />
             <Text type="secondary">
-              默认数据库仅用于生成 JDBC 默认连接地址；引接任务可以另外选择目标库，OpenMetadata 探查会扫描账号可见的全部数据库。
+              连接不绑定默认数据库；配置时不创建占位库，物理入湖后自动纳管业务库表。
             </Text>
           </div>
 

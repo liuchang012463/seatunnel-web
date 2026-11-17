@@ -1,4 +1,12 @@
-import { isInitialDorisPasswordMissing } from './configUtils';
+import { buildWarehouseJdbcUrl, isInitialDorisPasswordMissing } from './configUtils';
+
+it('builds a Doris cluster URL without requiring or preserving a default database', () => {
+  expect(buildWarehouseJdbcUrl({ fenodes: 'fe:8030', queryPort: 9030 })).toBe('jdbc:mysql://fe:9030/');
+  expect(buildWarehouseJdbcUrl({
+    fenodes: 'fe:8030', queryPort: 9030, database: 'legacy_ods',
+    other: [{ key: 'useSSL', value: 'false' }],
+  })).toBe('jdbc:mysql://fe:9030/?useSSL=false');
+});
 
 describe('isInitialDorisPasswordMissing', () => {
   it('requires a password when no Doris configuration exists', () => {

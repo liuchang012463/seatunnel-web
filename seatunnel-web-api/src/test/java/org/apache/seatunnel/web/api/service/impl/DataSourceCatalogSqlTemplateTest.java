@@ -12,6 +12,8 @@ import org.apache.seatunnel.web.spi.bean.vo.OptionVO;
 import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -34,6 +36,37 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class DataSourceCatalogSqlTemplateTest {
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void onlyTheLakeProjectionBrowsesWithoutSelectingADefaultDorisDatabase(boolean systemManaged) {
+        var service = new DataSourceCatalogServiceImpl();
+        var sourceService = mock(DataSourceService.class);
+        ReflectionTestUtils.setField(service, "dataSourceService", sourceService);
+        var source = new DataSource();
+        source.setDbType(DbType.DORIS);
+        source.setSystemManaged(systemManaged);
+        source.setConnectionParams("{}");
+        when(sourceService.selectById(42L)).thenReturn(source);
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        param.setUrl("jdbc:mysql://fe:9030/deleted_ods?useSSL=false");
+        param.setDatabase("deleted_ods");
+        var catalog = mock(org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog.class);
+        when(catalog.listDatabaseOptions()).thenReturn(List.of());
+        var processor = mock(DataSourceProcessor.class);
+        when(processor.getCatalog(param)).thenReturn(Optional.of(catalog));
+
+        try (var utils = mockStatic(DataSourceUtils.class)) {
+            utils.when(() -> DataSourceUtils.buildConnectionParams(DbType.DORIS, "{}")).thenReturn(param);
+            utils.when(() -> DataSourceUtils.getDatasourceProcessor(DbType.DORIS)).thenReturn(processor);
+            service.listDatabase(42L);
+
+            verify(catalog).listDatabaseOptions();
+            assertEquals(systemManaged ? "jdbc:mysql://fe:9030/?useSSL=false"
+                    : "jdbc:mysql://fe:9030/deleted_ods?useSSL=false", param.getUrl());
+            assertEquals(systemManaged ? "" : "deleted_ods", param.getDatabase());
+        }
+    }
 
     @Test
     void logicalPostgresNamespacesStayInTheConfiguredDatabase() {

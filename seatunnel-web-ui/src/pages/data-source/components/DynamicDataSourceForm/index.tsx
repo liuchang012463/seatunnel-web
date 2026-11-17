@@ -16,6 +16,7 @@ import { getConfigInitialValues, isFieldVisible, transformRules } from './utils/
 const DEFAULT_ENVIRONMENT = 'DEVELOP';
 const EMPTY_CONFIGURED_SECRET_FIELDS: string[] = [];
 const EMPTY_SAVED_SECRET_FIELDS: string[] = [];
+const EMPTY_EXCLUDED_CONFIG_FIELDS: string[] = [];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
 const sectionDescClass = 'mt-1 mb-0 text-[14px] leading-[22px] text-slate-500';
@@ -43,6 +44,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
   onManageMasterData,
   initialConfig,
   hideBaseFields = false,
+  excludedConfigFields = EMPTY_EXCLUDED_CONFIG_FIELDS,
   allowExistingPassword = false,
   configuredSecretFields = EMPTY_CONFIGURED_SECRET_FIELDS,
   savedSecretFields = EMPTY_SAVED_SECRET_FIELDS,
@@ -149,7 +151,10 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
             return;
           }
 
-          const fields = data.formFields || [];
+          // Excluded fields must not retain their connector defaults or required rules.
+          const fields = (data.formFields || []).filter(
+            (field: { key: string }) => !excludedConfigFields.includes(field.key),
+          );
 
           setNeedInstall(false);
           setLoadErrMsg('');
@@ -172,6 +177,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
             ...init,
             ...initialConfig,
           };
+          excludedConfigFields.forEach((key) => { delete values[key]; });
           fields.forEach((field: any) => {
             if (
               field.type === 'PASSWORD' &&
@@ -219,7 +225,7 @@ const DynamicDataSourceForm: React.FC<DynamicDataSourceFormProps> = ({
         }
       }
     },
-    [configForm, intl, configuredSecretFields, savedSecretFields],
+    [configForm, intl, configuredSecretFields, savedSecretFields, excludedConfigFields],
   );
 
   useEffect(() => {
