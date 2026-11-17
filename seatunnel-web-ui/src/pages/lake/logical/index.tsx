@@ -297,7 +297,7 @@ const LogicalAccessPage: React.FC = () => {
     [masterNames, sources],
   );
   const columns: ProColumns<LakeCatalog>[] = [
-    { title: '挂载名称', dataIndex: 'targetCatalogName', ellipsis: true },
+    { title: '挂载名称', dataIndex: 'targetCatalogName', width: 200, ellipsis: true },
     {
       title: '数据源',
       dataIndex: 'sourceDataSourceId',
@@ -342,6 +342,7 @@ const LogicalAccessPage: React.FC = () => {
         rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
         actionRef={actionRef}
         columns={columns}
+        scroll={{ x: 1200 }}
         search={false}
         // The default toolbar renders refresh/settings as non-focusable spans; the explicit
         // refresh button below is keyboard accessible.
