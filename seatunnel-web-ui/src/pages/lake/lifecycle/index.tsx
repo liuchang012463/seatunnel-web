@@ -181,6 +181,10 @@ const PolicyEditorDrawer: React.FC<{
       title={policy ? '编辑生命周期策略' : '新建生命周期策略'}
       destroyOnHidden
       onClose={onClose}
+      footer={<Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button onClick={onClose}>取消</Button>
+        <Button type="primary" loading={loading} onClick={() => form.submit()}>保存策略</Button>
+      </Space>}
     >
       <Alert
         type="info"
@@ -216,12 +220,6 @@ const PolicyEditorDrawer: React.FC<{
           <Input.TextArea maxLength={1024} showCount rows={4} placeholder="说明适用范围和分区约束" />
         </Form.Item>
         {policy?.version ? <Text type="secondary">当前版本：v{policy.version}。保存时使用版本校验，冲突后请刷新重试。</Text> : null}
-        <div className="lake-drawer-footer">
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            保存策略
-          </Button>
-        </div>
       </Form>
     </Drawer>
   );
