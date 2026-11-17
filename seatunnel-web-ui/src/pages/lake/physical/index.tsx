@@ -511,7 +511,6 @@ const PhysicalResourcesPage: React.FC = () => {
           <Card size="small" className="lake-physical-stat"><Statistic title="已绑定数据源" value={summary?.boundDataSourceCount ?? 0} /></Card>
           <Card size="small" className="lake-physical-stat"><Statistic title="ODS 表总数" value={summary?.odsTableCount ?? 0} /></Card>
           <Card size="small" className="lake-physical-stat" data-warning={(summary?.pendingExceptionCount || 0) > 0}><Statistic title="待处理异常" value={summary?.pendingExceptionCount ?? 0} /></Card>
-          <Text type="secondary" className="lake-physical-summary-note"><CheckCircleOutlined /> 页面 GET 只读取本地汇总；请使用行内“对账”按钮读取 Doris 实际状态。</Text>
         </div>
         {summaryError ? (
           <Alert

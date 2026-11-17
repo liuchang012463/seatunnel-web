@@ -163,7 +163,6 @@ const CapabilityCard: React.FC<{
     <Card
       className="lake-capability-card"
       title={<Space><CloudServerOutlined />挂载前检查</Space>}
-      extra={<Typography.Text type="secondary">先检查条件，需要时探查源端网络</Typography.Text>}
     >
       <Form form={form} layout="inline" onFinish={checkCapability} initialValues={{ adapter: 'MYSQL', scope: 'ALL', sourceDataSourceId: initialSourceId }}>
         <Form.Item name="sourceDataSourceId" label="数据源" rules={[{ required: true, message: '请选择数据源' }]}>
@@ -203,9 +202,7 @@ const CapabilityCard: React.FC<{
           {!supported && !sourceNetworkPending ? <CapabilityReason reasons={reasons} /> : null}
           {sourceNetworkPending ? <CapabilityReason reasons={reasons} /> : null}
         </div>
-      ) : (
-        <Typography.Text type="secondary">操作顺序：选择数据源 → 检查条件 →（需要时）探查源端 → 创建挂载。</Typography.Text>
-      )}
+      ) : null}
     </Card>
   );
 };

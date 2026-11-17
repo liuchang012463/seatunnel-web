@@ -547,7 +547,6 @@ const DataLakeCatalogPage: React.FC = () => {
           <span className="lake-catalog-tree-node">
             <span className="lake-catalog-tree-node__copy">
               <strong>{optionLabel(database)}</strong>
-              <small>数据库</small>
             </span>
             {state?.status === 'loading' ? <LoadingOutlined spin /> : null}
             {state?.status === 'loaded' ? <em>{state.items.length}</em> : null}
@@ -623,7 +622,6 @@ const DataLakeCatalogPage: React.FC = () => {
                       <span className="lake-catalog-tree-node">
                         <span className="lake-catalog-tree-node__copy">
                           <strong>{database}</strong>
-                          <small>数据库</small>
                         </span>
                         {databaseState?.status === 'loading' ? <LoadingOutlined spin /> : null}
                         {databaseState?.status === 'loaded' ? <em>{databaseState.items.length}</em> : null}
@@ -663,7 +661,6 @@ const DataLakeCatalogPage: React.FC = () => {
           <span className="lake-catalog-tree-node lake-catalog-tree-node--group">
             <span className="lake-catalog-tree-node__copy">
               <strong>物理入湖</strong>
-              <small>仓库数据库</small>
             </span>
             <em>{databases.length}</em>
           </span>
@@ -678,7 +675,6 @@ const DataLakeCatalogPage: React.FC = () => {
           <span className="lake-catalog-tree-node lake-catalog-tree-node--group lake-catalog-tree-node--logical">
             <span className="lake-catalog-tree-node__copy">
               <strong>逻辑入湖</strong>
-              <small>外部目录数据库</small>
             </span>
             <em>{logicalDatabaseCount}</em>
           </span>
@@ -909,9 +905,6 @@ const DataLakeCatalogPage: React.FC = () => {
                   onSelect={handleSelect}
                 />
               ) : null}
-            </div>
-            <div className="lake-catalog-note">
-              <InfoCircleOutlined /> 数据库和数据表来自数据湖实时目录。
             </div>
           </aside>
 
