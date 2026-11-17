@@ -124,12 +124,12 @@ public class LakeWarehouseController {
     @PostMapping("/drivers/register")
     @Operation(summary = "registerLakeJdbcDriver")
     public Result<LakeJdbcDriverVO> registerDriver(
-            @RequestParam String adapter,
-            @RequestParam(required = false) String fileName,
-            @RequestParam String driverLocation,
-            @RequestParam(required = false) String driverClass,
-            @RequestParam(required = false) String sha256,
-            @RequestParam(required = false) String dorisMd5) {
+            @RequestParam("adapter") String adapter,
+            @RequestParam(value = "fileName", required = false) String fileName,
+            @RequestParam("driverLocation") String driverLocation,
+            @RequestParam(value = "driverClass", required = false) String driverClass,
+            @RequestParam(value = "sha256", required = false) String sha256,
+            @RequestParam(value = "dorisMd5", required = false) String dorisMd5) {
         return Result.buildSuc(lakeWarehouseService.registerDriver(
                 adapter, fileName, driverLocation, driverClass, sha256, dorisMd5));
     }
@@ -138,9 +138,9 @@ public class LakeWarehouseController {
     @Operation(summary = "uploadLakeJdbcDriver")
     public Result<LakeJdbcDriverVO> uploadDriver(
             @Parameter(description = "JDBC jar") @RequestPart("file") MultipartFile file,
-            @RequestParam String adapter,
-            @RequestParam(required = false) String driverClass,
-            @RequestParam(required = false, defaultValue = "true") boolean overwrite) {
+            @RequestParam("adapter") String adapter,
+            @RequestParam(value = "driverClass", required = false) String driverClass,
+            @RequestParam(value = "overwrite", required = false, defaultValue = "true") boolean overwrite) {
         return Result.buildSuc(lakeWarehouseService.uploadDriver(file, adapter, driverClass, overwrite));
     }
 }
