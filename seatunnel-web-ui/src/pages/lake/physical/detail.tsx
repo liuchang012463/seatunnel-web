@@ -296,6 +296,7 @@ const PhysicalResourceDetailPage: React.FC = () => {
         setOperations([]);
       }
     } catch (reason) {
+      console.error('[lake-physical-detail] 加载资源详情失败', { sourceId, reason });
       setError(reason instanceof Error ? reason.message : '物理入湖详情加载失败');
     } finally {
       setLoading(false);
@@ -369,8 +370,16 @@ const PhysicalResourceDetailPage: React.FC = () => {
     },
   ], [load, unbindLoadingId]);
 
-  if (loading) return <PageContainer title="物理入湖详情"><Spin /></PageContainer>;
-  if (error || !source) return <PageContainer title="物理入湖详情"><Alert type="error" showIcon message={error || '未找到数据源'} action={<Button onClick={() => void load()}>重试</Button>} /></PageContainer>;
+  const backToResources = () => history.push('/lake/resources');
+  const backButton = <Button key="back" icon={<ArrowLeftOutlined />} onClick={backToResources}>返回资源列表</Button>;
+  // 加载和失败分支同样保留导航，避免 iframe 内出错后没有返回入口。
+  if (loading || error || !source) {
+    return (
+      <PageContainer title="物理入湖详情" onBack={backToResources} extra={[backButton]}>
+        {loading ? <Spin /> : <Alert type="error" showIcon message={error || '未找到数据源'} action={<Button onClick={() => void load()}>重试</Button>} />}
+      </PageContainer>
+    );
+  }
 
   const database = source.odsDatabase;
   const sourceLabel = source.sourceDataSourceName || `DataSource #${source.sourceDataSourceId}`;
@@ -380,10 +389,10 @@ const PhysicalResourceDetailPage: React.FC = () => {
     <PageContainer
       title={sourceLabel}
       subTitle="物理入湖资源详情"
-      onBack={() => history.push('/lake/resources')}
+      onBack={backToResources}
       breadcrumb={{ items: [{ title: '物理入湖', onClick: () => history.push('/lake/resources') }, { title: sourceLabel }] }}
       extra={[
-        <Button key="back" icon={<ArrowLeftOutlined />} onClick={() => history.push('/lake/resources')}>返回资源列表</Button>,
+        backButton,
         database ? <Button key="reconcile" icon={<ReloadOutlined />} loading={reconcileLoading} onClick={() => void reconcile()}>显式对账</Button> : null,
         database ? <Button key="create-table" type="primary" icon={<PlusOutlined />} onClick={() => history.push(`/lake/resources/table/create?sourceDataSourceId=${source.sourceDataSourceId}&odsDatabaseBindingId=${database.id}`)}>创建 MANAGED 表</Button> : <Button key="create-db" type="primary" icon={<DatabaseOutlined />} onClick={() => setOdsOpen(true)}>创建 ODS 库</Button>,
       ].filter(Boolean)}
