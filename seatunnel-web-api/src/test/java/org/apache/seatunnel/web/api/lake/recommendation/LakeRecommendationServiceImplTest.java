@@ -160,7 +160,7 @@ class LakeRecommendationServiceImplTest {
     }
 
     @Test
-    void productionPathUsesExplicitUnknownLogicalReachability() {
+    void unknownReachabilityRecommendsLogicalWithAnExplicitPendingCheck() {
         LakeExternalCatalogCapabilityResolver resolver = mock(
                 LakeExternalCatalogCapabilityResolver.class);
         when(resolver.resolve(7L, LakeJdbcAdapterType.MYSQL, LakeCatalogScope.TABLE,
@@ -172,7 +172,9 @@ class LakeRecommendationServiceImplTest {
 
         LakeRecommendationVO result = service.recommend(request(false, false, true));
 
-        assertEquals(LakeRecommendationMode.UNSUPPORTED, result.mode());
+        assertEquals(LakeRecommendationMode.LOGICAL, result.mode());
+        assertEquals("LOGICAL_MODE_REQUIRES_CHECK", result.reason());
+        assertFalse(result.logicalCapability().supported());
         assertTrue(result.logicalCapability().disabledReasons().contains(
                 LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN));
         assertTrue(result.logicalCapability().disabledReasons().contains(

@@ -41,6 +41,7 @@ import type { LakeRecommendation } from './service';
 import type { LakePage, LakeResourceStatus, OdsDatabase, PhysicalDataSource } from './types';
 import { useMasterDataNames } from '../useMasterDataNames';
 import { withTimeout } from '@/utils/withTimeout';
+import { capabilityReasonLabel } from '../components/LakeStatus';
 import './index.less';
 
 const { Paragraph, Text } = Typography;
@@ -141,7 +142,7 @@ const RecommendationModal: React.FC<{
   const capabilityText = (capability?: { supported?: boolean; disabledReasons?: string[] }) => {
     if (!capability) return '尚未检查';
     if (capability.supported) return '当前能力可用';
-    return capability.disabledReasons?.join('、') || '服务端能力不可用';
+    return capability.disabledReasons?.map(capabilityReasonLabel).join('、') || '服务端能力不可用';
   };
 
   const submit = async (values: RecommendationValues) => {
@@ -173,7 +174,7 @@ const RecommendationModal: React.FC<{
       footer={null}
     >
       <Paragraph type="secondary">
-        请回答四个问题。推荐仅用于本次导航，不会自动创建资源或写入绑定。
+        选择使用方式，系统将检查当前数据源支持的能力。
       </Paragraph>
       <Card size="small" className="lake-capability-card">
         <Descriptions size="small" column={2}>
@@ -192,10 +193,10 @@ const RecommendationModal: React.FC<{
             />
           </Descriptions.Item>
           <Descriptions.Item label="物理能力">
-            {recommendation ? capabilityText(recommendation.physicalCapability) : '提交四问后检查'}
+            {recommendation ? capabilityText(recommendation.physicalCapability) : '选择后检查'}
           </Descriptions.Item>
           <Descriptions.Item label="逻辑能力">
-            {recommendation ? capabilityText(recommendation.logicalCapability) : '提交四问后检查'}
+            {recommendation ? capabilityText(recommendation.logicalCapability) : '选择后检查'}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -220,14 +221,14 @@ const RecommendationModal: React.FC<{
         </Form.Item>
         {recommendation ? (
           <Alert
-            type={recommendation.mode === 'UNSUPPORTED' ? 'warning' : 'success'}
+            type={recommendation.mode === 'UNSUPPORTED' || recommendation.disabledReasons?.length ? 'warning' : 'success'}
             showIcon
             icon={recommendation.mode === 'UNSUPPORTED' ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
             message={`推荐：${recommendationModeLabel[recommendation.mode || recommendation.recommendation || 'UNSUPPORTED'] || '暂不支持'}`}
             description={
               <>
-                <div>{recommendation.reason || recommendation.reasonCode || '服务端未返回推荐原因'}</div>
-                {recommendation.disabledReasons?.length ? <div>限制：{recommendation.disabledReasons.join('、')}</div> : null}
+                <div>{recommendation.mode === 'LOGICAL' ? '无需复制源数据，通过外部挂载直接查询。' : recommendation.mode === 'PHYSICAL' ? '将数据复制到湖内，便于集中存储与访问。' : '当前条件暂不满足，请处理下面的问题。'}</div>
+                {recommendation.disabledReasons?.length ? <div>限制：{recommendation.disabledReasons.map(capabilityReasonLabel).join('、')}</div> : null}
               </>
             }
           />

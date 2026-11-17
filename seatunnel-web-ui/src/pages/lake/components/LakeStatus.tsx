@@ -37,8 +37,10 @@ const REASON_LABELS: Record<string, string> = {
   DRIVER_MISSING: '缺少对应 JDBC Driver，请先完成服务端 Driver 配置。',
   DORIS_DRIVER_MD5_INVALID: 'Doris Driver 的 MD5 格式不正确，请配置 32 位十六进制值。',
   CAPABILITY_UNKNOWN: '能力信息暂不可用，请先完成元数据探查。',
-  LOGICAL_CAPABILITY_UNKNOWN: '逻辑挂载能力暂不可用，请检查源端和 Driver。',
+  LOGICAL_CAPABILITY_UNKNOWN: '尚需检查源端连接，继续挂载时验证。',
 };
+
+export const capabilityReasonLabel = (reason: string) => REASON_LABELS[reason] || reason;
 
 export const resourceStatusLabel = (status?: string) =>
   (status && RESOURCE_STATUS[status]?.label) || status || '未绑定';

@@ -12,6 +12,7 @@ import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationReques
 import org.apache.seatunnel.web.api.lake.recommendation.LakeRecommendationVO;
 import org.apache.seatunnel.web.api.lake.recommendation.LakePhysicalCapabilityPublisher;
 import org.apache.seatunnel.web.api.service.LakeRecommendationService;
+import org.apache.seatunnel.web.api.service.LakeLogicalCatalogService;
 import org.apache.seatunnel.web.common.enums.LakeCatalogScope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
     private final BiFunction<Long, LakeJdbcAdapterType, DorisCapability>
             physicalCapabilitySupplier;
     private final boolean logicalReachabilityKnown;
+    private LakeLogicalCatalogService logicalCatalogService;
 
     /**
      * Production wiring uses the server-owned publisher.  A missing or
@@ -46,11 +48,13 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
     @Autowired
     public LakeRecommendationServiceImpl(
             LakeExternalCatalogCapabilityResolver catalogCapabilityResolver,
-            LakePhysicalCapabilityPublisher physicalCapabilityPublisher) {
+            LakePhysicalCapabilityPublisher physicalCapabilityPublisher,
+            LakeLogicalCatalogService logicalCatalogService) {
         this(catalogCapabilityResolver,
                 (sourceDataSourceId, ignoredAdapter) ->
                         physicalCapabilityPublisher.current(sourceDataSourceId),
                 false);
+        this.logicalCatalogService = Objects.requireNonNull(logicalCatalogService);
     }
 
     /** Constructor used by focused tests and a server-owned capability facade. */
@@ -106,9 +110,14 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
                     physical, logical);
         }
         if (Boolean.TRUE.equals(request.getJoinOnly())) {
-            if (logical.supported()) {
+            boolean pendingProbe = !logical.disabledReasons().isEmpty()
+                    && logical.disabledReasons().stream().allMatch(reason ->
+                    LakeCatalogCapabilityReason.SOURCE_NETWORK_UNKNOWN.equals(reason)
+                            || LakeRecommendationReason.LOGICAL_CAPABILITY_UNKNOWN.equals(reason));
+            if (logical.supported() || pendingProbe) {
                 return result(request, LakeRecommendationMode.LOGICAL,
-                        LakeRecommendationReason.LOGICAL_MODE_SELECTED, List.of(), physical, logical);
+                        pendingProbe ? "LOGICAL_MODE_REQUIRES_CHECK" : LakeRecommendationReason.LOGICAL_MODE_SELECTED,
+                        pendingProbe ? logical.disabledReasons() : List.of(), physical, logical);
             }
             return unsupported(request, LakeRecommendationReason.LOGICAL_CAPABILITY_UNAVAILABLE,
                     physical, logical);
@@ -128,6 +137,14 @@ public class LakeRecommendationServiceImpl implements LakeRecommendationService 
     private LakeCatalogCapability logicalCapability(
             LakeRecommendationRequestDTO request, DorisCapability physicalCapability) {
         try {
+            // Share the catalog facade's revision-aware Doris-side probe cache.
+            // Recommendation never invents reachability or creates a catalog.
+            if (logicalCatalogService != null) {
+                var current = logicalCatalogService.capability(request.getSourceDataSourceId(),
+                        request.getAdapter(), request.getTargetScope());
+                return new LakeCatalogCapability(current.getAdapter(), current.isSupported(),
+                        current.getReasonCodes());
+            }
             // The physical publisher performs the bounded, server-owned Doris
             // ping. Reuse that evidence for the logical preflight instead of
             // passing the production "unknown" flag as a failed ping. The
