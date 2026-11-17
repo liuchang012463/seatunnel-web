@@ -13,10 +13,12 @@ class H2BootstrapMigrationTest {
                 .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").outOfOrder(true).load();
         flyway.migrate();
         flyway.validate();
-        assertEquals("1.0.55", flyway.info().current().getVersion().toString());
+        assertEquals("1.0.57", flyway.info().current().getVersion().toString());
         try (var connection = DriverManager.getConnection(url, "sa", "");
              var stmt = connection.createStatement()) {
             // Query real application columns and Quartz tables, not just SQL syntax.
+            stmt.executeQuery("SELECT data_source_type, source_data_source_id, unit_id, business_system_id FROM t_seatunnel_web_lake_lifecycle_policy");
+            stmt.executeQuery("SELECT exploration_pipeline_version, exploration_pipeline_retry_at FROM t_seatunnel_web_metadata_binding");
             stmt.executeQuery("SELECT system_managed, source_enabled, sink_enabled FROM t_seatunnel_web_datasource");
             stmt.executeQuery("SELECT schedule_config_json, target_database, datapack_config_json FROM t_seatunnel_web_offline_import_task");
             stmt.executeQuery("SELECT LOCK_NAME FROM QRTZ_LOCKS WHERE SCHED_NAME='test'");
@@ -35,7 +37,7 @@ class H2BootstrapMigrationTest {
     void doesNotApplyBootstrapToAnExistingHistory() throws Exception {
         String url = "jdbc:h2:mem:existing_bootstrap;MODE=MySQL;DB_CLOSE_DELAY=-1";
         var flyway = Flyway.configure().dataSource(url, "sa", "")
-                .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").baselineVersion("1.0.55").load();
+                .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").baselineVersion("1.0.57").load();
         // Model a pre-existing history through Flyway's API, never edit history rows.
         flyway.baseline();
         assertEquals(0, flyway.migrate().migrationsExecuted);
