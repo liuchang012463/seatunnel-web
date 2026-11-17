@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.core.builder.sink;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
@@ -15,8 +16,10 @@ import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
 import org.apache.seatunnel.web.core.job.validation.DorisTaskScopeValidator;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
+import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeWarehouseConfigDao;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -36,6 +39,7 @@ import java.util.Map;
  * </p>
  */
 @Component
+@Slf4j
 public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
     private static final String NODE_TYPE = "sink";
@@ -50,6 +54,9 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
     @Resource
     private LakeOdsDatabaseBindingDao lakeOdsDatabaseBindingDao;
+
+    @Resource
+    private LakeWarehouseConfigDao lakeWarehouseConfigDao;
 
     @Resource
     private Environment environment;
@@ -206,12 +213,25 @@ public class DataSourceSinkBuilder implements SinkNodeConfigBuilder {
 
         Map<String, Object> override = new HashMap<>(1);
         override.put("database", binding.getDatabaseName().trim());
+        log.info("Resolved lake sink ODS database: bindingId={}, dataSourceId={}, database={}",
+                bindingId, sinkDataSourceId, binding.getDatabaseName());
         return ConfigFactory.parseMap(override)
                 .withFallback(config)
                 .resolve();
     }
 
     private Long configuredLakeDataSourceId() {
+        // The UI persists the warehouse connection in the database. Prefer
+        // that projection over the legacy environment setting, just as the
+        // lake job guard does, so preview/save/run use the same warehouse.
+        LakeWarehouseConfig warehouse = lakeWarehouseConfigDao == null
+                ? null : lakeWarehouseConfigDao.querySingleton();
+        if (warehouse != null) {
+            if (warehouse.getSystemDataSourceId() == null) {
+                throw new IllegalArgumentException("Lake Doris data source is not configured");
+            }
+            return warehouse.getSystemDataSourceId();
+        }
         String value = environment == null
                 ? null
                 : environment.getProperty("seatunnel.lake.data-source-id");

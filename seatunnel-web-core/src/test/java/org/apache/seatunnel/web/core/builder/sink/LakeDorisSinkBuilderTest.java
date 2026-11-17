@@ -6,8 +6,10 @@ import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
 import org.apache.seatunnel.web.core.builder.context.DagBuildContext;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
+import org.apache.seatunnel.web.dao.entity.LakeWarehouseConfig;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
+import org.apache.seatunnel.web.dao.repository.LakeWarehouseConfigDao;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,15 +28,18 @@ class LakeDorisSinkBuilderTest {
 
     private DataSourceDao dataSourceDao;
     private LakeOdsDatabaseBindingDao bindingDao;
+    private LakeWarehouseConfigDao warehouseDao;
     private DataSourceSinkBuilder builder;
 
     @BeforeEach
     void setUp() {
         dataSourceDao = Mockito.mock(DataSourceDao.class);
         bindingDao = Mockito.mock(LakeOdsDatabaseBindingDao.class);
+        warehouseDao = Mockito.mock(LakeWarehouseConfigDao.class);
         builder = new DataSourceSinkBuilder();
         ReflectionTestUtils.setField(builder, "dataSourceDao", dataSourceDao);
         ReflectionTestUtils.setField(builder, "lakeOdsDatabaseBindingDao", bindingDao);
+        ReflectionTestUtils.setField(builder, "lakeWarehouseConfigDao", warehouseDao);
         MockEnvironment environment = new MockEnvironment()
                 .withProperty("seatunnel.lake.data-source-id", String.valueOf(DORIS_DATA_SOURCE_ID));
         ReflectionTestUtils.setField(builder, "environment", environment);
@@ -111,6 +116,32 @@ class LakeDorisSinkBuilderTest {
 
     private Config node(String clientDatabase) {
         return node(clientDatabase, DORIS_DATA_SOURCE_ID);
+    }
+
+    @Test
+    void persistedWarehouseWorksWithoutLegacyEnvironmentSetting() {
+        LakeWarehouseConfig warehouse = new LakeWarehouseConfig();
+        warehouse.setSystemDataSourceId(DORIS_DATA_SOURCE_ID);
+        when(warehouseDao.querySingleton()).thenReturn(warehouse);
+        when(bindingDao.queryActiveById(BINDING_ID)).thenReturn(binding(LakeResourceStatus.READY));
+        ReflectionTestUtils.setField(builder, "environment", new MockEnvironment());
+
+        Config result = builder.build(node("client_supplied_database"),
+                DagBuildContext.empty(null, BINDING_ID));
+
+        assertEquals("ods_from_binding", result.getString("database"));
+    }
+
+    @Test
+    void persistedWarehouseRejectsBindingForStaleEnvironmentWarehouse() {
+        LakeWarehouseConfig warehouse = new LakeWarehouseConfig();
+        warehouse.setSystemDataSourceId(100L);
+        when(warehouseDao.querySingleton()).thenReturn(warehouse);
+        when(bindingDao.queryActiveById(BINDING_ID)).thenReturn(binding(LakeResourceStatus.READY));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.build(node("client_supplied_database"),
+                        DagBuildContext.empty(null, BINDING_ID)));
     }
 
     private Config node(String clientDatabase, long dataSourceId) {
