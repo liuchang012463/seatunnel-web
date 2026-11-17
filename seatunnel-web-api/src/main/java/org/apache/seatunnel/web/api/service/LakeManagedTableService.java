@@ -16,6 +16,9 @@ public interface LakeManagedTableService {
 
     LakeManagedTableVO detail(Long id);
 
+    /** Explicit source refresh for opening the existing task wizard. */
+    LakeManagedTableVO taskPrefill(Long id);
+
     /** Explicit, read-through reconcile; detail() remains a cached read. */
     LakeManagedTableVO reconcile(Long id);
 

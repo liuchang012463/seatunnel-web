@@ -1782,6 +1782,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         result.setServiceFullyQualifiedName(referenceFqn(table.getService()));
         result.setDatabaseFullyQualifiedName(referenceFqn(table.getDatabase()));
         result.setSchemaFullyQualifiedName(referenceFqn(table.getDatabaseSchema()));
+        // Keep SDK reference names intact: splitting FQNs loses quoted dots.
+        result.setDatabaseName(table.getDatabase() == null ? null : table.getDatabase().getName());
+        result.setSchemaName(table.getDatabaseSchema() == null ? null : table.getDatabaseSchema().getName());
 
         List<OpenMetadataColumn> columns = new ArrayList<>();
         for (Column column : safeList(table.getColumns())) {

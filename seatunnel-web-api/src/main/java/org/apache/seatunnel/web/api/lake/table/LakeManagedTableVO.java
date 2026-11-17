@@ -31,6 +31,12 @@ public class LakeManagedTableVO {
 
     private String omFqn;
 
+    private String sourceDatabaseName;
+
+    private String sourceSchemaName;
+
+    private String sourceTableName;
+
     private Long odsDatabaseBindingId;
 
     private Long lakeDataSourceId;

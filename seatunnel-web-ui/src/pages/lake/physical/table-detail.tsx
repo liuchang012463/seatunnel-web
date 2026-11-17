@@ -52,6 +52,8 @@ import {
   relationSourceDataSource,
   relationTargetTable,
 } from '../components/LakeStatus';
+import { fetchTaskPrefill } from './service';
+import { lakeTaskForm } from './taskPrefill';
 import './table-detail.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -86,107 +88,6 @@ const targetTypeSignature = (value: unknown) => {
     .map((part) => String(part ?? ''))
     .join(':')
     .toUpperCase();
-};
-
-const jdbcPlugin = (dbType?: string) => {
-  const normalized = String(dbType || 'MYSQL').toUpperCase();
-  const pluginType = normalized === 'POSTGRE_SQL' ? 'POSTGRESQL' : normalized;
-  return {
-    dbType: normalized,
-    connectorType: 'Jdbc',
-    pluginName: `JDBC-${pluginType}`,
-  };
-};
-
-const buildLakeWorkflow = (table: ManagedTable) => {
-  const sourceType = jdbcPlugin(table.sourceDbType);
-  const sourceId = `lake-source-${Date.now()}`;
-  const sinkId = `lake-sink-${Date.now()}`;
-  const transformId = `lake-field-mapper-${Date.now()}`;
-  const sourceTable = String(table.omFqn || '').split('.').pop() || table.targetTableName || '';
-  const mappings = (table.fieldMappings || []).filter((item) => item.sourceField && item.targetField).map((item, index) => ({
-    id: `lake-mapping-${index}`,
-    sourceField: item.sourceField,
-    targetField: item.targetField,
-    targetType: item.targetType,
-    enabled: true,
-  }));
-  const sourceSchema = mappings.map((item) => ({ name: item.sourceField, type: item.targetType || 'STRING', nullable: true }));
-  const sourceNode = {
-    id: sourceId,
-    type: 'custom',
-    position: { x: 80, y: 180 },
-    data: {
-      nodeType: 'source',
-      title: sourceType.dbType,
-      description: '读取已登记源表',
-      ...sourceType,
-      config: {
-        dataSourceId: String(table.sourceDataSourceId || ''),
-        ...sourceType,
-        readMode: 'table',
-        table: sourceTable,
-        sql: '',
-        extraParams: [],
-        pluginOutput: sourceId,
-      },
-      meta: { outputSchema: sourceSchema, schemaStatus: mappings.length ? 'success' : 'idle', schemaError: '' },
-    },
-  };
-  const sinkNode = {
-    id: sinkId,
-    type: 'custom',
-    position: { x: mappings.length ? 700 : 460, y: 180 },
-    data: {
-      nodeType: 'sink',
-      title: 'DORIS',
-      description: '写入受控 ODS 表',
-      dbType: 'DORIS',
-      connectorType: 'Doris',
-      pluginName: 'DORIS',
-      config: {
-        dataSourceId: String(table.lakeDataSourceId || ''),
-        dbType: 'DORIS',
-        connectorType: 'Doris',
-        pluginName: 'DORIS',
-        autoCreateTable: false,
-        targetMode: 'table',
-        table: table.targetTableName || '',
-        targetTableName: table.targetTableName || '',
-        schemaSaveMode: 'ERROR_WHEN_SCHEMA_NOT_EXIST',
-        writeMode: 'append',
-        odsDatabaseBindingId: table.odsDatabaseBindingId,
-        pluginInput: mappings.length ? transformId : sourceId,
-        extraParams: [],
-      },
-      meta: { inputSchema: sourceSchema, outputSchema: sourceSchema, schemaStatus: 'success', schemaError: '' },
-    },
-  };
-  const nodes = [sourceNode as any];
-  const edges: any[] = [];
-  if (mappings.length) {
-    nodes.push({
-      id: transformId,
-      type: 'custom',
-      position: { x: 390, y: 180 },
-      data: {
-        nodeType: 'transform',
-        componentType: 'FIELDMAPPER',
-        label: '字段映射',
-        title: '字段映射',
-        description: '沿用 MANAGED 表已确认的字段关系',
-        iconType: 'braces',
-        config: { mappings, passThroughUnmapped: false },
-        meta: { inputSchema: sourceSchema, outputSchema: mappings.map((item) => ({ name: item.targetField, type: item.targetType || 'STRING', nullable: true, originFieldName: item.sourceField })), schemaStatus: 'success', schemaError: '' },
-      },
-    });
-    edges.push({ id: `${sourceId}-${transformId}`, source: sourceId, target: transformId, type: 'custom', data: {} });
-    edges.push({ id: `${transformId}-${sinkId}`, source: transformId, target: sinkId, type: 'custom', data: {} });
-  } else {
-    edges.push({ id: `${sourceId}-${sinkId}`, source: sourceId, target: sinkId, type: 'custom', data: {} });
-  }
-  nodes.push(sinkNode as any);
-  return { nodes, edges, sourceType, targetType: { dbType: 'DORIS', connectorType: 'Doris', pluginName: 'DORIS' } };
 };
 
 const relationColumns: ProColumns<InventoryRelation>[] = [
@@ -355,21 +256,10 @@ const ManagedTableDetailPage: React.FC = () => {
       const allocated = response.data as any;
       const id = typeof allocated === 'object' ? allocated?.id : allocated;
       if (!id) throw new Error('任务标识申请失败');
-      const workflow = buildLakeWorkflow(table);
-      const sourceLabel = table.sourceDbType || 'JDBC';
-      sessionStorage.setItem(`batch-link-up-detail-${id}`, JSON.stringify({
-        id,
-        mode: 'GUIDE_SINGLE',
-        jobName: `${sourceLabel} → DORIS · ${table.targetTableName || 'ODS 表'}`,
-        jobDesc: '从物理入湖表详情预填的单表引接任务，请完成连通性测试后发布。',
-        sourceType: workflow.sourceType,
-        targetType: workflow.targetType,
-        sourceDataSourceId: String(table.sourceDataSourceId),
-        targetDataSourceId: String(table.lakeDataSourceId),
-        odsDatabaseBindingId: table.odsDatabaseBindingId,
-        workflow: workflow,
-      }));
-      history.push(`/sync/batch-link-up/${id}/detail`);
+      const prefill = await fetchTaskPrefill(table.id);
+      if (prefill.code !== 0 || !prefill.data) throw new Error(responseMessage(prefill, '来源读取失败'));
+      sessionStorage.setItem(`batch-link-up-detail-${id}`, JSON.stringify(lakeTaskForm(prefill.data, id)));
+      history.push(`/sync/batch-link-up/${id}/detail?lakeMappingId=${table.id}`);
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '创建引接任务失败');
     }

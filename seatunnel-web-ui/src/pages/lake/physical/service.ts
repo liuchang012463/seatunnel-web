@@ -102,3 +102,6 @@ export const fetchSourceTableDetail = (sourceId: number, tableId: string) =>
   fetchDataExplorationTable(String(sourceId), tableId) as Promise<ApiResponse<OdsSourceTableDetail>>;
 
 export type { OdsSourceTable };
+
+export const fetchTaskPrefill = (mappingId: number): Promise<ApiResponse<ManagedTable>> =>
+  HttpUtils.get(`${PHYSICAL_API}/tables/${encodeURIComponent(String(mappingId))}/task-prefill`);

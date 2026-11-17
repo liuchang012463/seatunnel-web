@@ -5,6 +5,8 @@ import {
   DEFAULT_TASK_DATASOURCE_TYPE,
   DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
 } from '../../../data-source/dataSourceRegistry';
+import { fetchTaskPrefill } from '../../../lake/physical/service';
+import { lakeTaskForm } from '../../../lake/physical/taskPrefill';
 import { seatunnelJobDefinitionApi } from '../../api';
 import { buildDefaultJobName, getDbLabel } from '../constants';
 import type { DetailFormValues, SourceTargetType, StepKey, SyncMode } from '../types';
@@ -148,6 +150,15 @@ export default function useDetailPage() {
       }
 
       if (!definition) {
+        const mappingId = Number(new URLSearchParams(location.search).get('lakeMappingId'));
+        if (mappingId) {
+          const response = await fetchTaskPrefill(mappingId);
+          if (response.code !== 0 || !response.data) throw new Error('无法恢复入湖任务预填');
+          const restored = lakeTaskForm(response.data, id);
+          sessionStorage.setItem(`batch-link-up-detail-${id}`, JSON.stringify(restored));
+          setLoadError(undefined);
+          applyDetail(restored);
+        }
         return;
       }
 
@@ -182,7 +193,7 @@ export default function useDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [applyDetail, id]);
+  }, [applyDetail, id, location.search]);
 
   useEffect(() => {
     setActiveStep(readStepFromSearch(location.search));

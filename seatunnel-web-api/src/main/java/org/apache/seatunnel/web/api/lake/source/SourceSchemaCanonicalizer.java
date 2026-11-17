@@ -91,7 +91,7 @@ public final class SourceSchemaCanonicalizer {
         constraints.sort(Comparator.comparing(SourceSchemaCanonicalizer::constraintKey));
 
         String canonicalJson = canonicalJson(columns, constraints);
-        String snapshotJson = snapshotJson(id, fqn, columns, constraints);
+        String snapshotJson = snapshotJson(table, id, fqn, columns, constraints);
         return new SourceObjectSnapshot(id, fqn, columns, constraints,
                 sha256(canonicalJson), snapshotJson);
     }
@@ -126,10 +126,13 @@ public final class SourceSchemaCanonicalizer {
     }
 
     private static String snapshotJson(
-            String id, String fqn, List<SourceColumnSnapshot> columns,
+            OpenMetadataTable table, String id, String fqn, List<SourceColumnSnapshot> columns,
             List<SourceConstraintSnapshot> constraints) {
         ObjectNode root = MAPPER.createObjectNode();
         root.put("objectType", "TABLE");
+        root.put("databaseName", table.getDatabaseName());
+        root.put("schemaName", table.getSchemaName());
+        root.put("tableName", table.getName());
         if (id == null) {
             root.putNull("omEntityId");
         } else {

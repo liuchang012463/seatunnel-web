@@ -19,6 +19,8 @@ public class OpenMetadataTable {
     private String serviceFullyQualifiedName;
     private String databaseFullyQualifiedName;
     private String schemaFullyQualifiedName;
+    private String databaseName;
+    private String schemaName;
     private List<OpenMetadataColumn> columns = new ArrayList<>();
     private List<OpenMetadataTableConstraint> tableConstraints = new ArrayList<>();
     private List<String> tags = new ArrayList<>();

@@ -552,6 +552,37 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         return toVO(requireMappingIncludingDeleted(id));
     }
 
+    @Override
+    public LakeManagedTableVO taskPrefill(Long id) {
+        LakeManagedTableVO result = detail(id);
+        if (result.getResourceStatus() != LakeResourceStatus.READY
+                || result.getSourceDataSourceId() == null || result.getOmEntityId() == null) {
+            throw invalid("ODS 表尚未就绪或没有来源关联，请先检查表状态");
+        }
+        SourceObjectSnapshot source = sourceResolver.resolve(result.getSourceDataSourceId(), result.getOmEntityId());
+        try {
+            var snapshot = MAPPER.readTree(source.snapshotJson());
+            String database = snapshot.path("databaseName").asText("");
+            String schema = snapshot.path("schemaName").asText("");
+            // OM represents MySQL/Doris native databases as database schemas.
+            boolean catalogDatabase = List.of("MYSQL", "DORIS").contains(result.getSourceDbType());
+            result.setSourceDatabaseName(catalogDatabase && !schema.isBlank()
+                    && !"default".equalsIgnoreCase(schema) ? schema : database);
+            result.setSourceSchemaName(catalogDatabase ? null : schema);
+            result.setSourceTableName(snapshot.path("tableName").asText(""));
+            if (result.getSourceTableName().isBlank() || result.getSourceDatabaseName().isBlank()) {
+                throw invalid("来源定位不完整，请刷新元数据后重试");
+            }
+            result.setSourceSnapshotJson(source.snapshotJson());
+            org.slf4j.LoggerFactory.getLogger(getClass()).info(
+                    "Lake task prefill resolved mappingId={} sourceId={} bindingId={}",
+                    id, result.getSourceDataSourceId(), result.getOdsDatabaseBindingId());
+            return result;
+        } catch (java.io.IOException exception) {
+            throw invalid("来源快照无法读取，请刷新元数据后重试");
+        }
+    }
+
     /**
      * Explicit read-through reconcile.  The evaluator and the bounded actual
      * contract observer perform external reads; local state is then persisted

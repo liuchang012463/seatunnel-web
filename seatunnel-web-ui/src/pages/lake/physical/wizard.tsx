@@ -250,7 +250,17 @@ const ManagedTableWizard: React.FC = () => {
       const response = await createManagedTable(preview.planFingerprint);
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '创建 MANAGED 表失败'));
       message.success('MANAGED 表创建操作已提交');
-      history.replace(`/lake/resources/table/${response.data.id}`);
+      if (response.data.resourceStatus !== 'READY') {
+        history.replace(`/lake/resources/table/${response.data.id}`);
+        return;
+      }
+      const allocated = await import('../../batch-link-up/api').then(({ seatunnelJobDefinitionApi }) => seatunnelJobDefinitionApi.getUniqueId());
+      if (allocated.code !== 0 || !allocated.data) {
+        history.replace(`/lake/resources/table/${response.data.id}`);
+        return;
+      }
+      const jobId = typeof allocated.data === 'object' ? (allocated.data as any).id : allocated.data;
+      history.replace(`/sync/batch-link-up/${jobId}/detail?lakeMappingId=${response.data.id}`);
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '创建 MANAGED 表失败');
     } finally {

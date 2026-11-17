@@ -128,6 +128,10 @@ export interface ManagedTable {
   sourceDbType?: string;
   omEntityId?: string;
   omFqn?: string;
+  sourceDatabaseName?: string;
+  sourceSchemaName?: string;
+  sourceTableName?: string;
+  sourceSnapshotJson?: string;
   odsDatabaseBindingId?: number;
   lakeDataSourceId?: number;
   lakeDbType?: string;

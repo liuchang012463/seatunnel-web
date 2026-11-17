@@ -47,6 +47,11 @@ public class LakeManagedTableController {
         return Result.buildSuc(service.detail(id));
     }
 
+    @GetMapping("/{id}/task-prefill")
+    public Result<LakeManagedTableVO> taskPrefill(@PathVariable("id") Long id) {
+        return Result.buildSuc(service.taskPrefill(id));
+    }
+
     @PostMapping("/{id}/reconcile")
     public Result<LakeManagedTableVO> reconcile(@PathVariable("id") Long id) {
         return Result.buildSuc(service.reconcile(id));
