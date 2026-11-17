@@ -88,6 +88,50 @@ class LakeCatalogActualEvaluatorTest {
     }
 
     @Test
+    void mysqlUrlWithDorisInjectedParametersMatchesTheOriginalSource() {
+        LakeCatalogDesiredSpec desired = desired(Map.of());
+        Map<String, String> actual = requiredActual(desired);
+        actual.put("jdbc_url", desired.jdbcUrl()
+                + "?yearIsDateType=false&tinyInt1isBit=false&useUnicode=true"
+                + "&rewriteBatchedStatements=true&characterEncoding=utf-8");
+
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isMatch());
+
+        actual.put("jdbc_url", actual.get("jdbc_url") + "&useSSL=false");
+        assertEquals(LakeCatalogValidationCode.JDBC_URL_AMBIGUOUS,
+                LakeCatalogActualEvaluator.compare(desired, actual).code());
+    }
+
+    @Test
+    void mysqlNormalizationPreservesOriginalConnectionOptionsAndChecksDorisValues() {
+        LakeCatalogDesiredSpec desired = withUrl(LakeJdbcAdapterType.MYSQL,
+                "jdbc:mysql://source.example/source?useSSL=false&yearIsDateType=true&useUnicode=false");
+        Map<String, String> actual = requiredActual(desired);
+        actual.put("jdbc_url", "jdbc:mysql://source.example/source?useSSL=false&yearIsDateType=false"
+                + "&useUnicode=true&tinyInt1isBit=false&rewriteBatchedStatements=true&characterEncoding=utf-8");
+
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isMatch());
+
+        actual.put("jdbc_url", actual.get("jdbc_url").replace("useSSL=false", "useSSL=true"));
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isUnknown());
+        actual.put("jdbc_url", actual.get("jdbc_url").replace("source.example", "other.example"));
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isMismatch());
+    }
+
+    @Test
+    void postgresUrlWithDorisBatchInsertParameterMatchesWithoutAcceptingOtherChanges() {
+        LakeCatalogDesiredSpec desired = withUrl(LakeJdbcAdapterType.POSTGRESQL,
+                "jdbc:postgresql://source.example/app?sslmode=disable&reWriteBatchedInserts=false");
+        Map<String, String> actual = requiredActual(desired);
+        actual.put("jdbc_url", desired.jdbcUrl().replace("reWriteBatchedInserts=false", "reWriteBatchedInserts=true"));
+
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isMatch());
+
+        actual.put("jdbc_url", actual.get("jdbc_url").replace("sslmode=disable", "sslmode=require"));
+        assertTrue(LakeCatalogActualEvaluator.compare(desired, actual).isUnknown());
+    }
+
+    @Test
     void reorderedJdbcUrlParametersAreAmbiguousRatherThanDrift() {
         LakeCatalogDesiredSpec desired = new LakeCatalogDesiredSpec(
                 "source_catalog", 17L, "source-v1", LakeJdbcAdapterType.MYSQL,
@@ -176,5 +220,14 @@ class LakeCatalogActualEvaluatorTest {
     private static Map<String, String> requiredActual(LakeCatalogDesiredSpec desired) {
         return new LinkedHashMap<>(LakeCatalogDesiredSpecCanonicalizer
                 .webOwnedDesiredProperties(desired));
+    }
+
+    private static LakeCatalogDesiredSpec withUrl(LakeJdbcAdapterType adapter, String jdbcUrl) {
+        boolean mysql = adapter == LakeJdbcAdapterType.MYSQL;
+        return new LakeCatalogDesiredSpec(
+                "source_catalog", 17L, "source-v1", adapter, LakeCatalogScope.ALL, jdbcUrl,
+                mysql ? "file:/opt/drivers/mysql.jar" : "file:/opt/drivers/postgresql.jar",
+                mysql ? "com.mysql.cj.jdbc.Driver" : "org.postgresql.Driver", CHECKSUM,
+                "drivers-v1", "credential-v1", List.of(), List.of(), Map.of());
     }
 }

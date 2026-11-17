@@ -43,7 +43,10 @@ public final class LakeCatalogActualEvaluator {
                         Map.of());
             }
             String actualValue = actual.get(key);
-            if ("jdbc_url".equals(key) && !sameJdbcUrl(expectedValue, actualValue)) {
+            if ("jdbc_url".equals(key)) {
+                if (sameJdbcUrl(expectedValue, actualValue)) {
+                    continue;
+                }
                 if (jdbcBase(expectedValue).equals(jdbcBase(actualValue))
                         && !isMasked(actualValue)) {
                     return new LakeCatalogValidationResult(
@@ -82,9 +85,45 @@ public final class LakeCatalogActualEvaluator {
     }
 
     private static boolean sameJdbcUrl(String expected, String actual) {
-        // Only whitespace around the value is a documented-safe normalization.
-        // Any connector rewrite, injected parameter, or masking is ambiguous.
-        return Objects.equals(trim(expected), trim(actual));
+        String desired = trim(expected);
+        String observed = trim(actual);
+        return Objects.equals(desired, observed)
+                || Objects.equals(dorisJdbcUrl(desired), observed);
+    }
+
+    /** Mirrors only JdbcResource.handleJdbcUrl transformations verified on Doris 4.1.2. */
+    private static String dorisJdbcUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        // Do not sort, decode or discard arbitrary URL parameters: other rewrites remain UNKNOWN.
+        String normalized = url.replace(" ", "");
+        if (normalized.startsWith("jdbc:mysql:")) {
+            normalized = forceBooleanParameter(normalized, "yearIsDateType", false);
+            normalized = forceBooleanParameter(normalized, "tinyInt1isBit", false);
+            normalized = forceBooleanParameter(normalized, "useUnicode", true);
+            normalized = forceBooleanParameter(normalized, "rewriteBatchedStatements", true);
+            if (!normalized.contains("characterEncoding=utf-8")) {
+                normalized = appendParameter(normalized, "characterEncoding=utf-8");
+            }
+        } else if (normalized.startsWith("jdbc:postgresql:")) {
+            normalized = forceBooleanParameter(normalized, "reWriteBatchedInserts", true);
+        }
+        return normalized;
+    }
+
+    private static String forceBooleanParameter(String url, String name, boolean value) {
+        String expected = name + '=' + value;
+        if (url.contains(expected)) {
+            return url;
+        }
+        String opposite = name + '=' + !value;
+        return url.contains(opposite) ? url.replace(opposite, expected) : appendParameter(url, expected);
+    }
+
+    private static String appendParameter(String url, String parameter) {
+        String delimiter = url.contains("?") ? "&" : "?";
+        return url + (url.endsWith(delimiter) ? "" : delimiter) + parameter;
     }
 
     private static String jdbcBase(String value) {

@@ -488,6 +488,10 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
             LakeCatalogValidationResult validation = client.validateCatalog(
                     desired.catalogName(), desired);
             if (validation == null || !validation.isMatch()) {
+                log.warn("Logical catalog create validation failed catalog={} status={} code={} mismatchKeys={}",
+                        desired.catalogName(), validation == null ? null : validation.status(),
+                        validation == null ? null : validation.code(),
+                        validation == null ? null : validation.mismatches().keySet());
                 errorCode.set(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED);
                 throw external(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED,
                         "catalog validation did not match");
@@ -537,6 +541,10 @@ public class LakeLogicalCatalogServiceImpl implements LakeLogicalCatalogService 
             LakeCatalogValidationResult validation = client.validateCatalog(
                     desired.catalogName(), desired);
             if (validation == null || !validation.isMatch()) {
+                log.warn("Logical catalog update validation failed catalog={} status={} code={} mismatchKeys={}",
+                        desired.catalogName(), validation == null ? null : validation.status(),
+                        validation == null ? null : validation.code(),
+                        validation == null ? null : validation.mismatches().keySet());
                 errorCode.set(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED);
                 throw external(LakeErrorCode.LAKE_CATALOG_VALIDATION_FAILED,
                         "catalog validation did not match");
