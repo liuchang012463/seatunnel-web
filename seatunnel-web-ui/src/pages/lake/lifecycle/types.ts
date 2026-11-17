@@ -7,6 +7,10 @@ import type {
 } from '@/services/lake';
 
 export interface LifecyclePolicyFormValues {
+  dataSourceType?: string;
+  sourceDataSourceId?: number;
+  unitId?: number;
+  businessSystemId?: number;
   policyName: string;
   granularity: 'DAY' | 'MONTH' | 'YEAR';
   retentionCount: number;

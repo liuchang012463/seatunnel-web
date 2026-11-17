@@ -24,6 +24,12 @@ public class LakeLifecyclePolicyCreateDTO {
     private Integer retentionCount;
 
     @Size(max = 1024)
+    /** Empty dimensions mean all; populated dimensions are combined with AND. */
+    private String dataSourceType;
+    private Long sourceDataSourceId;
+    private Long unitId;
+    private Long businessSystemId;
+
     private String description;
 
     private LakeLifecyclePolicyStatus status = LakeLifecyclePolicyStatus.DRAFT;

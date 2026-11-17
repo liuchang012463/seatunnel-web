@@ -85,6 +85,10 @@ public class LakeLifecycleValidationServiceImpl implements LakeLifecycleValidati
     private final LakeTableLifecycleBindingDao lifecycleBindingDao;
     private final LakeDorisClientProvider dorisClientProvider;
     private final DorisPartitionSummarizer partitionSummarizer;
+    @Autowired
+    private org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher scopeMatcher;
+    @Autowired
+    private org.apache.seatunnel.web.dao.repository.LakeSourceObjectRefDao sourceObjectRefDao;
 
     @Autowired
     public LakeLifecycleValidationServiceImpl(
@@ -135,6 +139,12 @@ public class LakeLifecycleValidationServiceImpl implements LakeLifecycleValidati
             validateSourceNullability(mapping, contractCheck.partitionSourceName(), reasons);
         }
         validatePolicy(policy, contractCheck.granularity(), reasons);
+        if (org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.isScoped(policy)) {
+            var reference = sourceObjectRefDao.queryByIdIncludingDeleted(mapping.getSourceObjectRefId());
+            if (reference == null || !scopeMatcher.matches(policy, reference.getSourceDataSourceId())) {
+                reasons.add("LAKE_LIFECYCLE_POLICY_SCOPE_MISMATCH");
+            }
+        }
         result.setExistingBindingPolicyDiff(binding != null
                 && !Objects.equals(binding.getPolicyId(), policy.getId()));
 

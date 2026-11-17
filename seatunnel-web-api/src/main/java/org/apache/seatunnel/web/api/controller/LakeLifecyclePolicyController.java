@@ -35,6 +35,12 @@ public class LakeLifecyclePolicyController {
         return service.page(request);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/policies/applicable")
+    public Result<java.util.List<LakeLifecyclePolicyVO>> applicable(
+            @org.springframework.web.bind.annotation.RequestParam("sourceDataSourceId") Long sourceDataSourceId) {
+        return Result.buildSuc(service.applicable(sourceDataSourceId));
+    }
+
     @PostMapping("/policies")
     public Result<LakeLifecyclePolicyVO> create(
             @Valid @RequestBody LakeLifecyclePolicyCreateDTO request) {

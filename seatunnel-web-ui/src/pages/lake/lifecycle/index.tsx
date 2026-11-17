@@ -59,6 +59,7 @@ import type {
 import type { LakeLifecyclePolicy, LakePolicyStatus, LakeResourceStatus } from '@/services/lake';
 import { normalizeLakePage } from '@/services/lake';
 import { withTimeout } from '@/utils/withTimeout';
+import ScopeFields from './ScopeFields';
 import './index.less';
 
 const { Paragraph, Text, Title } = Typography;
@@ -88,6 +89,7 @@ const statusColors: Record<string, string> = {
 const granularityLabels: Record<string, string> = { DAY: '天', MONTH: '月', YEAR: '年' };
 const reasonLabels: Record<string, string> = {
   LAKE_LIFECYCLE_VALID: '校验通过',
+  LAKE_LIFECYCLE_POLICY_SCOPE_MISMATCH: '策略不适用于此表的数据源',
   LAKE_LIFECYCLE_MAPPING_NOT_MANAGED: '仅 MANAGED 表允许绑定生命周期',
   LAKE_LIFECYCLE_MAPPING_NOT_READY: '目标表尚未就绪',
   LAKE_LIFECYCLE_POLICY_NOT_ACTIVE: '策略未启用',
@@ -110,7 +112,7 @@ const statusTag = (value?: string) => (
 
 const formatTime = (value?: string) => (value ? value.replace('T', ' ').replace(/\.\d+Z$/, '') : '-');
 const retentionText = (count?: number, granularity?: string) =>
-  count == null ? '-' : `${count} ${granularityLabels[granularity || ''] || '个分区'}`;
+  count == null ? '-' : `${count} 个历史${granularityLabels[granularity || ''] || ''}分区`;
 const explainReason = (reason?: string) => (reason ? reasonLabels[reason] || reason : '未返回原因');
 
 const responseError = (response: { msg?: string; message?: string }, fallback: string) =>
@@ -130,8 +132,12 @@ const PolicyEditorDrawer: React.FC<{
     form.setFieldsValue({
       policyName: policy?.policyName || '',
       granularity: policy?.granularity || 'DAY',
-      retentionCount: policy?.retentionCount || 1,
+      retentionCount: policy?.retentionCount || 30,
       description: policy?.description || '',
+      dataSourceType: policy?.dataSourceType,
+      sourceDataSourceId: policy?.sourceDataSourceId,
+      unitId: policy?.unitId,
+      businessSystemId: policy?.businessSystemId,
       status: policy?.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
     });
   }, [form, open, policy]);
@@ -145,6 +151,10 @@ const PolicyEditorDrawer: React.FC<{
         retentionCount: values.retentionCount,
         description: values.description?.trim() || undefined,
         status: values.status,
+        dataSourceType: values.dataSourceType || null,
+        sourceDataSourceId: values.sourceDataSourceId || null,
+        unitId: values.unitId || null,
+        businessSystemId: values.businessSystemId || null,
       };
       if (policy?.id && policy.version == null) {
         throw new Error('策略版本缺失，请刷新后重试');
@@ -178,7 +188,7 @@ const PolicyEditorDrawer: React.FC<{
         description="每张表保存自己的策略快照；更新模板后，已应用表需要在表详情中单独调整。"
         className="lake-lifecycle-alert"
       />
-      <Form form={form} layout="vertical" onFinish={submit} className="lake-policy-form">
+      <Form name="lake-policy-editor" form={form} layout="vertical" onFinish={submit} className="lake-policy-form">
         <Form.Item
           name="policyName"
           label="策略名称"
@@ -200,6 +210,7 @@ const PolicyEditorDrawer: React.FC<{
         <Form.Item name="status" label="状态">
           <Select disabled={policy?.status === 'ACTIVE'} options={[{ label: '草稿', value: 'DRAFT' }, { label: '启用', value: 'ACTIVE' }]} />
         </Form.Item>
+        <ScopeFields form={form} open={open} />
         <Form.Item name="description" label="说明">
           <Input.TextArea maxLength={1024} showCount rows={4} placeholder="说明适用范围和分区约束" />
         </Form.Item>

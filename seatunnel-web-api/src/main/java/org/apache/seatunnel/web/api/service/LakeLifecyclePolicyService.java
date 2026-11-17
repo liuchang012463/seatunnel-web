@@ -12,6 +12,8 @@ public interface LakeLifecyclePolicyService {
 
     PaginationResult<LakeLifecyclePolicyVO> page(LakeLifecyclePolicyPageDTO request);
 
+    java.util.List<LakeLifecyclePolicyVO> applicable(Long sourceDataSourceId);
+
     LakeLifecyclePolicyVO create(LakeLifecyclePolicyCreateDTO request);
 
     LakeLifecyclePolicyVO update(Long id, LakeLifecyclePolicyUpdateDTO request);

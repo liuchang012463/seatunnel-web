@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Local CRUD and optimistic state machine for reusable lifecycle policies. */
+@lombok.extern.slf4j.Slf4j
 @Service
 public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyService {
 
@@ -33,6 +34,9 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
     private static final int MAX_PAGE_SIZE = 1000;
     private static final int MAX_POLICY_NAME_LENGTH = 128;
     private static final int MAX_DESCRIPTION_LENGTH = 1024;
+
+    @Autowired
+    private org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher scopeMatcher;
 
     private final LakeLifecyclePolicyDao policyDao;
     private final CurrentUserProvider currentUserProvider;
@@ -79,6 +83,11 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
             entity.setStatus(normalizeCreateStatus(request.getStatus()));
             entity.setGranularity(request.getGranularity());
             entity.setRetentionCount(request.getRetentionCount());
+            entity.setDataSourceType(request.getDataSourceType());
+            entity.setSourceDataSourceId(request.getSourceDataSourceId());
+            entity.setUnitId(request.getUnitId());
+            entity.setBusinessSystemId(request.getBusinessSystemId());
+            validateScope(entity);
             entity.setDescription(normalizeDescription(request.getDescription()));
             Integer userId = currentUserId();
             entity.setCreateUserId(userId);
@@ -86,6 +95,7 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
             if (policyDao.insert(entity) <= 0) {
                 throw conflict("Lifecycle policy cannot be created");
             }
+            log.info("Created lake lifecycle policy id={} scopeSpecificity={}", entity.getId(), org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.specificity(entity));
             return toVO(entity);
         } catch (DuplicateKeyException exception) {
             throw conflict("Lifecycle policy name already exists");
@@ -113,6 +123,11 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
         desired.setStatus(request.getStatus());
         desired.setGranularity(request.getGranularity());
         desired.setRetentionCount(request.getRetentionCount());
+        desired.setDataSourceType(request.getDataSourceType());
+        desired.setSourceDataSourceId(request.getSourceDataSourceId());
+        desired.setUnitId(request.getUnitId());
+        desired.setBusinessSystemId(request.getBusinessSystemId());
+        validateScope(desired);
         desired.setDescription(normalizeDescription(request.getDescription()));
         if (sameDefinition(existing, desired)) {
             return toVO(existing);
@@ -128,6 +143,7 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
             if (!policyDao.updateIfVersion(desired, request.getExpectedVersion())) {
                 throw conflict("Lifecycle policy version conflict");
             }
+            log.info("Updated lake lifecycle policy id={} version={} scopeSpecificity={}", id, desired.getVersion(), org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.specificity(desired));
             return toVO(desired);
         } catch (DuplicateKeyException exception) {
             throw conflict("Lifecycle policy name already exists");
@@ -180,6 +196,24 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
             throw exception;
         } catch (RuntimeException exception) {
             throw conflict("Lifecycle policy cannot be read");
+        }
+    }
+
+    @Override
+    public List<LakeLifecyclePolicyVO> applicable(Long sourceDataSourceId) {
+        var source = scopeMatcher.requireSource(sourceDataSourceId);
+        return policyDao.queryAll().stream()
+                .filter(policy -> policy.getStatus() == LakeLifecyclePolicyStatus.ACTIVE)
+                .filter(policy -> scopeMatcher.matches(policy, source))
+                .sorted(java.util.Comparator.comparingInt(
+                        org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher::specificity).reversed()
+                        .thenComparing(LakeLifecyclePolicy::getId))
+                .map(this::toVO).toList();
+    }
+
+    private void validateScope(LakeLifecyclePolicy policy) {
+        if (org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.isScoped(policy)) {
+            scopeMatcher.validate(policy);
         }
     }
 
@@ -277,7 +311,11 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
                 && Objects.equals(left.getStatus(), right.getStatus())
                 && Objects.equals(left.getGranularity(), right.getGranularity())
                 && Objects.equals(left.getRetentionCount(), right.getRetentionCount())
-                && Objects.equals(left.getDescription(), right.getDescription());
+                && Objects.equals(left.getDescription(), right.getDescription())
+                && Objects.equals(left.getDataSourceType(), right.getDataSourceType())
+                && Objects.equals(left.getSourceDataSourceId(), right.getSourceDataSourceId())
+                && Objects.equals(left.getUnitId(), right.getUnitId())
+                && Objects.equals(left.getBusinessSystemId(), right.getBusinessSystemId());
     }
 
     private LakeLifecyclePolicy copyForUpdate(LakeLifecyclePolicy source) {
@@ -288,6 +326,10 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
         target.setStatus(source.getStatus());
         target.setGranularity(source.getGranularity());
         target.setRetentionCount(source.getRetentionCount());
+        target.setDataSourceType(source.getDataSourceType());
+        target.setSourceDataSourceId(source.getSourceDataSourceId());
+        target.setUnitId(source.getUnitId());
+        target.setBusinessSystemId(source.getBusinessSystemId());
         target.setDescription(source.getDescription());
         target.setCreateUserId(source.getCreateUserId());
         target.setUpdateUserId(source.getUpdateUserId());
@@ -304,6 +346,12 @@ public class LakeLifecyclePolicyServiceImpl implements LakeLifecyclePolicyServic
         result.setStatus(entity.getStatus());
         result.setGranularity(entity.getGranularity());
         result.setRetentionCount(entity.getRetentionCount());
+        result.setDataSourceType(entity.getDataSourceType());
+        result.setSourceDataSourceId(entity.getSourceDataSourceId());
+        result.setUnitId(entity.getUnitId());
+        result.setBusinessSystemId(entity.getBusinessSystemId());
+        result.setScopeDescription(org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.isScoped(entity)
+                ? scopeMatcher.describe(entity) : "全部数据源");
         result.setDescription(entity.getDescription());
         result.setCreateUserId(entity.getCreateUserId());
         result.setUpdateUserId(entity.getUpdateUserId());

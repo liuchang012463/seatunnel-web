@@ -107,6 +107,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     private final LakeTableDriftEvaluator driftEvaluator;
     private final LakeTableReconcilePersistenceService reconcilePersistenceService;
     private final LakeManagedTableLifecycleCreatePersistenceService lifecycleCreatePersistenceService;
+    @Autowired
+    private org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher scopeMatcher;
 
     @Autowired
     public LakeManagedTableServiceImpl(
@@ -412,6 +414,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         LakeLifecyclePolicy lifecyclePolicy;
         try {
             lifecyclePolicy = readPreviewLifecyclePolicy(request.getLifecyclePolicyId(), contract, source);
+            requirePolicyScope(lifecyclePolicy, request.getSourceDataSourceId());
         } catch (LakeServiceException exception) {
             return invalidPreview(request, exception.getMessage());
         }
@@ -482,6 +485,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         }
         TargetContract contract = readContract(payload.targetContractJson());
         LakeLifecyclePolicy lifecyclePolicy = readCreateLifecyclePolicy(payload, contract, source);
+        requirePolicyScope(lifecyclePolicy, payload.sourceDataSourceId());
         java.util.Map<String, String> lifecycleProperties = lifecycleProperties(lifecyclePolicy);
         String contractHash = TargetContractCanonicalizer.canonicalHash(contract);
         if (!Objects.equals(payload.targetContractHash(), contractHash)) {
@@ -1427,6 +1431,13 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         return sourceRef != null && Objects.equals(mapping.getSourceObjectRefId(), sourceRef.getId());
     }
 
+    private void requirePolicyScope(LakeLifecyclePolicy policy, Long sourceDataSourceId) {
+        if (policy != null && org.apache.seatunnel.web.api.lake.LakeLifecyclePolicyScopeMatcher.isScoped(policy)
+                && !scopeMatcher.matches(policy, sourceDataSourceId)) {
+            throw conflict("生命周期策略不适用于当前数据源，请重新选择");
+        }
+    }
+
     private LakeLifecyclePolicy readPreviewLifecyclePolicy(
             Long policyId, TargetContract contract, SourceObjectSnapshot source) {
         if (policyId == null) {
@@ -1530,7 +1541,8 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         if (sourceColumn == null || !Boolean.FALSE.equals(sourceColumn.nullable())
                 || sourceType == null
                 || (!sourceType.trim().equalsIgnoreCase("DATE")
-                && !sourceType.trim().toUpperCase(java.util.Locale.ROOT).startsWith("DATETIME"))) {
+                && !sourceType.trim().toUpperCase(java.util.Locale.ROOT).startsWith("DATETIME")
+                && !sourceType.trim().toUpperCase(java.util.Locale.ROOT).startsWith("TIMESTAMP"))) {
             throw conflict("Lifecycle source partition column must be DATE/DATETIME and NOT NULL");
         }
     }

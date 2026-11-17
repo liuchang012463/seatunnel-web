@@ -176,6 +176,11 @@ export interface LakeDeleteImpact {
 }
 
 export interface LakeLifecyclePolicy {
+  dataSourceType?: string;
+  sourceDataSourceId?: number;
+  unitId?: number;
+  businessSystemId?: number;
+  scopeDescription?: string;
   id?: number;
   policyName?: string;
   version?: number;

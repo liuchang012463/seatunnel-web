@@ -21,6 +21,12 @@ public class LakeLifecyclePolicy extends BaseEntity {
 
     private Integer retentionCount;
 
+    /** Empty dimensions mean all; populated dimensions are combined with AND. */
+    private String dataSourceType;
+    private Long sourceDataSourceId;
+    private Long unitId;
+    private Long businessSystemId;
+
     private String description;
 
     private Integer createUserId;

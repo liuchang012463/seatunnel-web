@@ -16,6 +16,13 @@ public class LakeLifecyclePolicyVO {
     private LakeLifecyclePolicyStatus status;
     private LakePartitionGranularity granularity;
     private Integer retentionCount;
+    /** Empty dimensions mean all; populated dimensions are combined with AND. */
+    private String dataSourceType;
+    private Long sourceDataSourceId;
+    private Long unitId;
+    private Long businessSystemId;
+
+    private String scopeDescription;
     private String description;
     private Integer createUserId;
     private Integer updateUserId;

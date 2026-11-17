@@ -141,6 +141,10 @@ export async function fetchLifecyclePolicies(
   return HttpUtils.post(`${LIFECYCLE}/policies/page`, params);
 }
 
+export async function fetchApplicableLifecyclePolicies(sourceDataSourceId: number): Promise<LakeApiResponse<LakeLifecyclePolicy[]>> {
+  return HttpUtils.get(`${LIFECYCLE}/policies/applicable?sourceDataSourceId=${encodeURIComponent(sourceDataSourceId)}`);
+}
+
 export async function createLifecyclePolicy(payload: Record<string, unknown>): Promise<LakeApiResponse<LakeLifecyclePolicy>> {
   return HttpUtils.post(`${LIFECYCLE}/policies`, payload);
 }
