@@ -16,6 +16,8 @@ const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigat
       {
         key: '/',
         title: rootLabel,
+        // 面包屑支持目录导航，显式提示鼠标可点击。
+        style: { cursor: 'pointer' as const },
         onClick: () => onNavigate('/'),
       },
     ];
@@ -25,6 +27,7 @@ const ResourceBreadcrumb: React.FC<ResourceBreadcrumbProps> = ({ path, onNavigat
       breadcrumbItems.push({
         key: segmentPath,
         title: segment,
+        style: { cursor: 'pointer' as const },
         onClick: () => onNavigate(segmentPath),
       });
     });
