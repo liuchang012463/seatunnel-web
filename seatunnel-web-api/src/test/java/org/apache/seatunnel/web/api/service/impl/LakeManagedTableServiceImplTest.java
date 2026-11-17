@@ -67,6 +67,9 @@ import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePartitionDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeManagedTablePreviewDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -663,6 +666,41 @@ class LakeManagedTableServiceImplTest {
         verify(dorisClient, never()).tableExists(anyString(), anyString());
         verify(dorisClientProvider, never()).get(anyLong());
         verify(tableMappingDao, never()).updateById(any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "KINGBASE, default, actual_db, sales",
+            "VASTBASE, default, actual_db, sales",
+            "POSTGRE_SQL, default, actual_db, sales",
+            "POSTGRE_SQL, metadata_db, metadata_db, sales",
+            "MYSQL, default, sales,"
+    })
+    void taskPrefillResolvesNativeNamespaceAndPreservesExplicitMetadataDatabase(
+            DbType type, String metadataDatabase, String expectedDatabase, String expectedSchema) {
+        var mapping = storedMapping(503L);
+        var reference = new LakeSourceObjectRef();
+        reference.setId(701L);
+        reference.setSourceDataSourceId(11L);
+        reference.setOmEntityId("om-table");
+        var connection = new DataSource();
+        connection.setDbType(type);
+        connection.setSourceEnabled(true);
+        connection.setConnectionParams("{\"host\":\"db\",\"port\":\"5432\",\"database\":\"actual_db\"}");
+        when(tableMappingDao.queryByIdIncludingDeleted(503L)).thenReturn(mapping);
+        when(sourceObjectRefDao.queryByIdIncludingDeleted(701L)).thenReturn(reference);
+        when(dataSourceDao.queryById(11L)).thenReturn(connection);
+        when(sourceResolver.resolve(11L, "om-table")).thenReturn(new SourceObjectSnapshot(
+                "om-table", "svc.default.sales.orders", source.columns(), source.constraints(),
+                source.sourceSchemaHash(), "{\"databaseName\":\"%s\",\"schemaName\":\"sales\",\"tableName\":\"orders\"}"
+                        .formatted(metadataDatabase)));
+
+        var result = service.taskPrefill(503L);
+
+        assertEquals(expectedDatabase, result.getSourceDatabaseName());
+        assertEquals(expectedSchema, result.getSourceSchemaName());
+        assertEquals("orders", result.getSourceTableName());
+        verifyNoInteractions(dorisClient);
     }
 
     @Test

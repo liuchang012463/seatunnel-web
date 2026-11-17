@@ -579,12 +579,28 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 || result.getSourceDataSourceId() == null || result.getOmEntityId() == null) {
             throw invalid("ODS 表尚未就绪或没有来源关联，请先检查表状态");
         }
-        requireSourceUsage(result.getSourceDataSourceId());
+        DataSource sourceDataSource = requireSourceUsage(result.getSourceDataSourceId());
         SourceObjectSnapshot source = sourceResolver.resolve(result.getSourceDataSourceId(), result.getOmEntityId());
         try {
             var snapshot = MAPPER.readTree(source.snapshotJson());
             String database = snapshot.path("databaseName").asText("");
             String schema = snapshot.path("schemaName").asText("");
+            if ("default".equalsIgnoreCase(database)
+                    && List.of("POSTGRE_SQL", "KINGBASE", "VASTBASE").contains(result.getSourceDbType())) {
+                // OM's placeholder is not a native database. Engine table_path selects its first
+                // component even when the JDBC URL already points to the actual database.
+                try {
+                    var connection = org.apache.seatunnel.plugin.datasource.api.utils.DataSourceUtils
+                            .buildJdbcConnectionParams(sourceDataSource.getDbType(), sourceDataSource.getConnectionParams());
+                    database = org.apache.commons.lang3.StringUtils.trimToEmpty(connection.getDatabase());
+                } catch (RuntimeException exception) {
+                    log.warn("Unable to resolve lake task source database sourceId={} dbType={}",
+                            result.getSourceDataSourceId(), result.getSourceDbType());
+                    throw invalid("无法读取来源连接的实际数据库，请检查连接配置");
+                }
+                log.info("Resolved native database for lake task mappingId={} sourceId={} dbType={}",
+                        id, result.getSourceDataSourceId(), result.getSourceDbType());
+            }
             // OM represents MySQL/Doris native databases as database schemas.
             boolean catalogDatabase = List.of("MYSQL", "DORIS").contains(result.getSourceDbType());
             result.setSourceDatabaseName(catalogDatabase && !schema.isBlank()
@@ -605,11 +621,12 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     }
 
     /** Never replace a disabled source with a different connection during task creation. */
-    private void requireSourceUsage(Long sourceId) {
+    private DataSource requireSourceUsage(Long sourceId) {
         DataSource source = dataSourceDao.queryById(sourceId);
         if (source != null && Boolean.FALSE.equals(source.getSourceEnabled())) {
             throw invalid("该数据源未开启来源用途，请在数据源管理中开启后再创建入湖任务");
         }
+        return source;
     }
 
     /**
