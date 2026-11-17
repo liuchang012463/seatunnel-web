@@ -2,36 +2,13 @@
   min-width: 0;
 }
 
-.lake-table-hero {
+.lake-table-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
-  min-height: 128px;
-  padding: 24px;
-  margin-bottom: 18px;
-  background: linear-gradient(110deg, rgba(28, 112, 135, 0.25), rgba(0, 38, 54, 0.78));
-  border: 1px solid rgba(77, 210, 255, 0.25);
-}
-
-.lake-table-hero-icon {
-  display: grid;
-  flex: 0 0 52px;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  color: #4dd2ff;
-  font-size: 26px;
-  background: rgba(77, 210, 255, 0.12);
-  border-radius: 12px;
-}
-
-.lake-table-hero-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.lake-table-hero-copy .ant-typography {
-  margin-bottom: 0;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .lake-table-status-card {
@@ -54,17 +31,3 @@
   margin: 0;
   padding-left: 20px;
 }
-
-@media (max-width: 600px) {
-  .lake-table-hero {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    padding: 18px;
-  }
-
-  .lake-table-hero > .lake-status-tag {
-    width: 100%;
-    margin-left: 70px;
-  }
-}
-

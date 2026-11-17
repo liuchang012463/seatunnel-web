@@ -6,7 +6,6 @@ import {
   ReloadOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
-  TableOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
@@ -16,6 +15,7 @@ import {
   Alert,
   Button,
   Card,
+  Collapse,
   Descriptions,
   Empty,
   Input,
@@ -56,7 +56,7 @@ import { fetchTaskPrefill } from './service';
 import { lakeTaskForm } from './taskPrefill';
 import './table-detail.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text } = Typography;
 
 const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => response.message || response.msg || fallback;
 
@@ -317,39 +317,36 @@ const ManagedTableDetailPage: React.FC = () => {
     ? lifecycleData.reasons.filter(Boolean).map(String)
     : [];
 
-  if (loading) return <PageContainer title="表详情"><Spin /></PageContainer>;
-  if (error || !table) return <PageContainer title="表详情"><Alert type="error" showIcon message={error || '未找到表映射'} action={<Button onClick={() => void load()}>重试</Button>} /></PageContainer>;
+  if (loading) return <PageContainer title={false}><Spin /></PageContainer>;
+  if (error || !table) return <PageContainer title={false}><Alert type="error" showIcon message={error || '未找到表映射'} action={<Button onClick={() => void load()}>重试</Button>} /></PageContainer>;
 
   return (
     <PageContainer
-      title={table.targetTableName || 'ODS 表详情'}
-      subTitle={`${table.omFqn || table.omEntityId || 'OpenMetadata 表'} → ${table.databaseName || '-'} / ${table.targetTableName || '-'}`}
-      onBack={() => history.back()}
-      breadcrumb={{ items: [{ title: '物理入湖', onClick: () => history.push('/lake/resources') }, { title: '表详情' }] }}
-      extra={[
-        <Button key="back" icon={<ArrowLeftOutlined />} onClick={() => history.back()}>返回</Button>,
-        <Button key="create-task" type="primary" icon={<ThunderboltOutlined />} disabled={table.managementLevel === 'UNMANAGED' || !table.sourceDataSourceId || !table.lakeDataSourceId} onClick={() => void createIngestionTask()}>创建引接任务</Button>,
-        table.managementLevel === 'UNMANAGED' && table.sourceBound ? <Button key="unbind" danger loading={unbindLoading} onClick={() => void unbind()}>解除关联</Button> : null,
-        <Button key="reconcile" icon={<ReloadOutlined />} loading={actionLoading === '对账'} onClick={() => void execute('对账', reconcileManagedTable)}>对账</Button>,
-        <Button key="retry" icon={<ThunderboltOutlined />} loading={actionLoading === '重试'} disabled={!['ERROR', 'CREATE_FAILED', 'MISSING', 'UNKNOWN'].includes(table.resourceStatus || '')} onClick={() => void execute('重试', retryManagedTable)}>重试</Button>,
-        <Button key="delete" danger icon={<DeleteOutlined />} disabled={table.deleted} onClick={() => setDeleteOpen(true)}>删除</Button>,
-      ]}
+      title={false}
+      header={{ style: { display: 'none' } }}
+      className="lake-table-detail-page"
     >
       <div className="lake-table-detail">
-        <Card className="lake-table-hero" variant="borderless">
-          <div className="lake-table-hero-icon"><TableOutlined /></div>
-          <div className="lake-table-hero-copy">
-            <Title level={3}>{table.targetTableName || '-'}</Title>
-            <Paragraph type="secondary">{table.databaseName || '-'} · {table.tableModel || 'DUPLICATE'} · Source {table.omFqn || table.omEntityId || '-'}</Paragraph>
-          </div>
-          <LakeResourceStatusTag status={table.resourceStatus} />
-        </Card>
+        <div className="lake-table-toolbar">
+          <Space wrap>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/lake/resources')}>返回</Button>
+            <Text strong>{table.targetTableName || '-'}</Text>
+            <LakeResourceStatusTag status={table.resourceStatus} />
+          </Space>
+          <Space wrap>
+            <Button type="primary" icon={<ThunderboltOutlined />} disabled={table.managementLevel === 'UNMANAGED' || table.resourceStatus !== 'READY' || !table.actualTableExists || !table.sourceDataSourceId || !table.lakeDataSourceId} onClick={() => void createIngestionTask()}>创建全量任务</Button>
+            {table.managementLevel === 'UNMANAGED' && table.sourceBound ? <Button danger loading={unbindLoading} onClick={() => void unbind()}>解除关联</Button> : null}
+            <Button icon={<ReloadOutlined />} loading={actionLoading === '对账'} onClick={() => void execute('对账', reconcileManagedTable)}>刷新状态</Button>
+            <Button icon={<ThunderboltOutlined />} loading={actionLoading === '重试'} disabled={!['ERROR', 'CREATE_FAILED', 'MISSING', 'UNKNOWN'].includes(table.resourceStatus || '')} onClick={() => void execute('重试', retryManagedTable)}>重试</Button>
+            <Button danger icon={<DeleteOutlined />} disabled={table.deleted} onClick={() => setDeleteOpen(true)}>删除</Button>
+          </Space>
+        </div>
         <LakeErrorAlert code={table.errorCode} message={table.errorMessage} action={<Button type="link" onClick={() => void execute('对账', reconcileManagedTable)}>重新对账</Button>} />
         <Card className="lake-table-status-card" variant="borderless">
           <Space size={24} wrap>
-            <div><Text type="secondary">Source</Text><div><LakeConsistencyTag status={table.sourceConsistencyStatus as LakeConsistencyStatus} /></div></div>
-            <div><Text type="secondary">Target</Text><div><LakeConsistencyTag status={table.targetConsistencyStatus as LakeConsistencyStatus} /></div></div>
-            <div><Text type="secondary">Task</Text><div><LakeConsistencyTag status={table.taskConsistencyStatus as LakeConsistencyStatus} /></div></div>
+            <div><Text type="secondary">来源结构</Text><div><LakeConsistencyTag status={table.sourceConsistencyStatus as LakeConsistencyStatus} /></div></div>
+            <div><Text type="secondary">湖表结构</Text><div><LakeConsistencyTag status={table.targetConsistencyStatus as LakeConsistencyStatus} /></div></div>
+            <div><Text type="secondary">引接任务</Text><div><LakeConsistencyTag status={table.taskConsistencyStatus as LakeConsistencyStatus} /></div></div>
             <div><Text type="secondary">实际表</Text><div>{table.actualTableExists ? <Tag color="success">存在</Tag> : <Tag color="error">不存在</Tag>}</div></div>
           </Space>
         </Card>
@@ -357,19 +354,19 @@ const ManagedTableDetailPage: React.FC = () => {
           className="lake-table-tabs"
           items={[
             {
-              key: 'basic', label: '基本信息', children: <Card><Descriptions bordered column={{ xs: 1, sm: 2, md: 3 }}><Descriptions.Item label="源表 FQN">{table.omFqn || '-'}</Descriptions.Item><Descriptions.Item label="目标表">{table.databaseName || '-'}.{table.targetTableName || '-'}</Descriptions.Item><Descriptions.Item label="管理等级">{table.managementLevel || '-'}</Descriptions.Item><Descriptions.Item label="Generation">{table.generation || '-'}</Descriptions.Item><Descriptions.Item label="Lock Version">{table.lockVersion || '-'}</Descriptions.Item><Descriptions.Item label="最近对账">{formatTime(table.lastReconcileAt)}</Descriptions.Item></Descriptions></Card>,
+              key: 'basic', label: '基本信息', children: <Card><Descriptions bordered column={2}><Descriptions.Item label="来源表">{table.omFqn || '-'}</Descriptions.Item><Descriptions.Item label="目标表">{table.databaseName || '-'}.{table.targetTableName || '-'}</Descriptions.Item><Descriptions.Item label="管理方式">{table.managementLevel === 'MANAGED' ? '平台创建' : '已有表关联'}</Descriptions.Item><Descriptions.Item label="最近检查">{formatTime(table.lastReconcileAt)}</Descriptions.Item></Descriptions><Collapse ghost items={[{ key: 'technical', label: '高级信息', children: <Descriptions column={2}><Descriptions.Item label="资源代次">{table.generation || '-'}</Descriptions.Item><Descriptions.Item label="并发版本">{table.lockVersion || '-'}</Descriptions.Item></Descriptions> }]} /></Card>,
             },
             {
-              key: 'structure', label: '表结构', children: <Card title={<Space><EyeOutlined />{structureView === 'actual' || !table.targetContract ? 'Actual Contract' : 'Desired Contract'}</Space>} extra={<Space size={8}><Button size="small" type={structureView === 'desired' ? 'primary' : 'default'} disabled={!table.targetContract} onClick={() => setStructureView('desired')}>Desired</Button><Button size="small" type={structureView === 'actual' ? 'primary' : 'default'} disabled={!table.actualContract} onClick={() => setStructureView('actual')}>Actual</Button></Space>}>
-                {!table.actualContract ? <Alert type="info" showIcon message="尚未缓存 Doris 实际结构" description="点击“对账”后，服务端会读取 columns、Key、分区和分布并缓存结果；进入详情不会自动访问 Doris。" /> : contractDiff.missing || contractDiff.extra || contractDiff.changed ? <Alert type="warning" showIcon message="Desired 与 Actual 存在差异" description={`缺少 ${contractDiff.missing} 列，新增 ${contractDiff.extra} 列，属性变化 ${contractDiff.changed} 列。`} /> : <Alert type="success" showIcon message="Desired 与 Actual 一致" />}
+              key: 'structure', label: '表结构', children: <Card title={<Space><EyeOutlined />{structureView === 'actual' || !table.targetContract ? '实际表结构' : '目标表结构'}</Space>} extra={<Space size={8}><Button size="small" type={structureView === 'desired' ? 'primary' : 'default'} disabled={!table.targetContract} onClick={() => setStructureView('desired')}>目标结构</Button><Button size="small" type={structureView === 'actual' ? 'primary' : 'default'} disabled={!table.actualContract} onClick={() => setStructureView('actual')}>实际结构</Button></Space>}>
+                {!table.actualContract ? <Alert type="info" showIcon message="尚未缓存 Doris 实际结构" description="点击“对账”后，服务端会读取 columns、Key、分区和分布并缓存结果；进入详情不会自动访问 Doris。" /> : contractDiff.missing || contractDiff.extra || contractDiff.changed ? <Alert type="warning" showIcon message="目标与实际结构存在差异" description={`缺少 ${contractDiff.missing} 列，新增 ${contractDiff.extra} 列，属性变化 ${contractDiff.changed} 列。`} /> : <Alert type="success" showIcon message="目标与实际结构一致" />}
                 <Table rowKey={(row) => `${row.targetName || row.sourceName}-${row.physicalOrdinal || 0}`} dataSource={(structureView === 'actual' || !table.targetContract ? actualColumns : columns)} pagination={false} scroll={{ x: 920 }} columns={[
                 { title: 'Key', dataIndex: 'key', width: 80, render: (value) => value ? <Tag color="blue">Key</Tag> : '-' },
                 { title: '源字段', dataIndex: 'sourceName', width: 180 },
                 { title: '目标字段', dataIndex: 'targetName', width: 180 },
                 { title: '目标类型', dataIndex: 'targetType', width: 180, render: (value) => formatTargetType(value) },
-                { title: 'Nullable', dataIndex: 'nullable', width: 100, render: (value) => value ? 'YES' : 'NO' },
+                { title: '允许为空', dataIndex: 'nullable', width: 100, render: (value) => value ? '是' : '否' },
                 { title: '序号', dataIndex: 'physicalOrdinal', width: 90 },
-                ]} locale={{ emptyText: <Empty description={structureView === 'actual' || !table.targetContract ? '暂无实际结构，请先对账' : '暂无目标合同'} /> }} />
+                ]} locale={{ emptyText: <Empty description={structureView === 'actual' || !table.targetContract ? '暂无实际结构，请先对账' : '暂无目标结构'} /> }} />
               </Card>,
             },
             {
@@ -394,10 +391,10 @@ const ManagedTableDetailPage: React.FC = () => {
               </Card>,
             },
             {
-              key: 'relations', label: '数据引接', children: <Space direction="vertical" size={16} className="lake-table-tab-content"><Card title={<Space><ThunderboltOutlined />TABLE Relations</Space>}><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={tableRelations} locale={{ emptyText: <Empty description="暂无表级任务关系" /> }} /></Card><Card title="NAMESPACE Relations"><Alert type="info" showIcon message="命名空间关系不会自动绑定到源表" /><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={namespaceRelations} locale={{ emptyText: <Empty description="暂无命名空间关系" /> }} /></Card></Space>,
+              key: 'relations', label: '数据引接', children: <Space direction="vertical" size={16} className="lake-table-tab-content"><Card title={<Space><ThunderboltOutlined />本表引接任务</Space>}><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={tableRelations} locale={{ emptyText: <Empty description="暂无表级任务关系" /> }} /></Card><Card title="整库引接任务"><Alert type="info" showIcon message="命名空间关系不会自动绑定到源表" /><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={namespaceRelations} locale={{ emptyText: <Empty description="暂无命名空间关系" /> }} /></Card></Space>,
             },
             {
-              key: 'consistency', label: '一致性', children: <Card title={<Space><CheckCircleOutlined />三方一致性</Space>}><Descriptions bordered column={1}><Descriptions.Item label="Source">{table.sourceConsistencyStatus || 'UNKNOWN'} · 由 OpenMetadata snapshot 提供</Descriptions.Item><Descriptions.Item label="Target">{table.targetConsistencyStatus || 'UNKNOWN'} · 显式对账读取 Doris</Descriptions.Item><Descriptions.Item label="Task">{table.taskConsistencyStatus || 'UNBOUND'} · 由任务关联状态提供</Descriptions.Item></Descriptions></Card>,
+              key: 'consistency', label: '一致性', children: <Card title={<Space><CheckCircleOutlined />三方一致性</Space>}><Descriptions bordered column={1}><Descriptions.Item label="来源结构">{table.sourceConsistencyStatus || 'UNKNOWN'} · 由 OpenMetadata snapshot 提供</Descriptions.Item><Descriptions.Item label="湖表结构">{table.targetConsistencyStatus || 'UNKNOWN'} · 显式对账读取 Doris</Descriptions.Item><Descriptions.Item label="引接任务">{table.taskConsistencyStatus || 'UNBOUND'} · 由任务关联状态提供</Descriptions.Item></Descriptions></Card>,
             },
             {
               key: 'operations', label: '操作记录', children: <Card title={<Space><SettingOutlined />操作时间线</Space>}><OperationTimeline items={timelineItems} emptyText="暂无已记录的表操作" /></Card>,
