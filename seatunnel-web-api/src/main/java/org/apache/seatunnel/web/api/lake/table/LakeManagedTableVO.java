@@ -24,6 +24,8 @@ public class LakeManagedTableVO {
 
     private Long sourceDataSourceId;
 
+    private String sourceDataSourceName;
+
     /** Data source types let the task wizard select the right connector without a second lookup. */
     private String sourceDbType;
 

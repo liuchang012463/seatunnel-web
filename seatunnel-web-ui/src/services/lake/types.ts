@@ -117,6 +117,7 @@ export interface LakeTargetContract {
 }
 
 export interface LakeManagedTable {
+  sourceDataSourceName?: string;
   id: number;
   sourceObjectRefId?: number;
   sourceDataSourceId?: number;

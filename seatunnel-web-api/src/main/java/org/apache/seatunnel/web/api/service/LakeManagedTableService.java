@@ -16,6 +16,8 @@ public interface LakeManagedTableService {
 
     LakeManagedTableVO detail(Long id);
 
+    LakeManagedTableVO findByTarget(Long lakeDataSourceId, String database, String table);
+
     /** Explicit source refresh for opening the existing task wizard. */
     LakeManagedTableVO taskPrefill(Long id);
 

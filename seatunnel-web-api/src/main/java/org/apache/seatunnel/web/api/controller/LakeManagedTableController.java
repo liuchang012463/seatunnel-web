@@ -24,6 +24,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class LakeManagedTableController {
 
     private final LakeManagedTableService service;
+    @Autowired
+    private org.apache.seatunnel.web.api.service.LakeWarehouseService warehouse;
+
+    /** Local association lookup; the directory remains the source of actual table existence. */
+    @GetMapping("/by-target")
+    public Result<LakeManagedTableVO> byTarget(
+            @org.springframework.web.bind.annotation.RequestParam("database") String database,
+            @org.springframework.web.bind.annotation.RequestParam("table") String table) {
+        return Result.buildSuc(service.findByTarget(warehouse.requireSystemDataSourceId(), database, table));
+    }
 
     @Autowired
     public LakeManagedTableController(LakeManagedTableService service) {

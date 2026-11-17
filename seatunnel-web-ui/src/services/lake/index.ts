@@ -211,6 +211,8 @@ export async function testLakeWarehouse(
 }
 
 export const lakeCatalogApi = {
+  management: (database: string, table: string): Promise<LakeApiResponse<LakeManagedTable | null>> =>
+    HttpUtils.get(`${PHYSICAL}/tables/by-target?database=${encodeURIComponent(database)}&table=${encodeURIComponent(table)}`),
   listDatabases: (): Promise<LakeApiResponse<any[]>> => HttpUtils.get(`${WAREHOUSE_CATALOG}/databases`),
   listTablesByDatabase: (database: string): Promise<LakeApiResponse<any[]>> =>
     HttpUtils.get(`${WAREHOUSE_CATALOG}/tables?database=${encodeURIComponent(database)}`),

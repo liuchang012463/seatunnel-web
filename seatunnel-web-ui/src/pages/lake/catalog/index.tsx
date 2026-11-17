@@ -8,7 +8,7 @@ import {
   TableOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Input, Spin, Table, Tabs, Tree } from 'antd';
+import { Button, Empty, Input, Spin, Table, Tabs, Tree, Tag, Space } from 'antd';
 import type { TreeDataNode } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { history } from '@umijs/max';
@@ -23,7 +23,7 @@ import {
   normalizeLakePage,
   queryCatalogSingle,
 } from '@/services/lake';
-import type { LakeCatalog, LakeQueryColumnOption, LakeWarehouseConfig } from '@/services/lake';
+import type { LakeCatalog, LakeManagedTable, LakeQueryColumnOption, LakeWarehouseConfig } from '@/services/lake';
 import './index.less';
 
 
@@ -170,6 +170,22 @@ const DataLakeCatalogPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('columns');
   const initialDirectoryExpanded = useRef(false);
+  const detailRequest = useRef(0);
+  const [management, setManagement] = useState<LakeManagedTable | null>();
+  const [managementError, setManagementError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setManagement(undefined);
+    setManagementError('');
+    if (selectedSource === 'physical' && selectedDatabase && selectedTable) {
+      void lakeCatalogApi.management(selectedDatabase, selectedTable).then((response) => {
+        if (!active) return;
+        if (response.code !== 0) throw new Error(response.message || '管理信息读取失败');
+        setManagement(response.data || null);
+      }).catch((error) => { if (active) setManagementError(error.message || '管理信息读取失败'); });
+    }
+    return () => { active = false; };
+  }, [selectedSource, selectedDatabase, selectedTable]);
 
   const configured = Boolean(warehouse?.configured);
   const catalogReady = warehouse?.catalogReady !== false;
@@ -339,109 +355,58 @@ const DataLakeCatalogPage: React.FC = () => {
   }, [catalogReady, configured]);
 
   const loadDetail = useCallback(async () => {
-    if (
-      !configured
-      || !catalogReady
-      || !selectedDatabase
-      || !selectedTable
-      || (selectedSource === 'logical' && !selectedCatalogId)
-    ) {
+    const requestId = ++detailRequest.current;
+    if (!configured || !catalogReady || !selectedDatabase || !selectedTable || (selectedSource === 'logical' && !selectedCatalogId)) {
       setColumns([]);
       setPreview({});
+      setDetailLoading(false);
       return;
     }
-
     setDetailLoading(true);
+    setCatalogError('');
+    setColumns([]);
+    setPreview({});
+    let columnsRead = false;
     try {
       if (selectedSource === 'physical') {
-        const request = {
-          read_mode: 'table',
-          table_path: selectedTable,
-          database: selectedDatabase,
-        };
-        const [columnResponse, previewResponse] = await Promise.all([
-          lakeCatalogApi.listColumn(request),
-          lakeCatalogApi.getTop20Data(request),
-        ]);
-        if (columnResponse.code !== 0) {
-          throw new Error(columnResponse.message || '字段读取失败');
-        }
-        if (previewResponse.code !== 0) {
-          throw new Error(previewResponse.message || '样本数据读取失败');
-        }
+        const request = { read_mode: 'table', table_path: selectedTable, database: selectedDatabase };
+        const columnResponse = await lakeCatalogApi.listColumn(request);
+        if (requestId !== detailRequest.current) return;
+        if (columnResponse.code !== 0) throw new Error(columnResponse.message || '字段读取失败');
         setColumns(Array.isArray(columnResponse.data) ? columnResponse.data : []);
-        setPreview((previewResponse.data || {}) as PreviewResult);
+        columnsRead = true;
+        if (activeTab === 'preview') {
+          const sample = await lakeCatalogApi.getTop20Data(request);
+          if (requestId !== detailRequest.current) return;
+          if (sample.code !== 0) throw new Error(sample.message || '样本读取失败');
+          setPreview((sample.data || {}) as PreviewResult);
+        }
       } else {
         const catalogId = selectedCatalogId as number;
-        const columnResponse = await fetchCatalogQueryColumns(
-          catalogId,
-          selectedDatabase,
-          selectedTable,
-        );
-        if (columnResponse.code !== 0) {
-          throw new Error(columnResponse.message || columnResponse.msg || '逻辑字段读取失败');
-        }
-        const logicalColumns: LakeQueryColumnOption[] = Array.isArray(columnResponse.data)
-          ? columnResponse.data
-          : [];
-        setColumns(logicalColumns.map((column, index) => ({
-          key: index + 1,
-          fieldName: column.name,
-          fieldType: column.type,
-          isNullable: column.nullable ? 'YES' : 'NO',
-        })));
-
-        const tableIdentity = {
-          catalog: selectedLogicalCatalog?.targetCatalogName || '',
-          database: selectedDatabase,
-          table: selectedTable,
-        };
-        const selectableColumns = logicalColumns.filter(
-          (column) => column.selectable !== false && column.name,
-        );
-        if (!selectableColumns.length) {
-          setPreview({});
-        } else {
-          const previewResponse = await queryCatalogSingle(catalogId, {
-            table: tableIdentity,
-            selectedColumns: selectableColumns.map((column) => ({
-              table: tableIdentity,
-              column: column.name,
-            })),
-            limit: 20,
-            explain: false,
-          });
-          if (previewResponse.code !== 0 || !previewResponse.data) {
-            throw new Error(previewResponse.message || previewResponse.msg || '逻辑样本数据读取失败');
-          }
-          setPreview({
-            columns: (previewResponse.data.columns || []).map((column) => ({
-              title: column,
-              dataIndex: column,
-              key: column,
-            })),
-            data: previewResponse.data.rows || [],
-            total: previewResponse.data.rowCount,
-          });
+        const result = await fetchCatalogQueryColumns(catalogId, selectedDatabase, selectedTable);
+        if (requestId !== detailRequest.current) return;
+        if (result.code !== 0) throw new Error(result.message || result.msg || '逻辑字段读取失败');
+        const logicalColumns: LakeQueryColumnOption[] = result.data || [];
+        setColumns(logicalColumns.map((column, index) => ({ key: index + 1, fieldName: column.name, fieldType: column.type, isNullable: column.nullable == null ? undefined : column.nullable ? 'YES' : 'NO' })));
+        columnsRead = true;
+        const selectable = logicalColumns.filter((column) => column.selectable !== false && column.name);
+        if (activeTab === 'preview' && selectable.length) {
+          const table = { catalog: selectedLogicalCatalog?.targetCatalogName || '', database: selectedDatabase, table: selectedTable };
+          const sample = await queryCatalogSingle(catalogId, { table, selectedColumns: selectable.map((column) => ({ table, column: column.name })), limit: 20, explain: false });
+          if (requestId !== detailRequest.current) return;
+          if (sample.code !== 0 || !sample.data) throw new Error(sample.message || sample.msg || '逻辑样本读取失败');
+          setPreview({ columns: (sample.data.columns || []).map((column) => ({ title: column, dataIndex: column, key: column })), data: sample.data.rows || [] });
         }
       }
-      setCatalogError('');
     } catch (error) {
-      setColumns([]);
+      if (requestId !== detailRequest.current) return;
+      if (!columnsRead) setColumns([]);
       setPreview({});
       setCatalogError(error instanceof Error ? error.message : '表详情读取失败');
     } finally {
-      setDetailLoading(false);
+      if (requestId === detailRequest.current) setDetailLoading(false);
     }
-  }, [
-    catalogReady,
-    configured,
-    selectedCatalogId,
-    selectedDatabase,
-    selectedLogicalCatalog,
-    selectedSource,
-    selectedTable,
-  ]);
+  }, [activeTab, catalogReady, configured, selectedCatalogId, selectedDatabase, selectedLogicalCatalog, selectedSource, selectedTable]);
 
   useEffect(() => {
     let active = true;
@@ -912,11 +877,17 @@ const DataLakeCatalogPage: React.FC = () => {
             <div className="lake-catalog-inspector__heading">
               <div>
                 <h2>{selectedTable || '选择一张表'}</h2>
-                {selectedTable ? <p>{selectedTablePath}</p> : null}
+                {selectedTable ? <p title={selectedTablePath}>{selectedTablePath}</p> : null}
               </div>
+              {selectedTable && <Space wrap>
+                <Tag>{selectedSource === 'logical' ? '逻辑挂载' : managementError ? '管理信息暂不可读' : management === undefined ? '读取管理信息…' : management?.managementLevel === 'MANAGED' ? '受管 ODS 表' : management?.managementLevel === 'AUTO_CREATED' ? '任务自动建表' : '未纳管表'}</Tag>
+                {selectedSource === 'logical' ? <Button onClick={() => history.push(`/lake/logical-access/${selectedCatalogId}`)}>查看挂载与查询</Button>
+                  : management?.id ? <Button onClick={() => history.push(`/lake/resources/table/${management.id}`)}>入湖配置与关联任务</Button> : null}
+              </Space>}
             </div>
             {selectedTable ? (
               <>
+                {selectedSource === 'physical' && management?.sourceDataSourceId && <div className="lake-catalog-inspector__comment"><span>来源</span><Button type="link" onClick={() => history.push(`/lake/resources/${management.sourceDataSourceId}`)}>{management.sourceDataSourceName || management.omFqn || '查看来源数据源'}</Button></div>}
                 <div className="lake-catalog-inspector__comment">
                   <span>表注释</span>
                   <span title={selectedTableComment || '暂无注释'}>
@@ -952,9 +923,7 @@ const DataLakeCatalogPage: React.FC = () => {
                           <div className="lake-catalog-preview-meta">
                             <InfoCircleOutlined />
                             <span>
-                              {selectedSource === 'logical'
-                                ? <>逻辑目录查询返回 {Number(preview.total || 0).toLocaleString('zh-CN')} 行。</>
-                                : <>仅展示前 20 行，实际总行数{' '}{Number(preview.total || 0).toLocaleString('zh-CN')}。</>}
+                              样本返回 {preview.data?.length ?? 0} 行，最多展示 20 行。
                             </span>
                           </div>
                           <Table<Record<string, unknown>>

@@ -557,6 +557,15 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
     }
 
     @Override
+    public LakeManagedTableVO findByTarget(Long lakeDataSourceId, String database, String table) {
+        if (database == null || database.isBlank() || table == null || table.isBlank()) throw invalid("database and table are required");
+        LakeOdsDatabaseBinding binding = databaseBindingDao.queryByLakeDataSourceIdAndDatabaseName(lakeDataSourceId, database.trim());
+        if (binding == null || Boolean.TRUE.equals(binding.getDeleted())) return null;
+        LakeOdsTableMapping mapping = tableMappingDao.queryByBindingIdAndTargetTableIncludingDeleted(binding.getId(), table.trim());
+        return mapping == null || Boolean.TRUE.equals(mapping.getDeleted()) ? null : toVO(mapping);
+    }
+
+    @Override
     public LakeManagedTableVO taskPrefill(Long id) {
         LakeManagedTableVO result = detail(id);
         if (result.getResourceStatus() != LakeResourceStatus.READY
@@ -1364,6 +1373,7 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
                 : dataSourceDao.queryById(result.getSourceDataSourceId());
         DataSource lakeDataSource = mapping.getLakeDataSourceId() == null ? null
                 : dataSourceDao.queryById(mapping.getLakeDataSourceId());
+        result.setSourceDataSourceName(sourceDataSource == null ? null : sourceDataSource.getName());
         result.setSourceDbType(sourceDataSource == null || sourceDataSource.getDbType() == null
                 ? null : sourceDataSource.getDbType().getCode());
         result.setLakeDbType(lakeDataSource == null || lakeDataSource.getDbType() == null

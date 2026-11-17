@@ -96,8 +96,11 @@ public class LakeWarehouseController {
     @PostMapping("/catalog/preview")
     @Operation(summary = "previewLakeCatalogData")
     public Result<QueryResult> previewCatalogData(@RequestBody Map<String, Object> requestBody) {
+        // Browsing a sample must not scan an entire lake table just to count it.
+        Map<String, Object> sampleRequest = new java.util.HashMap<>(requestBody);
+        sampleRequest.put("include_total", false);
         return Result.buildSuc(dataSourceCatalogService.getTop20Data(
-                lakeWarehouseService.requireSystemDataSourceId(), requestBody));
+                lakeWarehouseService.requireSystemDataSourceId(), sampleRequest));
     }
 
     @GetMapping("/status")
