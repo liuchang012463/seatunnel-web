@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
+import org.apache.seatunnel.web.api.metadata.MetadataExplorationPipelinePolicy;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
@@ -1151,11 +1152,37 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public Optional<OpenMetadataEntity> findIngestionPipeline(String fullyQualifiedName) {
+        return findIngestionPipelineEntity(fullyQualifiedName).map(OpenMetadataRestClient::entity);
+    }
+
+    @Override
+    public Optional<OpenMetadataPipelineConfig> findIngestionPipelineConfig(String fullyQualifiedName) {
+        return findIngestionPipelineEntity(fullyQualifiedName).map(pipeline -> new OpenMetadataPipelineConfig(
+                pipeline.getId().toString(),
+                pipeline.getService() == null || pipeline.getService().getId() == null
+                        ? null : pipeline.getService().getId().toString(),
+                pipeline.getPipelineType() == null ? null : pipeline.getPipelineType().value(),
+                pipeline.getAirflowConfig() == null ? null : pipeline.getAirflowConfig().getScheduleInterval(),
+                pipeline.getSourceConfig() == null ? null : OBJECT_MAPPER.valueToTree(pipeline.getSourceConfig().getConfig()),
+                Boolean.TRUE.equals(pipeline.getDeployed())));
+    }
+
+    @Override
+    public void patchIngestionPipeline(String id, JsonNode patchDocument) {
         validateBaseUrl();
         try {
-            org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
-                    sdk().ingestionPipelines().getByName(fullyQualifiedName);
-            return Optional.of(entity(pipeline));
+            sdk().ingestionPipelines().patch(id, patchDocument);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata ingestion pipeline configuration update failed", error);
+        }
+    }
+
+    private Optional<org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline>
+            findIngestionPipelineEntity(String fullyQualifiedName) {
+        validateBaseUrl();
+        try {
+            return Optional.of(sdk().ingestionPipelines().getByName(fullyQualifiedName));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return Optional.empty();
@@ -1413,6 +1440,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         existing.setDescription(desired.getDescription());
         existing.setPipelineType(desired.getPipelineType());
         existing.setSourceConfig(desired.getSourceConfig());
+        // Manual triggers also upsert the agent. Preserve custom and on-demand schedules on those paths.
+        String type = desired.getPipelineType() == null ? null : desired.getPipelineType().value();
+        if (MetadataExplorationPipelinePolicy.isExplorationAgent(type)
+                && existing.getAirflowConfig() != null && desired.getAirflowConfig() != null) {
+            String currentSchedule = existing.getAirflowConfig().getScheduleInterval();
+            if (!MetadataExplorationPipelinePolicy.isLegacySchedule(type, currentSchedule)) {
+                desired.getAirflowConfig().setScheduleInterval(currentSchedule);
+            }
+        }
         existing.setAirflowConfig(desired.getAirflowConfig());
         existing.setLoggerLevel(desired.getLoggerLevel());
         existing.setRaiseOnError(desired.getRaiseOnError());

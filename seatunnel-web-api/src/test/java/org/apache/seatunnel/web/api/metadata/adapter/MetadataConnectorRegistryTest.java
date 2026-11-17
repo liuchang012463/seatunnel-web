@@ -50,8 +50,10 @@ class MetadataConnectorRegistryTest {
         assertEquals(false, scheduledPipeline.at("/airflowConfig/pausePipeline").asBoolean());
         assertEquals("0 */2 * * *", scheduledPipeline.at("/airflowConfig/scheduleInterval").asText());
         assertEquals("0 */2 * * *", pipeline.at("/airflowConfig/scheduleInterval").asText());
-        assertEquals("0 1 * * *", profilerPipeline.at("/airflowConfig/scheduleInterval").asText());
-        assertEquals("0 0 * * *", samplePipeline.at("/airflowConfig/scheduleInterval").asText());
+        String profileSchedule = profilerPipeline.at("/airflowConfig/scheduleInterval").asText();
+        String sampleSchedule = samplePipeline.at("/airflowConfig/scheduleInterval").asText();
+        assertTrue(profileSchedule.matches("[1-5]?5 1 \\* \\* \\*"));
+        assertEquals(profileSchedule.replace(" 1 ", " 0 "), sampleSchedule);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.dao.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -26,6 +27,14 @@ public class MetadataSourceBinding extends BaseEntity {
     private Long configVersion;
 
     private Long syncedConfigVersion;
+
+    /** Owned by the exploration pipeline upgrade, even during concurrent status refreshes. */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private Integer explorationPipelineVersion;
+
+    /** Future eligibility time. While a worker holds the claim this is its expiry. */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private Date explorationPipelineRetryAt;
 
     private Long metadataTriggeredVersion;
 

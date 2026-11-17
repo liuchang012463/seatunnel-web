@@ -114,6 +114,49 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
     }
 
     @Override
+    public List<MetadataSourceBinding> queryExplorationPipelineUpgrades(int policyVersion, Date now, int limit) {
+        return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.READY)
+                .lt(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineVersion), policyVersion)
+                .and(due -> due.isNull(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt))
+                        .or().le(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), now))
+                .orderByAsc(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt))
+                .orderByAsc(MyBatisColumn.getter(MetadataSourceBinding::getId))
+                .last("LIMIT " + Math.clamp(limit, 1, 1000)));
+    }
+
+    @Override
+    public boolean claimExplorationPipelineUpgrade(Long id, Long expectedVersion, int policyVersion,
+                                                   Date now, Date claimUntil) {
+        return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.READY)
+                .lt(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineVersion), policyVersion)
+                .and(due -> due.isNull(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt))
+                        .or().le(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), now))
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getVersion), expectedVersion + 1L)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), claimUntil)) > 0;
+    }
+
+    @Override
+    public boolean finishExplorationPipelineUpgrade(Long id, Long configVersion, Date claimUntil,
+                                                    Date retryAt, Integer appliedPolicyVersion) {
+        return metadataSourceBindingMapper.update(null, new LambdaUpdateWrapper<MetadataSourceBinding>()
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getId), id)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getConfigVersion), configVersion)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getDesiredState), MetadataDesiredState.ACTIVE)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getSyncStatus), MetadataSyncStatus.READY)
+                .eq(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), claimUntil)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), retryAt)
+                .set(appliedPolicyVersion != null,
+                        MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineVersion),
+                        appliedPolicyVersion)) > 0;
+    }
+
+    @Override
     public List<MetadataSourceBinding> queryStatusRefreshCandidates(Date olderThan, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 1000));
         return metadataSourceBindingMapper.selectList(new LambdaQueryWrapper<MetadataSourceBinding>()
@@ -224,6 +267,8 @@ public class MetadataBindingDaoImpl extends BaseDao<MetadataSourceBinding, Metad
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getOmServiceId), null)
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getOmMetadataPipelineId), null)
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getOmProfilerPipelineId), null)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineVersion), 0)
+                .set(MyBatisColumn.getter(MetadataSourceBinding::getExplorationPipelineRetryAt), null)
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getRetryCount), binding.getRetryCount())
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getNextRetryTime), null)
                 .set(MyBatisColumn.getter(MetadataSourceBinding::getLastSyncErrorCode), null)

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.seatunnel.web.api.metadata.MetadataExplorationPipelinePolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.plugin.datasource.api.utils.PasswordUtils;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
@@ -16,12 +17,9 @@ import java.net.URI;
 abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConnectorAdapter {
 
     protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final int PROFILER_SAMPLE_ROW_LIMIT = 50;
 
     /** Metadata scans every two hours; sample and profiler agents run once a day. */
     static final String METADATA_SCHEDULE = "0 */2 * * *";
-    static final String SAMPLE_SCHEDULE = "0 0 * * *";
-    static final String PROFILE_SCHEDULE = "0 1 * * *";
 
     @Override
     public MetadataServiceCategory serviceCategory() {
@@ -87,17 +85,13 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         config.put("includeViews", false);
         config.put("computeTableMetrics", true);
         config.put("computeColumnMetrics", true);
-        ObjectNode profileSampleConfig = config.putObject("profileSampleConfig");
-        profileSampleConfig.put("sampleConfigType", "STATIC");
-        ObjectNode staticSamplingConfig = profileSampleConfig.putObject("config");
-        staticSamplingConfig.put("profileSample", PROFILER_SAMPLE_ROW_LIMIT);
-        staticSamplingConfig.put("profileSampleType", "ROWS");
+        config.set("profileSampleConfig", MetadataExplorationPipelinePolicy.profilerRowSample());
         // In OpenMetadata 2.0.4 randomized ROWS sampling runs COUNT(*) before LIMIT; keep it off
         // so the column-profile sample is bounded to 50 rows without a preliminary full-table count.
         config.put("randomizedSample", false);
-        log.debug("Building profiler pipeline with bounded row sampling: pipelineName={}, sampleRows={}",
-                pipelineName, PROFILER_SAMPLE_ROW_LIMIT);
-        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config, PROFILE_SCHEDULE);
+        log.debug("Building profiler pipeline with bounded row sampling: pipelineName={}", pipelineName);
+        return pipelineRequest(pipelineName, serviceId, serviceFqn, "profiler", config,
+                MetadataExplorationPipelinePolicy.profilerSchedule(serviceFqn));
     }
 
     @Override
@@ -127,7 +121,7 @@ abstract class AbstractDatabaseMetadataConnectorAdapter implements MetadataConne
         // AutoClassificationWorkflow still runs its sampler when classification is disabled.
         config.put("enableAutoClassification", false);
         return pipelineRequest(pipelineName, serviceId, serviceFqn,
-                "autoClassification", config, SAMPLE_SCHEDULE);
+                "autoClassification", config, MetadataExplorationPipelinePolicy.sampleSchedule(serviceFqn));
     }
 
     protected ObjectNode baseServiceRequest(DataSource dataSource, String stableServiceName) {

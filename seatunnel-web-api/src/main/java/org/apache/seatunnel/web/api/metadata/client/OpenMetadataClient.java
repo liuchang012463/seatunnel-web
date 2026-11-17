@@ -168,6 +168,10 @@ public interface OpenMetadataClient {
 
     Optional<OpenMetadataEntity> findIngestionPipeline(String fullyQualifiedName);
 
+    Optional<OpenMetadataPipelineConfig> findIngestionPipelineConfig(String fullyQualifiedName);
+
+    void patchIngestionPipeline(String id, JsonNode patchDocument);
+
     OpenMetadataEntity upsertIngestionPipeline(JsonNode request);
 
     void deployIngestionPipeline(String id);

@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.metadata.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.seatunnel.web.api.metadata.MetadataExplorationPipelinePolicy;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
 import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -105,7 +106,8 @@ abstract class AbstractS3CompatibleMetadataConnectorAdapter extends AbstractNonD
         config.put("storeSampleData", options != null && options.sampleDataEnabled());
         config.put("enableAutoClassification", false);
         return pipelineRequest(
-                pipelineName, serviceId, serviceFqn, "autoClassification", config, SAMPLE_SCHEDULE);
+                pipelineName, serviceId, serviceFqn, "autoClassification", config,
+                MetadataExplorationPipelinePolicy.sampleSchedule(serviceFqn));
     }
 
     @Override

@@ -15,7 +15,6 @@ public abstract class AbstractNonDatabaseMetadataConnectorAdapter implements Met
 
     /** Metadata scans every two hours; sample-only storage agents run once a day. */
     static final String METADATA_SCHEDULE = "0 */2 * * *";
-    static final String SAMPLE_SCHEDULE = "0 0 * * *";
 
     @Override
     public JsonNode databaseServiceRequest(DataSource dataSource, String stableServiceName) {

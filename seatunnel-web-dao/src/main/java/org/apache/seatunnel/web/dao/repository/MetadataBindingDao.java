@@ -24,6 +24,14 @@ public interface MetadataBindingDao extends IDao<MetadataSourceBinding> {
 
     boolean deleteClaimed(Long id, Long expectedVersion);
 
+    List<MetadataSourceBinding> queryExplorationPipelineUpgrades(int policyVersion, Date now, int limit);
+
+    boolean claimExplorationPipelineUpgrade(Long id, Long expectedVersion, int policyVersion,
+                                            Date now, Date claimUntil);
+
+    boolean finishExplorationPipelineUpgrade(Long id, Long configVersion, Date claimUntil,
+                                             Date retryAt, Integer appliedPolicyVersion);
+
     /** Candidate selection is local-only; each candidate still uses a version-conditional write. */
     List<MetadataSourceBinding> queryStatusRefreshCandidates(Date olderThan, int limit);
 
