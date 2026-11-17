@@ -31,6 +31,21 @@ const CONSISTENCY_STATUS: Record<string, { label: string; color: string }> = {
 };
 
 const REASON_LABELS: Record<string, string> = {
+  ADAPTER_MISSING: '此数据源类型暂不支持逻辑挂载。',
+  ADAPTER_DISABLED: '对应适配器尚未启用，请在数据湖配置中完成驱动验证。',
+  DRIVER_CONFIG_MISSING: '尚未配置对应 JDBC 驱动，请在数据湖配置中注册。',
+  DRIVER_CHECKSUM_MISSING: '驱动校验值缺失，请重新校验驱动文件。',
+  DRIVER_CHECKSUM_INVALID: '驱动校验值不正确，请重新校验驱动文件。',
+  DRIVER_REGISTRY_REVISION_MISSING: '驱动登记版本缺失，请重新登记驱动。',
+  DRIVER_UNAVAILABLE: '驱动文件不可用，请检查湖端驱动配置。',
+  DRIVER_NOT_VERIFIED: '驱动尚未验证，请先完成驱动验证。',
+  SOURCE_CONFIG_INCOMPLETE: '数据源连接信息不完整，请先完善数据源。',
+  SOURCE_NOT_FOUND: '数据源不存在，请重新选择。',
+  SOURCE_DISABLED: '数据源已停用，请先在数据源管理中启用。',
+  SOURCE_TYPE_MISMATCH: '数据源类型与挂载适配器不匹配，请重新选择数据源。',
+  LAKE_CONTROL_PLANE_DISABLED: '请先配置并测试数据湖连接。',
+  SCOPE_UNSUPPORTED: '当前适配器不支持此挂载范围。',
+  UPDATE_UNSUPPORTED: '当前适配器不支持更新挂载范围。',
   SOURCE_NETWORK_UNKNOWN: '源端网络尚未探查，创建时会再次验证。',
   SOURCE_NETWORK_UNREACHABLE: '当前无法连接源端，请检查网络或数据源连接状态。',
   LAKE_DORIS_UNREACHABLE: '湖 Doris 当前不可达，请稍后重试。',

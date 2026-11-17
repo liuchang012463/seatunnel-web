@@ -31,6 +31,7 @@ import {
 } from '@/services/lake';
 import type { LakeApiResponse, LakeCatalog, LakeQueryColumnOption, LakeReadOnlyQueryPreview, LakeReadOnlyQueryResult, LakeResourceOperation } from '@/services/lake';
 import { LakeErrorAlert, LakeResourceStatusTag, OperationTimeline, operationToStep } from '../components/LakeStatus';
+import CatalogScopePicker from './CatalogScopePicker';
 import './index.less';
 
 const responseMessage = (response: LakeApiResponse<unknown>) => response.msg || response.message || '请求失败，请稍后重试';
@@ -247,7 +248,7 @@ const SingleTableQuery: React.FC<{ catalog: LakeCatalog }> = ({ catalog }) => {
   return <Space direction="vertical" style={{ width: '100%' }}>
     <Alert type="info" showIcon message="结构化只读验证" description="Catalog 由当前挂载固定；服务端只接受字段选择、LIMIT 和 EXPLAIN，不接受任意 SQL，也不会写入源库。" />
     <Typography.Paragraph type="secondary">Catalog：{catalog.targetCatalogName || '-'}。数据库、表和字段来自 Doris Catalog 元数据；敏感或不支持类型会直接禁用。</Typography.Paragraph>
-    <Form form={form} layout="vertical" initialValues={{ limit: 10 }} onFinish={submit}>
+    <Form name="lake-single-query" form={form} layout="vertical" initialValues={{ limit: 10 }} onFinish={submit}>
       <CatalogTablePicker form={form} catalogId={catalog.id} catalogName={catalog.targetCatalogName} />
       <Space wrap>
       <Form.Item name="limit" label="Limit"><InputNumber min={1} max={100} /></Form.Item>
@@ -361,7 +362,7 @@ const JoinQuery: React.FC<{ catalog: LakeCatalog; catalogs: LakeCatalog[] }> = (
   return <Space direction="vertical" style={{ width: '100%' }}>
     <Alert type="info" showIcon message="结构化跨 Catalog JOIN" description="仅支持两个已就绪 Catalog 的等值 JOIN；字段选择和 LIMIT 由服务端校验，结果仅用于小数据量验证。" />
     <Typography.Paragraph type="secondary">两侧 Catalog、数据库、表和字段均来自已就绪挂载；只支持 INNER / LEFT 等值 Join，不提供任意 SQL 编辑。</Typography.Paragraph>
-    <Form form={form} layout="vertical" initialValues={{ leftCatalog: catalog.targetCatalogName, limit: 10, joinType: 'INNER' }} onFinish={submit}>
+    <Form name="lake-join-query" form={form} layout="vertical" initialValues={{ leftCatalog: catalog.targetCatalogName, limit: 10, joinType: 'INNER' }} onFinish={submit}>
       <Space align="start" wrap>
         <Card size="small" title="左表" className="lake-join-side"><Form.Item name="leftCatalog" label="Catalog" rules={[{ required: true, message: '请选择左侧 Catalog' }]}><Select showSearch options={catalogOptions} onChange={(name) => selectCatalog('left', name)} placeholder="选择已就绪 Catalog" /></Form.Item><CatalogTablePicker form={form} catalogId={leftCatalogId} catalogName={leftCatalogName} prefix="left" includeJoinKey /></Card>
         <Card size="small" title="右表" className="lake-join-side"><Form.Item name="rightCatalog" label="Catalog" rules={[{ required: true, message: '请选择右侧 Catalog' }]}><Select showSearch options={catalogOptions.filter((item) => item.value !== leftCatalogName)} onChange={(name) => selectCatalog('right', name)} placeholder="选择另一个 Catalog" /></Form.Item><CatalogTablePicker form={form} catalogId={rightCatalogId} catalogName={rightCatalogName} prefix="right" includeJoinKey /></Card>
@@ -414,16 +415,18 @@ const CatalogUpdateDrawer: React.FC<{
     <Drawer
       open={open}
       title="更新逻辑挂载"
-      width={520}
+      width={760}
       destroyOnHidden
       onClose={onClose}
       footer={<Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={saving} onClick={() => form.submit()}>保存并验证</Button></Space>}
     >
       <Alert type="info" showIcon message="只更新挂载配置，不会修改源数据" description="Catalog 名称是稳定标识，不能在此处重命名；凭证与 Driver 仍由服务端安全配置管理。" />
       <Form
+        name="lake-catalog-update"
         form={form}
         layout="vertical"
         onFinish={submit}
+        onFinishFailed={({ errorFields }) => message.warning(errorFields[0]?.errors[0] || '请完善挂载范围')}
         initialValues={{
           targetCatalogName: catalog.targetCatalogName,
           adapter: catalog.adapter,
@@ -434,12 +437,8 @@ const CatalogUpdateDrawer: React.FC<{
         style={{ marginTop: 18 }}
       >
         <Form.Item name="targetCatalogName" label="Catalog 名称"><Input disabled /></Form.Item>
-        <Space align="start" style={{ width: '100%' }}>
-          <Form.Item name="adapter" label="数据库类型" rules={[{ required: true }]}><Select options={[{ label: 'MySQL', value: 'MYSQL' }, { label: 'PostgreSQL', value: 'POSTGRESQL' }, { label: 'Oracle', value: 'ORACLE' }]} style={{ width: 210 }} /></Form.Item>
-          <Form.Item name="scope" label="作用范围" rules={[{ required: true }]}><Select options={[{ label: '全部资源', value: 'ALL' }, { label: '指定数据库', value: 'DATABASE' }, { label: '指定表', value: 'TABLE' }]} style={{ width: 210 }} /></Form.Item>
-        </Space>
-        <Form.Item name="databaseInclude" label="数据库范围"><Select mode="tags" tokenSeparators={[',']} placeholder="作用范围为 DATABASE/TABLE 时填写" /></Form.Item>
-        <Form.Item name="tableInclude" label="表范围"><Select mode="tags" tokenSeparators={[',']} placeholder="作用范围为 TABLE 时填写" /></Form.Item>
+        <Form.Item name="adapter" hidden><Input /></Form.Item>
+        <CatalogScopePicker form={form} sourceId={catalog.sourceDataSourceId} adapter={catalog.adapter} />
       </Form>
     </Drawer>
   );

@@ -23,6 +23,9 @@ public interface DataSourceCatalogService {
     /** Lists all databases for a hierarchical JDBC catalog such as Doris. */
     List<OptionVO> listDatabase(Long id);
 
+    /** MySQL databases, or schemas of the configured PostgreSQL/Oracle database. */
+    List<org.apache.seatunnel.web.spi.bean.vo.LakeLogicalNamespaceVO> logicalNamespaces(Long id);
+
     /** Lists tables in one database for a hierarchical JDBC catalog. */
     List<OptionVO> listTable(Long id, String databaseName);
 

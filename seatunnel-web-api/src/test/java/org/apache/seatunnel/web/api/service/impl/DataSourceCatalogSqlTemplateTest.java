@@ -36,6 +36,57 @@ import static org.mockito.Mockito.when;
 class DataSourceCatalogSqlTemplateTest {
 
     @Test
+    void logicalPostgresNamespacesStayInTheConfiguredDatabase() {
+        var service = new DataSourceCatalogServiceImpl();
+        var sourceService = mock(DataSourceService.class);
+        ReflectionTestUtils.setField(service, "dataSourceService", sourceService);
+        var source = new DataSource();
+        source.setDbType(DbType.POSTGRE_SQL);
+        source.setConnectionParams("{}");
+        when(sourceService.selectById(42L)).thenReturn(source);
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        param.setDatabase("configured_db");
+        var catalog = mock(org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog.class);
+        var option = new OptionVO();
+        option.setValue("sales");
+        when(catalog.listSchemaOptions("configured_db")).thenReturn(List.of(option));
+        var processor = mock(DataSourceProcessor.class);
+        when(processor.getCatalog(param)).thenReturn(Optional.of(catalog));
+        try (var utils = mockStatic(DataSourceUtils.class)) {
+            utils.when(() -> DataSourceUtils.buildConnectionParams(DbType.POSTGRE_SQL, "{}")).thenReturn(param);
+            utils.when(() -> DataSourceUtils.getDatasourceProcessor(DbType.POSTGRE_SQL)).thenReturn(processor);
+            var result = service.logicalNamespaces(42L);
+            assertEquals("configured_db", result.get(0).database());
+            assertEquals("sales", result.get(0).namespace());
+            org.mockito.Mockito.verify(catalog, org.mockito.Mockito.never()).listDatabaseOptions();
+        }
+    }
+
+    @Test
+    void lakeSamplesSkipCountWhileExistingSourcePreviewsKeepIt() throws Exception {
+        var service = new DataSourceCatalogServiceImpl();
+        var sourceService = mock(DataSourceService.class);
+        ReflectionTestUtils.setField(service, "dataSourceService", sourceService);
+        var source = new DataSource();
+        source.setDbType(DbType.MYSQL);
+        source.setConnectionParams("{}");
+        when(sourceService.selectById(42L)).thenReturn(source);
+        BaseConnectionParam param = new BaseConnectionParam() {};
+        var catalog = mock(org.apache.seatunnel.plugin.datasource.api.jdbc.HierarchicalJdbcCatalog.class);
+        when(catalog.getTop20Data(anyMap())).thenReturn(new org.apache.seatunnel.web.common.QueryResult());
+        var processor = mock(DataSourceProcessor.class);
+        when(processor.getCatalog(param)).thenReturn(Optional.of(catalog));
+        try (var utils = mockStatic(DataSourceUtils.class)) {
+            utils.when(() -> DataSourceUtils.buildConnectionParams(DbType.MYSQL, "{}")).thenReturn(param);
+            utils.when(() -> DataSourceUtils.getDatasourceProcessor(DbType.MYSQL)).thenReturn(processor);
+            service.getTop20Data(42L, Map.of("read_mode", "table", "table_path", "orders", "include_total", false));
+            org.mockito.Mockito.verify(catalog, org.mockito.Mockito.never()).count(anyMap());
+            service.getTop20Data(42L, Map.of("read_mode", "table", "table_path", "orders"));
+            verify(catalog).count(anyMap());
+        }
+    }
+
+    @Test
     void usesSelectedSchemaForBothColumnLookupAndGeneratedSql() throws Exception {
         DataSourceCatalogServiceImpl service = new DataSourceCatalogServiceImpl();
         DataSourceService dataSourceService = mock(DataSourceService.class);

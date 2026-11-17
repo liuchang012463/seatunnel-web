@@ -476,27 +476,26 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
             return LakeCatalogValidationResult.match(actualProperties);
         }
 
-        String database = desired.databaseInclude().get(0);
-        if (!containsExact(databases, database)) {
-            return LakeCatalogValidationResult.mismatch(
-                    LakeCatalogValidationCode.DATABASE_MISSING,
-                    actualProperties,
-                    Map.of("include_database_list", CatalogPropertyRedactor.MASK));
-        }
-        if (desired.scope() == LakeCatalogScope.DATABASE) {
-            return LakeCatalogValidationResult.match(actualProperties);
-        }
-
-        List<String> tables = queryShowNames(
-                "list catalog tables",
-                "SHOW TABLES FROM " + DorisIdentifier.quote(catalog)
-                        + '.' + DorisIdentifier.quote(database));
-        for (String requestedTable : desired.tableInclude()) {
-            if (!containsExact(tables, requestedTable)) {
-                return LakeCatalogValidationResult.mismatch(
-                        LakeCatalogValidationCode.TABLE_MISSING,
-                        actualProperties,
-                        Map.of("include_table_list", CatalogPropertyRedactor.MASK));
+        for (String database : desired.databaseInclude()) {
+            if (!containsExact(databases, database)) {
+                return LakeCatalogValidationResult.mismatch(LakeCatalogValidationCode.DATABASE_MISSING,
+                        actualProperties, Map.of("include_database_list", CatalogPropertyRedactor.MASK));
+            }
+            if (desired.scope() == LakeCatalogScope.DATABASE) continue;
+            List<String> tables = queryShowNames("list catalog tables",
+                    "SHOW TABLES FROM " + DorisIdentifier.quote(catalog) + '.' + DorisIdentifier.quote(database));
+            for (String requested : desired.tableInclude()) {
+                String table;
+                if (requested.contains(".")) {
+                    if (!requested.startsWith(database + ".")) continue;
+                    table = requested.substring(database.length() + 1);
+                } else {
+                    table = requested;
+                }
+                if (!containsExact(tables, table)) {
+                    return LakeCatalogValidationResult.mismatch(LakeCatalogValidationCode.TABLE_MISSING,
+                            actualProperties, Map.of("include_table_list", CatalogPropertyRedactor.MASK));
+                }
             }
         }
         return LakeCatalogValidationResult.match(actualProperties);

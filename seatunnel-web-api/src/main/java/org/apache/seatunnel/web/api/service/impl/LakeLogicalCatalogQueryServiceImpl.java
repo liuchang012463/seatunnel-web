@@ -224,8 +224,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             if (desired.scope() == org.apache.seatunnel.web.common.enums.LakeCatalogScope.DATABASE) {
                 return databases.stream().filter(desired.databaseInclude()::contains).toList();
             }
-            return databases.stream().filter(database -> desired.tableInclude().stream()
-                    .anyMatch(include -> include.startsWith(database + "."))).toList();
+            return databases.stream().filter(desired.databaseInclude()::contains).toList();
         } catch (RuntimeException exception) {
             throw stableQueryFailure(exception);
         }
@@ -237,7 +236,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         String normalizedDatabase = identifier(database, "database");
         try {
             LakeCatalogDesiredSpec desired = desired(binding);
-            if (desired.scope() == org.apache.seatunnel.web.common.enums.LakeCatalogScope.DATABASE
+            if (desired.scope() != org.apache.seatunnel.web.common.enums.LakeCatalogScope.ALL
                     && !desired.databaseInclude().contains(normalizedDatabase)) {
                 throw queryInvalid("database is outside the catalog scope");
             }
@@ -355,8 +354,9 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             }
             case TABLE -> {
                 String qualified = table.database() + "." + table.table();
-                if (!desired.tableInclude().contains(qualified)
-                        && !desired.tableInclude().contains(table.table())) {
+                if (!desired.databaseInclude().contains(table.database())
+                        || (!desired.tableInclude().contains(qualified)
+                        && !desired.tableInclude().contains(table.table()))) {
                     throw queryInvalid("table is outside the catalog scope");
                 }
             }

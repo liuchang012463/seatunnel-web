@@ -130,7 +130,7 @@ public final class LakeJdbcCatalogDdlBuilder {
             values.put("include_database_list", String.join(",", spec.databaseInclude()));
             if (spec.scope() == LakeCatalogScope.TABLE) {
                 values.put("include_table_list", spec.tableInclude().stream()
-                        .map(table -> spec.databaseInclude().get(0) + "." + table)
+                        .map(table -> (table.contains(".") ? table : spec.databaseInclude().get(0) + "." + table))
                         .collect(Collectors.joining(",")));
             }
         }

@@ -101,6 +101,36 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
     }
 
     @Override
+    public List<org.apache.seatunnel.web.spi.bean.vo.LakeLogicalNamespaceVO> logicalNamespaces(Long datasourceId) {
+        validateDatasourceId(datasourceId);
+        DataSource source = getDataSourceOrThrow(datasourceId);
+        if (source.getDbType() != DbType.MYSQL && source.getDbType() != DbType.POSTGRE_SQL
+                && source.getDbType() != DbType.ORACLE) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "逻辑挂载支持 MySQL、PostgreSQL 和 Oracle");
+        }
+        ConnectionParam param = buildConnectionParam(source);
+        HierarchicalJdbcCatalog catalog = hierarchicalCatalog(source, param);
+        if (source.getDbType() == DbType.MYSQL) {
+            return catalog.listDatabaseOptions().stream()
+                    .map(option -> new org.apache.seatunnel.web.spi.bean.vo.LakeLogicalNamespaceVO(
+                            String.valueOf(option.getValue()), null, String.valueOf(option.getValue())))
+                    .toList();
+        }
+        // PostgreSQL connections cannot span databases. Keep the configured
+        // database and expose its schemas, matching Doris JDBC Catalog mapping.
+        String database = param instanceof org.apache.seatunnel.web.spi.datasource.BaseConnectionParam jdbc ? jdbc.getDatabase() : null;
+        if (StringUtils.isBlank(database)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "请先在数据源连接中配置数据库");
+        }
+        var namespaces = catalog.listSchemaOptions(database).stream()
+                .map(option -> new org.apache.seatunnel.web.spi.bean.vo.LakeLogicalNamespaceVO(
+                        database, String.valueOf(option.getValue()), String.valueOf(option.getValue())))
+                .toList();
+        log.info("Read logical namespaces datasourceId={} type={} count={}", datasourceId, source.getDbType(), namespaces.size());
+        return namespaces;
+    }
+
+    @Override
     public List<OptionVO> listTable(Long datasourceId, String databaseName) {
         return listTable(datasourceId, databaseName, null);
     }
@@ -241,7 +271,7 @@ public class DataSourceCatalogServiceImpl implements DataSourceCatalogService {
             JdbcCatalog jdbcCatalog = getJdbcCatalog(dataSource, connectionParam);
 
             QueryResult queryResult = jdbcCatalog.getTop20Data(previewRequestBody);
-            Integer total = jdbcCatalog.count(previewRequestBody);
+            Integer total = Boolean.FALSE.equals(requestBody.get("include_total")) ? null : jdbcCatalog.count(previewRequestBody);
 
             if (queryResult == null) {
                 queryResult = new QueryResult();

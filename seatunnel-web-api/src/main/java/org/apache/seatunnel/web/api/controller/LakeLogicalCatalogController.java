@@ -28,6 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class LakeLogicalCatalogController {
 
     private final LakeLogicalCatalogService service;
+    @Autowired
+    private org.apache.seatunnel.web.api.service.DataSourceCatalogService sourceCatalogService;
+
+    @GetMapping("/datasources/{sourceDataSourceId}/namespaces")
+    public Result<java.util.List<org.apache.seatunnel.web.spi.bean.vo.LakeLogicalNamespaceVO>> namespaces(
+            @PathVariable("sourceDataSourceId") Long sourceDataSourceId) {
+        return Result.buildSuc(sourceCatalogService.logicalNamespaces(sourceDataSourceId));
+    }
 
     @Autowired
     public LakeLogicalCatalogController(LakeLogicalCatalogService service) {

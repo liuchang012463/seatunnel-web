@@ -168,6 +168,24 @@ class LakeJdbcCatalogFoundationTest {
     }
 
     @Test
+    void qualifiedTablesCanSpanNamespacesWithoutColliding() {
+        LakeCatalogDesiredSpec multiple = spec("catalog", LakeCatalogScope.TABLE,
+                List.of("sales", "archive"), List.of("sales.orders", "archive.orders"), Map.of());
+        var normalized = LakeCatalogDesiredSpecValidator.validateAndNormalize(multiple);
+        assertEquals(List.of("sales.orders", "archive.orders"), normalized.tableInclude());
+        String ddl = new LakeJdbcCatalogDdlBuilder().buildCreateCatalog(multiple,
+                new LakeJdbcDriverRegistry(configuredCatalog()),
+                new LakeJdbcCatalogDdlBuilder.CatalogCredentials("reader", "secret"));
+        assertTrue(ddl.contains("'include_table_list' = 'sales.orders,archive.orders'"));
+        assertEquals("sales.orders,archive.orders", LakeCatalogDesiredSpecCanonicalizer
+                .webOwnedDesiredProperties(multiple).get("include_table_list"));
+        assertDoesNotThrow(() -> LakeCatalogDesiredSpecValidator.validateAndNormalize(
+                spec("catalog", LakeCatalogScope.DATABASE, List.of("sales", "archive"), List.of(), Map.of())));
+        assertThrows(IllegalArgumentException.class, () -> LakeCatalogDesiredSpecValidator.validateAndNormalize(
+                spec("catalog", LakeCatalogScope.TABLE, List.of("sales"), List.of("private.orders"), Map.of())));
+    }
+
+    @Test
     void desiredSpecRejectsCredentialsAndUnsafeIdentifiers() {
         LakeCatalogDesiredSpec baseSpec = spec(
                 "catalog", LakeCatalogScope.ALL, List.of(), List.of(), Map.of());

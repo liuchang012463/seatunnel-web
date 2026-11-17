@@ -79,7 +79,7 @@ public final class LakeCatalogDesiredSpecCanonicalizer {
             if (normalized.scope() == LakeCatalogScope.TABLE) {
                 String database = normalized.databaseInclude().get(0);
                 expected.put("include_table_list", normalized.tableInclude().stream()
-                        .map(table -> database + "." + table)
+                        .map(table -> (table.contains(".") ? table : database + "." + table))
                         .collect(Collectors.joining(",")));
             }
         }

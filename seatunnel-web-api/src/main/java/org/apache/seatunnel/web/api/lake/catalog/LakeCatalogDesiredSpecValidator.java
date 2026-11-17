@@ -117,13 +117,20 @@ public final class LakeCatalogDesiredSpecValidator {
                 }
             }
             case DATABASE -> {
-                if (databases.size() != 1 || !tables.isEmpty()) {
-                    throw invalid("DATABASE scope requires exactly one database");
+                if (databases.isEmpty() || !tables.isEmpty()) {
+                    throw invalid("DATABASE scope requires at least one database");
                 }
             }
             case TABLE -> {
-                if (databases.size() != 1 || tables.isEmpty()) {
-                    throw invalid("TABLE scope requires one database and at least one table");
+                if (databases.isEmpty() || tables.isEmpty()) {
+                    throw invalid("TABLE scope requires databases and at least one table");
+                }
+                for (String table : tables) {
+                    if (!table.contains(".")) {
+                        if (databases.size() != 1) throw invalid("multi-database TABLE scope requires qualified tables");
+                    } else if (!databases.contains(table.substring(0, table.indexOf('.')))) {
+                        throw invalid("table namespace is outside database include list");
+                    }
                 }
             }
         }
@@ -177,6 +184,11 @@ public final class LakeCatalogDesiredSpecValidator {
         try {
             // External JDBC names are case-sensitive in Doris include lists;
             // validate the safe identifier grammar without lower-casing them.
+            if ("table".equals(kind) && value.contains(".")) {
+                String[] parts = value.trim().split("\\.", -1);
+                if (parts.length != 2) throw invalid(kind);
+                return DorisIdentifier.validate(parts[0]).trim() + "." + DorisIdentifier.validate(parts[1]).trim();
+            }
             return DorisIdentifier.validate(value).trim();
         } catch (RuntimeException exception) {
             throw invalid(kind);
