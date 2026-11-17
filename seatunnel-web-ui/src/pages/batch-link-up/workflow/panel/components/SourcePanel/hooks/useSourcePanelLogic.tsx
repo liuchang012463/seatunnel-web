@@ -183,6 +183,7 @@ export function useSourcePanelLogic({
             schemaName: undefined,
             table: undefined,
             incrementalConfig: undefined,
+        dataValidity: undefined,
           });
         }
       } catch (error) {
@@ -228,6 +229,7 @@ export function useSourcePanelLogic({
             schemaName: undefined,
             table: undefined,
             incrementalConfig: undefined,
+        dataValidity: undefined,
           });
         }
       } catch (error) {
@@ -354,6 +356,7 @@ export function useSourcePanelLogic({
           table: undefined,
           sql: "",
           incrementalConfig: undefined,
+        dataValidity: undefined,
         },
         {
           title: option?.label || nodeData?.title,
@@ -373,6 +376,7 @@ export function useSourcePanelLogic({
         schemaName: undefined,
         table: undefined,
         incrementalConfig: undefined,
+        dataValidity: undefined,
       }, undefined, resetSchemaMeta);
     },
     [updateNode]
@@ -385,6 +389,7 @@ export function useSourcePanelLogic({
         schemaName: value,
         table: undefined,
         incrementalConfig: undefined,
+        dataValidity: undefined,
       }, undefined, resetSchemaMeta);
     },
     [updateNode]
@@ -397,6 +402,7 @@ export function useSourcePanelLogic({
           readMode: value,
           ...(value === "table" ? { sql: "" } : { table: undefined }),
           incrementalConfig: undefined,
+        dataValidity: undefined,
         },
         undefined,
         resetSchemaMeta

@@ -7,6 +7,7 @@ import PanelShell from '../PanelShell';
 import ExtraParamsConfig from './ExtraParamsConfig';
 
 import QualityDetail from '@/pages/batch-link-up/DataViewSQL';
+import SourceValidityFields from '@/components/SourceValidityFields';
 import { useSourcePanelLogic } from './hooks/useSourcePanelLogic';
 import './index.less';
 import SqlEditorSection from './SqlEditorSection';
@@ -385,7 +386,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                 <Select
                   value={table}
                   onChange={(value) =>
-                    updateNode({ table: value, incrementalConfig: undefined }, undefined, {
+                    updateNode({ table: value, incrementalConfig: undefined, dataValidity: undefined }, undefined, {
                       outputSchema: [],
                       schemaStatus: 'idle',
                       schemaError: '',
@@ -416,7 +417,7 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
                 resolveSqlLoading={resolveSqlLoading}
                 resolvedSqlPreview={resolvedSqlPreview}
                 onSqlChange={(value: any) =>
-                  updateNode({ sql: value, incrementalConfig: undefined }, undefined, {
+                  updateNode({ sql: value, incrementalConfig: undefined, dataValidity: undefined }, undefined, {
                     outputSchema: [],
                     schemaStatus: 'idle',
                     schemaError: '',
@@ -428,6 +429,15 @@ function SourcePanel({ selectedNode, onClose, onNodeDataChange, scheduleConfig, 
               />
             )}
           </div>
+
+          {String(selectedNode?.data?.config?.pluginName || '').toUpperCase().startsWith('JDBC') && (
+            <SourceValidityFields
+              value={selectedNode?.data?.config?.dataValidity}
+              fields={meta?.outputSchema}
+              onChange={(dataValidity) => updateNode({ dataValidity })}
+              onLoadFields={handleResolveColumns}
+            />
+          )}
 
           {isIncremental && !isKafka && !isHttp && (
             <>

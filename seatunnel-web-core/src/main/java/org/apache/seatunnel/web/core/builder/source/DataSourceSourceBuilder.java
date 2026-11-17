@@ -86,6 +86,9 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
     @Resource
     private DorisTaskScopeValidator dorisTaskScopeValidator;
 
+    @Resource
+    private org.apache.seatunnel.web.core.time.SourceValiditySqlRenderer sourceValiditySqlRenderer;
+
     @Override
     public String nodeType() {
         return NODE_TYPE;
@@ -143,6 +146,10 @@ public class DataSourceSourceBuilder implements SourceNodeConfigBuilder {
                 .build();
 
         Config sourceConfig = hoconBuilder.buildSourceHocon(buildContext);
+        // Opt-in only: legacy, CDC and file tasks keep their existing HOCON.
+        if (nodeConfig.hasPath("dataValidity.enabled") && nodeConfig.getBoolean("dataValidity.enabled")) {
+            sourceConfig = sourceValiditySqlRenderer.apply(sourceConfig, nodeConfig, hoconBuilder);
+        }
 
         validateSourceConfig(processor, pluginName, sourceConfig);
 
