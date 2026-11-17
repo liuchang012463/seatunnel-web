@@ -458,8 +458,12 @@ public class LakeManagedTableServiceImpl implements LakeManagedTableService {
         result.setTargetContractHash(contractHash);
         result.setTargetContract(contract);
         result.setFieldMappings(mappings);
+        java.util.Map<String, String> createProperties = new java.util.TreeMap<>();
+        java.util.Map<String, String> defaults = client.defaultTableProperties();
+        if (defaults != null) createProperties.putAll(defaults);
+        createProperties.putAll(lifecycleProperties);
         result.setDdl(ddlBuilder.build(binding.getDatabaseName(), targetTableName, contract,
-                lifecycleProperties));
+                createProperties));
         return result;
     }
 

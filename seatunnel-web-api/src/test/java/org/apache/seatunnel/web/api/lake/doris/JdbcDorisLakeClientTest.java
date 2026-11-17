@@ -50,6 +50,10 @@ class JdbcDorisLakeClientTest {
         Statement statement = mock(Statement.class);
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.createStatement()).thenReturn(statement);
+        ResultSet backends = mock(ResultSet.class);
+        when(statement.executeQuery("SHOW BACKENDS")).thenReturn(backends);
+        when(backends.next()).thenReturn(true, false);
+        when(backends.getString("Alive")).thenReturn("true");
         JdbcDorisLakeClient client = new JdbcDorisLakeClient(dataSource, new LakeProperties());
 
         client.createTable("lake_db", "events", contract());
@@ -58,10 +62,28 @@ class JdbcDorisLakeClientTest {
         verify(statement).execute(org.mockito.ArgumentMatchers.argThat(sql ->
                 sql.contains("CREATE TABLE `lake_db`.`events`")
                         && sql.contains("DUPLICATE KEY(`id`)")
-                        && sql.contains("DISTRIBUTED BY RANDOM BUCKETS AUTO")));
+                        && sql.contains("DISTRIBUTED BY RANDOM BUCKETS AUTO")
+                        && sql.contains("\"replication_num\" = \"1\"")));
         verify(statement).execute(org.mockito.ArgumentMatchers.argThat(sql ->
                 sql.contains("CREATE CATALOG `source_catalog`")
                         && sql.contains("'type' = 'jdbc'")));
+    }
+
+    @Test
+    void replicaDefaultUsesAvailableBackendsAndStopsWhenNoneAreAvailable() throws Exception {
+        var dataSource = mock(DataSource.class);
+        var connection = mock(Connection.class);
+        var statement = mock(Statement.class);
+        var result = mock(ResultSet.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("SHOW BACKENDS")).thenReturn(result);
+        when(result.next()).thenReturn(true, true, true, true, false);
+        when(result.getString("Alive")).thenReturn("true", "false", "true", "true");
+        var client = new JdbcDorisLakeClient(dataSource, new LakeProperties());
+        assertEquals(Map.of("replication_num", "3"), client.defaultTableProperties());
+        when(result.next()).thenReturn(false);
+        assertThrows(IllegalStateException.class, client::defaultTableProperties);
     }
 
     @Test

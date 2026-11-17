@@ -30,6 +30,9 @@ public interface DorisLakeClient extends AutoCloseable {
 
     boolean tableExists(String databaseName, String tableName);
 
+    /** Server-selected defaults; callers never need to know the backend topology. */
+    default Map<String, String> defaultTableProperties() { return Map.of(); }
+
     void createTable(String databaseName, String tableName, TargetContract contract);
 
     void createTable(String databaseName, String tableName, TargetContract contract,

@@ -26,6 +26,7 @@ import type { LakeLifecyclePolicy } from '@/services/lake';
 import {
   createManagedTable,
   fetchPhysicalSource,
+  fetchPhysicalInventory,
   fetchSourceDatabases,
   fetchSourceSchemas,
   fetchSourceTableDetail,
@@ -293,6 +294,17 @@ const ManagedTableWizard: React.FC = () => {
       const jobId = typeof allocated.data === 'object' ? (allocated.data as any).id : allocated.data;
       history.replace(`/sync/batch-link-up/${jobId}/detail?lakeMappingId=${response.data.id}`);
     } catch (reason) {
+      // A failed external DDL may already have a tracked operation. Open its
+      // recovery page instead of leaving the user with a consumed preview.
+      try {
+        const inventory = await fetchPhysicalInventory(bindingId);
+        const mapping = inventory.data?.registeredTables?.find((item) => item.targetTableName === preview.targetTableName);
+        if (mapping?.mappingId) {
+          message.warning('创建尚未完成，已打开资源详情，请检查状态后重试。');
+          history.replace(`/lake/resources/table/${mapping.mappingId}`);
+          return;
+        }
+      } catch { /* The original error remains the useful result. */ }
       message.error(reason instanceof Error ? reason.message : '创建 ODS 表失败');
     } finally {
       setCreateLoading(false);

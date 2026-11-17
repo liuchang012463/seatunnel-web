@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /** JDBC implementation of the bounded Doris control-plane API. */
+@lombok.extern.slf4j.Slf4j
 public class JdbcDorisLakeClient implements DorisLakeClient {
 
     private static final String DATABASES_SQL =
@@ -137,7 +138,28 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
     @Override
     public void createTable(String databaseName, String tableName, TargetContract contract,
                             Map<String, String> tableProperties) {
-        execute(ddlBuilder.build(databaseName, tableName, contract, tableProperties));
+        Map<String, String> effective = new TreeMap<>(DorisTablePropertyWhitelist.validateAndCopy(tableProperties));
+        if (!effective.containsKey("replication_num") && !effective.containsKey("replication_allocation")) {
+            effective.putAll(defaultTableProperties());
+        }
+        execute(ddlBuilder.build(databaseName, tableName, contract, effective));
+    }
+
+    @Override
+    public Map<String, String> defaultTableProperties() {
+        return withConnection("read available backends", connection -> {
+            try (Statement statement = connection.createStatement()) {
+                configure(statement);
+                try (ResultSet rows = statement.executeQuery("SHOW BACKENDS")) {
+                    int alive = 0;
+                    while (rows.next()) if (Boolean.parseBoolean(rows.getString("Alive"))) alive++;
+                    if (alive == 0) throw new IllegalStateException("Doris has no available backend for table creation");
+                    int replicas = Math.min(3, alive);
+                    log.info("Selected Doris table defaults aliveBackends={} replicas={}", alive, replicas);
+                    return Map.of("replication_num", String.valueOf(replicas));
+                }
+            }
+        });
     }
 
     @Override
@@ -697,6 +719,9 @@ public class JdbcDorisLakeClient implements DorisLakeClient {
         try (Connection connection = dataSource.getConnection()) {
             return work.execute(connection);
         } catch (SQLException exception) {
+            // Keep connection details out of API errors; retain redacted server diagnostics.
+            log.warn("Doris operation failed operation={} sqlState={} vendorCode={} reason={}", operation,
+                    exception.getSQLState(), exception.getErrorCode(), CatalogPropertyRedactor.redactText(exception.getMessage()));
             throw safeFailure(operation, exception);
         }
     }
