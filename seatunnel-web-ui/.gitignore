@@ -37,3 +37,7 @@ screenshot
 .firebase
 
 build
+
+# Desktop browser regression artifacts
+/test-results
+/playwright-report

@@ -102,7 +102,16 @@ jobs:
         run: yarn lint
 
       - name: Run unit tests
-        run: yarn test --runInBand --watchAll=false
+        run: yarn test:ci
 
       - name: Build
         run: yarn build
+
+      # Serve the built distribution behind the same proxy used in the release image.
+      - name: Install desktop browser and static server
+        run: |
+          yarn playwright install --with-deps chromium
+          sudo apt-get update && sudo apt-get install -y nginx
+
+      - name: Verify desktop distribution flows
+        run: yarn test:browser

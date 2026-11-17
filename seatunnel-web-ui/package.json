@@ -29,7 +29,9 @@
     "test": "jest",
     "test:coverage": "npm run jest -- --coverage",
     "test:update": "npm run jest -- -u",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "test:ci": "jest --runInBand --watchAll=false --detectOpenHandles",
+    "test:browser": "playwright test"
   },
   "browserslist": [
     "defaults"
@@ -82,6 +84,7 @@
     "@biomejs/biome": "^2.0.6",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
+    "@playwright/test": "1.65.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.0.1",
     "@types/express": "^5.0.3",
