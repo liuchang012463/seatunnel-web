@@ -9,7 +9,6 @@ import { seatunnelJobDefinitionApi } from './api';
 import SyncTaskList from './components/SyncTaskList';
 import './index.less';
 
-// import SyncTaskList from "./SyncTaskList";
 
 const App = () => {
   const sourceType = { ...DEFAULT_TASK_DATASOURCE_TYPE };
