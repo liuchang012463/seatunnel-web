@@ -13,3 +13,15 @@ test('full task keeps the exact source namespace and overwrites data without rec
 test('a missing source locator never silently falls back to the target table', () => {
   expect(() => lakeTaskForm({ id: 7, targetTableName: 'wrong_source' }, 'job')).toThrow('来源库表定位不完整');
 });
+
+test('prefilled field mapping includes its upstream and downstream ports', () => {
+  const form = lakeTaskForm({ id: 7, sourceDataSourceId: 10, lakeDataSourceId: 20,
+    sourceDbType: 'MYSQL', sourceDatabaseName: 'app', sourceTableName: 'events',
+    databaseName: 'ods_app', targetTableName: 'events',
+    fieldMappings: [{ sourceField: 'id', targetField: 'id', targetType: 'INT' }] } as any, 'job');
+  const nodes = form.workflow.nodes;
+  const source = nodes.find((node: any) => node.data.nodeType === 'source')!;
+  const transform = nodes.find((node: any) => node.data.nodeType === 'transform')!;
+  const sink = nodes.find((node: any) => node.data.nodeType === 'sink')!;
+  expect(transform.data.config).toMatchObject({ pluginInput: source.id, pluginOutput: sink.id });
+});

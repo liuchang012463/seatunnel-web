@@ -511,6 +511,10 @@ export default function Workflow({
         : seatunnelJobDefinitionApi.buildGuideSingleConfig;
       const res = await buildConfig(finalPayload);
 
+      // Business errors use HTTP 200; show them instead of an empty preview.
+      if (res?.code !== 0) {
+        throw new Error(res?.message || (res as any)?.msg || "预览失败，请检查任务配置");
+      }
       setPreviewContent(res?.data || "");
       setPreviewOpen(true);
     } catch (error: any) {
@@ -547,6 +551,9 @@ export default function Workflow({
         ? seatunnelJobDefinitionApi.saveOrUpdateGuideSingleIncremental
         : seatunnelJobDefinitionApi.saveOrUpdateGuideSingle;
       const res = await saveDefinition(finalPayload);
+      if (res?.code !== 0) {
+        throw new Error(res?.message || res?.msg || "保存配置失败");
+      }
 
       const saveData = getSaveResponseData(res);
       const nextJobDefinitionId = saveData.id ?? finalPayload.id;

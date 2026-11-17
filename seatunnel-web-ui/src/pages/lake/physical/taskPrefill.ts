@@ -93,7 +93,8 @@ export const buildLakeWorkflow = (table: ManagedTable) => {
         title: '字段映射',
         description: '沿用 MANAGED 表已确认的字段关系',
         iconType: 'braces',
-        config: { mappings, passThroughUnmapped: false },
+        // Transform ports refer to the adjacent nodes in the normal workflow contract.
+        config: { mappings, passThroughUnmapped: false, pluginInput: sourceId, pluginOutput: sinkId },
         meta: { inputSchema: sourceSchema, outputSchema: mappings.map((item) => ({ name: item.targetField, type: item.targetType || 'STRING', nullable: true, originFieldName: item.sourceField })), schemaStatus: 'success', schemaError: '' },
       },
     });
