@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.api.lake.operation.LakeOperationExecution;
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationHandle;
 import org.apache.seatunnel.web.api.lake.operation.LakeOperationIntent;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceOperationCoordinator;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.LakeRelationScope;
 import org.apache.seatunnel.web.common.enums.LakeRelationStatus;
@@ -36,9 +37,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -66,6 +70,7 @@ class LakeOdsDatabaseServiceImplTest {
     @Mock private LakeResourceOperationCoordinator coordinator;
     @Mock private org.apache.seatunnel.web.api.security.CurrentUserProvider currentUserProvider;
     @Mock private DorisLakeClient dorisClient;
+    @Mock private LakeWarehouseService warehouseService;
 
     private LakeOdsDatabaseServiceImpl service;
     private LakeProperties lakeProperties;
@@ -126,6 +131,48 @@ class LakeOdsDatabaseServiceImplTest {
         assertEquals("ods_unit_system_orders", stored.get().getDatabaseName());
         assertEquals(12, stored.get().getCreateUserId());
         verify(dorisClient).createDatabase("ods_unit_system_orders");
+    }
+
+    @Test
+    void directoryLabelsUseBoundNamesAndLegacySourcesInTheConfiguredWarehouse() {
+        service = new LakeOdsDatabaseServiceImpl(
+                dataSourceDao, businessSystemDao, dataSourceUnitDao, bindingDao,
+                tableMappingDao, jobRelationDao, masterDataResolver, dorisClientProvider,
+                coordinator, currentUserProvider, lakeProperties, warehouseService);
+        LakeOdsDatabaseBinding named = binding(31L, LakeResourceStatus.READY, false);
+        LakeOdsDatabaseBinding legacy = binding(32L, LakeResourceStatus.READY, false);
+        legacy.setLakeDataSourceId(80L);
+        legacy.setDatabaseName("ods_unit_system_ds_7");
+        LakeOdsDatabaseBinding unrelated = binding(33L, LakeResourceStatus.READY, false);
+        unrelated.setLakeDataSourceId(81L);
+        unrelated.setDatabaseName("ods_unit_system_other");
+        when(warehouseService.canonicalDataSourceId(80L)).thenReturn(99L);
+        when(warehouseService.canonicalDataSourceId(81L)).thenThrow(
+                new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID, "unmapped warehouse"));
+        Set<String> databases = Set.of(
+                named.getDatabaseName(), legacy.getDatabaseName(), unrelated.getDatabaseName(), "ordinary");
+        when(bindingDao.queryActiveByDatabaseNames(databases)).thenReturn(List.of(named, legacy, unrelated));
+        when(dataSourceDao.queryByIds(Set.of(7L))).thenReturn(
+                List.of(source(7L, "订单数据源", 11L, DbType.MYSQL)));
+
+        assertEquals(Map.of(
+                "ods_unit_system_orders", "orders",
+                "ods_unit_system_ds_7", "订单数据源"),
+                service.catalogDatabaseLabels(99L, databases));
+        verifyNoInteractions(dorisClient);
+    }
+
+    @Test
+    void sourceDetailReturnsTheOriginalNameForRestoringADeletedBinding() {
+        LakeOdsDatabaseBinding previous = binding(31L, LakeResourceStatus.DELETED, true);
+        previous.setDatabaseName("ods_unit_system_ds_7");
+        when(bindingDao.queryBySourceDataSourceIdIncludingDeleted(7L)).thenReturn(previous);
+
+        var detail = service.sourceDetail(7L);
+
+        assertEquals("ds_7", detail.getPreviousOdsName());
+        assertNull(detail.getOdsDatabase());
+        verifyNoInteractions(dorisClient);
     }
 
     @Test

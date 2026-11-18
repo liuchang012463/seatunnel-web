@@ -8,6 +8,8 @@ import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public interface LakeOdsDatabaseService {
 
@@ -19,6 +21,9 @@ public interface LakeOdsDatabaseService {
 
     /** Return only the READY ODS database choices for one source data source. */
     List<LakeOdsDatabaseVO> readyDatabases(Long sourceDataSourceId);
+
+    /** Returns display names keyed by the actual Doris database names in the directory. */
+    Map<String, String> catalogDatabaseLabels(Long lakeDataSourceId, Set<String> databaseNames);
 
     LakeOdsDatabaseVO create(Long sourceDataSourceId, LakeOdsDatabaseCreateDTO request);
 

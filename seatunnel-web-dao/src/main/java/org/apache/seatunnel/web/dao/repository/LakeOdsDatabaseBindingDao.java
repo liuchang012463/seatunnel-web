@@ -2,6 +2,9 @@ package org.apache.seatunnel.web.dao.repository;
 
 import org.apache.seatunnel.web.dao.entity.LakeOdsDatabaseBinding;
 
+import java.util.List;
+import java.util.Set;
+
 public interface LakeOdsDatabaseBindingDao extends IDao<LakeOdsDatabaseBinding> {
 
     LakeOdsDatabaseBinding queryActiveById(Long id);
@@ -11,6 +14,8 @@ public interface LakeOdsDatabaseBindingDao extends IDao<LakeOdsDatabaseBinding> 
     LakeOdsDatabaseBinding queryBySourceDataSourceId(Long sourceDataSourceId);
 
     LakeOdsDatabaseBinding queryBySourceDataSourceIdIncludingDeleted(Long sourceDataSourceId);
+
+    List<LakeOdsDatabaseBinding> queryActiveByDatabaseNames(Set<String> databaseNames);
 
     LakeOdsDatabaseBinding queryByLakeDataSourceIdAndDatabaseName(
             Long lakeDataSourceId, String databaseName);

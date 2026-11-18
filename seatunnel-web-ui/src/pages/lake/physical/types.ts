@@ -24,6 +24,7 @@ export interface PhysicalDataSource {
   systemCode?: string;
   odsDatabaseBindingId?: number;
   odsDatabase?: OdsDatabase;
+  previousOdsName?: string;
 }
 
 export interface OdsDatabase {

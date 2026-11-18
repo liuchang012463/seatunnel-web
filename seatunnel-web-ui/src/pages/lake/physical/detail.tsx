@@ -32,6 +32,7 @@ import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchLakeOperations } from '@/services/lake';
 import type { LakeResourceOperation } from '@/services/lake';
+import OdsNameDialog from './OdsNameDialog';
 import {
   bindUnmanagedTable,
   createOdsDatabase,
@@ -190,6 +191,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [creatingDatabase, setCreatingDatabase] = useState(false);
+  const [namingOpen, setNamingOpen] = useState(false);
   const [bindTarget, setBindTarget] = useState<InventoryTable>();
   const [unbindLoadingId, setUnbindLoadingId] = useState<number>();
   const [reconcileLoading, setReconcileLoading] = useState(false);
@@ -265,21 +267,27 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
     return () => { active = false; };
   }, [databaseId, diagnosticsOpen, lastCheck]);
 
-  const startPhysical = async () => {
-    if (!source?.sourceDataSourceId) return;
+  const prepareDatabase = async (name: string) => {
     const request = requestId.current;
+    const prepared = await createOdsDatabase(sourceId, name);
+    if (request !== requestId.current) return;
+    setNamingOpen(false);
+    if (prepared.resourceStatus === 'READY') {
+      history.push(physicalTableCreatePath(sourceId, prepared.id));
+    } else {
+      message.info('ODS 库尚未就绪，请查看状态或重试');
+      await load();
+    }
+  };
+
+  const startPhysical = async () => {
+    if (!source?.previousOdsName) {
+      setNamingOpen(true);
+      return;
+    }
     setCreatingDatabase(true);
     try {
-      // Use the same deterministic name as the list entry; no manual database setup is needed.
-      const response = await createOdsDatabase(source.sourceDataSourceId, `ds_${source.sourceDataSourceId}`);
-      if (request !== requestId.current) return;
-      if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, 'ODS 库准备失败'));
-      if (response.data.resourceStatus === 'READY') {
-        history.push(physicalTableCreatePath(sourceId, response.data.id));
-      } else {
-        message.info('ODS 库尚未就绪，请查看状态或重试');
-        await load();
-      }
+      await prepareDatabase(source.previousOdsName);
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '准备入湖失败');
     } finally {
@@ -462,6 +470,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
           ]} />
           </> }]} />
       </div>
+      {namingOpen ? <OdsNameDialog onCancel={() => setNamingOpen(false)} onSubmit={prepareDatabase} /> : null}
       <BindUnmanagedDrawer open={!!bindTarget} source={source} table={bindTarget} onClose={() => setBindTarget(undefined)} onSuccess={() => void load()} />
     </PageContainer>
   );

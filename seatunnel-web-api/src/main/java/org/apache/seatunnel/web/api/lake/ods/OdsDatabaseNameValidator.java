@@ -22,7 +22,7 @@ public final class OdsDatabaseNameValidator {
         String databaseName = "ods_" + unit + "_" + system + "_" + custom;
         if (!DATABASE.matcher(databaseName).matches()) {
             throw new LakeServiceException(LakeErrorCode.LAKE_MASTER_DATA_CODE_INVALID,
-                    "ODS database name is not a valid Doris identifier");
+                    "单位编码、系统编码和 ODS 名称生成的库名不能超过 64 个字符");
         }
         return new OdsDatabaseName(unit, system, custom, databaseName);
     }

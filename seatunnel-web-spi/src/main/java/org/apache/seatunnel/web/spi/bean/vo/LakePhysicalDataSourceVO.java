@@ -17,4 +17,6 @@ public class LakePhysicalDataSourceVO {
     private String systemCode;
     private Long odsDatabaseBindingId;
     private LakeOdsDatabaseVO odsDatabase;
+    /** The original create input for restoring a deleted binding from source detail. */
+    private String previousOdsName;
 }

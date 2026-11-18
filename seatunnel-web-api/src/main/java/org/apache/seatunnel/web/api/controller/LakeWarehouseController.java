@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryResultVO;
 import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogQueryService;
+import org.apache.seatunnel.web.api.service.LakeOdsDatabaseService;
 import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
@@ -33,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @Tag(name = "LAKE_WAREHOUSE_TAG")
@@ -47,6 +49,9 @@ public class LakeWarehouseController {
 
     @Resource
     private LakeLogicalCatalogQueryService lakeLogicalCatalogQueryService;
+
+    @Resource
+    private LakeOdsDatabaseService lakeOdsDatabaseService;
 
     @GetMapping
     @Operation(summary = "getLakeWarehouseConfig")
@@ -69,10 +74,25 @@ public class LakeWarehouseController {
     @GetMapping("/catalog/databases")
     @Operation(summary = "listLakeCatalogDatabases")
     public Result<List<OptionVO>> listCatalogDatabases() {
-        List<OptionVO> databases = dataSourceCatalogService.listDatabase(
-                lakeWarehouseService.requireSystemDataSourceId());
-        return Result.buildSuc(databases.stream()
-                .filter(database -> LakeCatalogScope.isVisibleInternalDatabase(String.valueOf(database.getValue())))
+        Long lakeDataSourceId = lakeWarehouseService.requireSystemDataSourceId();
+        List<OptionVO> databases = dataSourceCatalogService.listDatabase(lakeDataSourceId).stream()
+                .filter(database -> database.getValue() instanceof String name
+                        && LakeCatalogScope.isVisibleInternalDatabase(name))
+                .toList();
+        Map<String, String> labels = lakeOdsDatabaseService.catalogDatabaseLabels(lakeDataSourceId,
+                databases.stream().map(database -> (String) database.getValue()).collect(Collectors.toSet()));
+        return Result.buildSuc(databases.stream().map(database -> {
+            String label = labels.get(database.getValue());
+            if (label == null) {
+                return database;
+            }
+            // Keep the physical identity for tree selection and query requests.
+            OptionVO option = new OptionVO();
+            option.setValue(database.getValue());
+            option.setLabel(label);
+            option.setDescription(database.getDescription());
+            return option;
+        })
                 .toList());
     }
 

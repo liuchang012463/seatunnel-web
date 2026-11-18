@@ -10,6 +10,9 @@ import org.apache.seatunnel.web.dao.repository.LakeOdsDatabaseBindingDao;
 import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Set;
+
 @Repository
 public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBinding, LakeOdsDatabaseBindingMapper>
         implements LakeOdsDatabaseBindingDao {
@@ -47,6 +50,16 @@ public class LakeOdsDatabaseBindingDaoImpl extends BaseDao<LakeOdsDatabaseBindin
     public LakeOdsDatabaseBinding queryBySourceDataSourceIdIncludingDeleted(Long sourceDataSourceId) {
         return sourceDataSourceId == null ? null : mapper.selectOne(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
                 .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getSourceDataSourceId), sourceDataSourceId));
+    }
+
+    @Override
+    public List<LakeOdsDatabaseBinding> queryActiveByDatabaseNames(Set<String> databaseNames) {
+        if (databaseNames.isEmpty()) {
+            return List.of();
+        }
+        return mapper.selectList(new LambdaQueryWrapper<LakeOdsDatabaseBinding>()
+                .in(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDatabaseName), databaseNames)
+                .eq(MyBatisColumn.getter(LakeOdsDatabaseBinding::getDeleted), false));
     }
 
     @Override

@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Detail from './detail';
 
 let mockRouteSourceId = '1';
@@ -9,15 +9,19 @@ jest.mock('@umijs/max', () => ({
   useParams: () => ({ sourceDataSourceId: mockRouteSourceId }),
 }));
 jest.mock('@ant-design/pro-components', () => ({
-  PageContainer: ({ children, title }: { children?: import('react').ReactNode; title?: string }) =>
-    require('react').createElement('div', undefined, title, children),
+  PageContainer: ({ children, title, extra }: {
+    children?: import('react').ReactNode; title?: string; extra?: import('react').ReactNode;
+  }) => require('react').createElement('div', undefined, title, extra, children),
   ProTable: () => null,
 }));
 jest.mock('../useMasterDataNames', () => ({ useMasterDataNames: () => ({ unitNameByCode: () => '', systemNameByCode: () => '' }) }));
-jest.mock('./service', () => ({ fetchPhysicalSource: jest.fn(), fetchPhysicalInventory: jest.fn() }));
+jest.mock('./service', () => ({
+  createOdsDatabase: jest.fn(), fetchPhysicalSource: jest.fn(), fetchPhysicalInventory: jest.fn(),
+}));
 jest.mock('@/services/lake', () => ({ fetchLakeOperations: jest.fn() }));
 
 const api = jest.requireMock('./service');
+const { history } = jest.requireMock('@umijs/max');
 const source = (id: number, name: string) => ({
   sourceDataSourceId: id,
   sourceDataSourceName: name,
@@ -26,8 +30,10 @@ const source = (id: number, name: string) => ({
 });
 
 beforeEach(() => {
+  api.createOdsDatabase.mockReset();
   api.fetchPhysicalSource.mockReset();
   api.fetchPhysicalInventory.mockReset();
+  history.push.mockClear();
   mockRouteSourceId = '1';
 });
 
@@ -65,4 +71,34 @@ test('an ODS binding for another source does not load its tables', async () => {
     warn.mockRestore();
     error.mockRestore();
   }
+});
+
+test('first intake asks for a single ODS name before creating the binding', async () => {
+  api.fetchPhysicalSource.mockResolvedValue({
+    code: 0, data: { sourceDataSourceId: 1, sourceDataSourceName: '订单源', dbType: 'MYSQL' },
+  });
+  api.createOdsDatabase.mockResolvedValue(source(1, '订单源').odsDatabase);
+  render(React.createElement(Detail));
+  fireEvent.click(await screen.findByRole('button', { name: /开始入湖/ }));
+
+  const dialog = within(await screen.findByRole('dialog'));
+  expect(api.createOdsDatabase).not.toHaveBeenCalled();
+  expect(dialog.getAllByRole('textbox')).toHaveLength(1);
+  fireEvent.change(dialog.getByRole('textbox'), { target: { value: ' orders ' } });
+  fireEvent.click(dialog.getByRole('button', { name: '开始入湖' }));
+
+  await waitFor(() => expect(api.createOdsDatabase).toHaveBeenCalledWith('1', 'orders'));
+  expect(history.push).toHaveBeenCalledWith('/lake/resources/table/create?sourceDataSourceId=1&odsDatabaseBindingId=10');
+});
+
+test('starting again uses the previous binding name for restoration', async () => {
+  api.fetchPhysicalSource.mockResolvedValue({
+    code: 0, data: { sourceDataSourceId: 1, sourceDataSourceName: '订单源', dbType: 'MYSQL', previousOdsName: 'ds_1' },
+  });
+  api.createOdsDatabase.mockResolvedValue(source(1, '订单源').odsDatabase);
+  render(React.createElement(Detail));
+  fireEvent.click(await screen.findByRole('button', { name: /开始入湖/ }));
+
+  await waitFor(() => expect(api.createOdsDatabase).toHaveBeenCalledWith('1', 'ds_1'));
+  expect(screen.queryByRole('dialog')).toBeNull();
 });

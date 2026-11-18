@@ -44,14 +44,19 @@ import org.apache.seatunnel.web.spi.bean.vo.LakeOdsDatabaseVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalDataSourceVO;
 import org.apache.seatunnel.web.spi.bean.vo.LakePhysicalSummaryVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,6 +65,8 @@ import java.util.stream.Collectors;
 /** Task 5 ODS database backend. External Doris work is always coordinator-bound. */
 @Service
 public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LakeOdsDatabaseServiceImpl.class);
 
     private final DataSourceDao dataSourceDao;
     private final BusinessSystemDao businessSystemDao;
@@ -200,7 +207,14 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
 
     @Override
     public LakePhysicalDataSourceVO sourceDetail(Long sourceDataSourceId) {
-        return toSourceVO(requireSource(sourceDataSourceId));
+        LakePhysicalDataSourceVO result = toSourceVO(requireSource(sourceDataSourceId));
+        if (result.getOdsDatabase() == null) {
+            LakeOdsDatabaseBinding previous = bindingDao.queryBySourceDataSourceIdIncludingDeleted(sourceDataSourceId);
+            if (previous != null && Boolean.TRUE.equals(previous.getDeleted())) {
+                result.setPreviousOdsName(boundCustomName(previous));
+            }
+        }
+        return result;
     }
 
     @Override
@@ -216,6 +230,73 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
             return List.of();
         }
         return List.of(toVO(binding));
+    }
+
+    @Override
+    public Map<String, String> catalogDatabaseLabels(Long lakeDataSourceId, Set<String> databaseNames) {
+        Map<Long, Boolean> matchingWarehouse = new HashMap<>();
+        matchingWarehouse.put(lakeDataSourceId, true);
+        Map<String, LakeOdsDatabaseBinding> bindings = new HashMap<>();
+        for (LakeOdsDatabaseBinding binding : bindingDao.queryActiveByDatabaseNames(databaseNames)) {
+            Long bindingLakeId = binding.getLakeDataSourceId();
+            if (!matchingWarehouse.computeIfAbsent(bindingLakeId, id -> isWarehouseAlias(id, lakeDataSourceId))) {
+                continue;
+            }
+            if (lakeDataSourceId.equals(bindingLakeId)) {
+                bindings.put(binding.getDatabaseName(), binding);
+            } else {
+                bindings.putIfAbsent(binding.getDatabaseName(), binding);
+            }
+        }
+
+        Map<String, String> labels = new HashMap<>();
+        Map<String, Long> sourceLabels = new HashMap<>();
+        for (LakeOdsDatabaseBinding binding : bindings.values()) {
+            String name = boundCustomName(binding);
+            if (name == null || name.equals("ds_" + binding.getSourceDataSourceId())) {
+                sourceLabels.put(binding.getDatabaseName(), binding.getSourceDataSourceId());
+            } else {
+                labels.put(binding.getDatabaseName(), name);
+            }
+        }
+        if (!sourceLabels.isEmpty()) {
+            Map<Long, String> sourceNames = new HashMap<>();
+            for (DataSource source : dataSourceDao.queryByIds(new HashSet<>(sourceLabels.values()))) {
+                if (source.getName() != null && !source.getName().isBlank()) {
+                    sourceNames.put(source.getId(), source.getName());
+                }
+            }
+            sourceLabels.forEach((database, sourceId) -> {
+                String name = sourceNames.get(sourceId);
+                if (name != null) {
+                    labels.put(database, name);
+                }
+            });
+        }
+        return labels;
+    }
+
+    private boolean isWarehouseAlias(Long id, Long lakeDataSourceId) {
+        if (warehouseService == null || id == null || id <= 0) {
+            return false;
+        }
+        try {
+            return lakeDataSourceId.equals(warehouseService.canonicalDataSourceId(id));
+        } catch (LakeServiceException exception) {
+            LOG.debug("Skipping catalog labels for unmapped lake data source {}", id);
+            return false;
+        }
+    }
+
+    private static String boundCustomName(LakeOdsDatabaseBinding binding) {
+        String database = binding.getDatabaseName();
+        if (database == null || binding.getUnitCode() == null || binding.getSystemCode() == null) {
+            return null;
+        }
+        // The binding stores the codes used to build this database, even after master data changes.
+        String prefix = "ods_" + binding.getUnitCode() + "_" + binding.getSystemCode() + "_";
+        return database.startsWith(prefix) && database.length() > prefix.length()
+                ? database.substring(prefix.length()) : null;
     }
 
     @Override
@@ -240,13 +321,13 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
                         lakeDataSourceId, name.databaseName());
         if (target != null && !Objects.equals(target.getSourceDataSourceId(), sourceDataSourceId)) {
             throw new LakeServiceException(LakeErrorCode.LAKE_DATABASE_NAME_CONFLICT,
-                    "Doris database name is already reserved by another source");
+                    "此 ODS 名称已被其他数据源使用，请换一个名称");
         }
 
         DorisLakeClient client = dorisClientProvider.get(lakeDataSourceId);
         if (databaseExists(client, name.databaseName())) {
             throw new LakeServiceException(LakeErrorCode.LAKE_DATABASE_NAME_CONFLICT,
-                    "Doris database name is already in use");
+                    "生成的实际库名已存在，请换一个 ODS 名称");
         }
 
         LakeOdsDatabaseBinding binding = bindingDao.queryBySourceDataSourceIdIncludingDeleted(sourceDataSourceId);
@@ -273,6 +354,8 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
             throw conflict("A deleted ODS binding cannot be renamed during rebuild");
         }
         fillBinding(binding, sourceDataSourceId, lakeDataSourceId, name);
+        LOG.info("Preparing ODS database {}, sourceId={}, bindingId={}, rebuild={}",
+                binding.getDatabaseName(), sourceDataSourceId, binding.getId(), rebuild);
         LakeOperationHandle handle = begin(binding, LakeOperationType.CREATE_DATABASE, rebuild);
         return createExternally(binding, handle, client, false);
     }

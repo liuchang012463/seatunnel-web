@@ -29,8 +29,20 @@ export const fetchPhysicalSource = (sourceDataSourceId: string | number): Promis
 export const fetchReadyOdsDatabases = (sourceDataSourceId: number): Promise<ApiResponse<OdsDatabase[]>> =>
   HttpUtils.get(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}/ready-databases`);
 
-export const createOdsDatabase = (sourceDataSourceId: number, customName: string): Promise<ApiResponse<OdsDatabase>> =>
-  HttpUtils.post(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}/database`, { customName });
+export const createOdsDatabase = async (sourceDataSourceId: string | number, customName: string): Promise<OdsDatabase> => {
+  const response: ApiResponse<OdsDatabase> = await HttpUtils.post(
+    `${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}/database`, { customName },
+  );
+  const database = response.data;
+  if (response.code !== 0 || !database) {
+    throw new Error(response.message || response.msg || '入湖库准备失败，请检查数据源的单位和业务系统归属');
+  }
+  if (database.sourceDataSourceId != null && String(database.sourceDataSourceId) !== String(sourceDataSourceId)) {
+    console.warn('[lake-physical] 新入湖库的资源归属不匹配', { sourceDataSourceId, bindingId: database.id });
+    throw new Error('入湖库与当前数据源不匹配，请刷新后重试。');
+  }
+  return database;
+};
 
 export const retryOdsDatabase = (id: number): Promise<ApiResponse<OdsDatabase>> =>
   HttpUtils.post(`${PHYSICAL_API}/databases/${encodeURIComponent(String(id))}/retry`);

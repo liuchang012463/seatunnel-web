@@ -33,6 +33,7 @@ import type { LakePage, LakeResourceStatus, OdsDatabase, PhysicalDataSource } fr
 import { useMasterDataNames } from '../useMasterDataNames';
 import { withTimeout } from '@/utils/withTimeout';
 import { DATA_SOURCE_CATEGORIES, type DataSourceCategoryKey } from '@/pages/data-source/dataSourceRegistry';
+import OdsNameDialog from './OdsNameDialog';
 import { physicalSourcePath, physicalTableCreatePath } from './paths';
 import './index.less';
 
@@ -83,6 +84,7 @@ const PhysicalResourcesPage: React.FC = () => {
   const [operationId, setOperationId] = useState<number>();
   const [operationLoading, setOperationLoading] = useState(false);
   const [startingId, setStartingId] = useState<number>();
+  const [naming, setNaming] = useState<{ sourceId: number; navigation: number }>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -126,6 +128,19 @@ const PhysicalResourcesPage: React.FC = () => {
   };
 
   const physicalTypes = ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'];
+  const openDatabase = (sourceId: number, database: OdsDatabase) => {
+    if (database.sourceDataSourceId != null && String(database.sourceDataSourceId) !== String(sourceId)) {
+      console.warn('[lake-physical-list] 入湖库与所选行不匹配', { sourceId, bindingId: database.id });
+      throw new Error('入湖库与当前数据源不匹配，请刷新后重试。');
+    }
+    if (database.resourceStatus !== 'READY') {
+      message.info('ODS 库尚未就绪，请在资源详情中查看状态或重试');
+      history.push(physicalSourcePath(sourceId));
+      return;
+    }
+    history.push(physicalTableCreatePath(sourceId, database.id));
+  };
+
   const startPhysical = async (record: PhysicalDataSource) => {
     const navigation = ++navigationRequest.current;
     setStartingId(record.sourceDataSourceId);
@@ -145,21 +160,15 @@ const PhysicalResourcesPage: React.FC = () => {
       }
       let database = latest.data.odsDatabase;
       if (!database || database.resourceStatus === 'DELETED') {
-        const created = await createOdsDatabase(record.sourceDataSourceId, `ds_${record.sourceDataSourceId}`);
+        if (!latest.data.previousOdsName) {
+          setNaming({ sourceId: record.sourceDataSourceId, navigation });
+          return;
+        }
+        // Restore the prior binding using its recorded name.
+        database = await createOdsDatabase(record.sourceDataSourceId, latest.data.previousOdsName);
         if (navigation !== navigationRequest.current) return;
-        if (created.code !== 0 || !created.data) throw new Error(created.message || created.msg || 'ODS 库准备失败，请检查数据源的单位和业务系统归属');
-        database = created.data;
       }
-      if (database.sourceDataSourceId != null && String(database.sourceDataSourceId) !== String(record.sourceDataSourceId)) {
-        console.warn('[lake-physical-list] 入湖库与所选行不匹配', { sourceId: record.sourceDataSourceId, bindingId: database.id });
-        throw new Error('入湖库与当前数据源不匹配，请刷新后重试。');
-      }
-      if (database.resourceStatus !== 'READY') {
-        message.info('ODS 库尚未就绪，请在资源详情中查看状态或重试');
-        history.push(physicalSourcePath(record.sourceDataSourceId));
-        return;
-      }
-      history.push(physicalTableCreatePath(record.sourceDataSourceId, database.id));
+      openDatabase(record.sourceDataSourceId, database);
     } catch (error) {
       if (navigation === navigationRequest.current) message.error(error instanceof Error ? error.message : '准备入湖失败');
     } finally {
@@ -336,6 +345,16 @@ const PhysicalResourcesPage: React.FC = () => {
         />
         <div className="lake-fixed-pagination"><Pagination current={page} pageSize={pageSize} total={total} showSizeChanger showTotal={(count) => `共 ${count} 个数据源`} onChange={(next, size) => { setPage(next); setPageSize(size); }} /></div>
       </div>
+      {naming ? <OdsNameDialog
+        onCancel={() => setNaming(undefined)}
+        onSubmit={async (name) => {
+          const database = await createOdsDatabase(naming.sourceId, name);
+          if (naming.navigation !== navigationRequest.current) return;
+          setNaming(undefined);
+          reload();
+          openDatabase(naming.sourceId, database);
+        }}
+      /> : null}
     </PageContainer>
   );
 };
