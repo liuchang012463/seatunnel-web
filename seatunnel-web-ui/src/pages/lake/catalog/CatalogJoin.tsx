@@ -69,9 +69,7 @@ const CatalogJoin: React.FC<{
     if (id) void cancelCatalogQuery(id).catch(() => undefined);
   }, []);
 
-  // JOIN already validates that the two tables belong to distinct catalogs.
-  const availableDatabases = databases.filter((database) => database.catalog !== selectedTable.catalog);
-  const database = availableDatabases.find((item) => item.key === databaseKey);
+  const database = databases.find((item) => item.key === databaseKey);
   const otherTable = database && tableName
     ? { catalog: database.catalog, database: database.database, table: tableName }
     : undefined;
@@ -148,7 +146,7 @@ const CatalogJoin: React.FC<{
           optionFilterProp="label"
           options={['物理入湖', '逻辑入湖'].map((label, index) => ({
             label,
-            options: availableDatabases
+            options: databases
               .filter((item) => (item.catalog === 'internal') === (index === 0))
               .map((item) => ({ label: item.label, value: item.key })),
           })).filter((group) => group.options.length > 0)}

@@ -162,8 +162,8 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         }
         ResolvedTable left = resolveTable(request.leftTable());
         ResolvedTable right = resolveTable(request.rightTable());
-        requireJoinTables(left, right);
-        // Keep the external binding in the audit even when the ODS table is on the left.
+        requireSameWarehouse(left, right);
+        // Attribute joins to an external binding when present, or to the warehouse for internal tables.
         Long resourceId = left.internal() ? right.auditResourceId() : left.auditResourceId();
         LakeResourceOperation audit = startAudit(resourceId, currentUserId(), "JOIN");
         try (DorisLakeClient client = dorisClientProvider.get(left.lakeId())) {
@@ -215,7 +215,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         }
         ResolvedTable left = resolveTable(request.leftTable());
         ResolvedTable right = resolveTable(request.rightTable());
-        requireJoinTables(left, right);
+        requireSameWarehouse(left, right);
         try (DorisLakeClient client = dorisClientProvider.get(left.lakeId())) {
             LakeReadOnlyQueryPlan plan = normalizer().normalize(request,
                     allowlist(client, left.identity()), allowlist(client, right.identity()));
@@ -247,10 +247,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         return new ResolvedTable(identity, lakeId, binding.getId());
     }
 
-    private static void requireJoinTables(ResolvedTable left, ResolvedTable right) {
-        if (left.identity().catalog().equals(right.identity().catalog())) {
-            throw queryInvalid("join catalogs must be distinct");
-        }
+    private static void requireSameWarehouse(ResolvedTable left, ResolvedTable right) {
         if (!left.lakeId().equals(right.lakeId())) {
             throw queryInvalid("join catalogs must use one configured lake datasource");
         }

@@ -83,9 +83,6 @@ public final class LakeReadOnlyQueryPlanNormalizer {
         }
         LakeQueryTableIdentity leftTable = table(request.leftTable());
         LakeQueryTableIdentity rightTable = table(request.rightTable());
-        if (leftTable.catalog().equals(rightTable.catalog())) {
-            throw invalid(LakeQueryValidationCode.JOIN_CATALOGS_NOT_DISTINCT);
-        }
         int limit = limit(request.limit());
         if (request.leftColumns().isEmpty() || request.rightColumns().isEmpty()) {
             throw invalid(LakeQueryValidationCode.COLUMNS_REQUIRED);

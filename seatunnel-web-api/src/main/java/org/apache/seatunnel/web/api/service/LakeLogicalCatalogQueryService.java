@@ -26,7 +26,7 @@ public interface LakeLogicalCatalogQueryService {
     /** Builds the same bounded SQL as execution, without opening a query connection. */
     LakeReadOnlyQueryPreviewVO previewSingle(Long catalogBindingId, LakeSingleTableQueryDTO request);
 
-    /** Builds a safe two-catalog JOIN preview without executing it. */
+    /** Builds a safe two-table JOIN preview without executing it. */
     LakeReadOnlyQueryPreviewVO previewJoin(LakeJoinQueryDTO request);
 
     List<String> databases(Long catalogBindingId);

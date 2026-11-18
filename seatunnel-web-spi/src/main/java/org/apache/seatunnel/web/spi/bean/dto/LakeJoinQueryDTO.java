@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Locale;
 
-/** Request contract for an equality join between two catalogs. */
+/** Request contract for an equality join between two tables in a lake warehouse. */
 @JsonIgnoreProperties(ignoreUnknown = false)
 public record LakeJoinQueryDTO(
         LakeQueryTableIdentityDTO leftTable,

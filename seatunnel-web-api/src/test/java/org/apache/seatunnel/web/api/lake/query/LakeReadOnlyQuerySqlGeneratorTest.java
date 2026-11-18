@@ -67,6 +67,23 @@ class LakeReadOnlyQuerySqlGeneratorTest {
     }
 
     @Test
+    void rendersAnEqualityJoinWithinAnInternalOrExternalCatalog() {
+        for (String catalog : List.of("internal", "sales_catalog")) {
+            var orders = new LakeQueryTableIdentityDTO(catalog, "sales", "orders");
+            var customers = new LakeQueryTableIdentityDTO(catalog, "sales", "customers");
+            var request = new LakeJoinQueryDTO(orders, customers,
+                    List.of(column(orders, "customer_id")), List.of(column(customers, "id")),
+                    column(orders, "customer_id"), column(customers, "id"), 10, false);
+
+            assertEquals("SELECT `l`.`customer_id` AS `left_c0`, `r`.`id` AS `right_c0`"
+                            + " FROM `" + catalog + "`.`sales`.`orders` AS `l`"
+                            + " JOIN `" + catalog + "`.`sales`.`customers` AS `r`"
+                            + " ON `l`.`customer_id` = `r`.`id` LIMIT 10",
+                    new LakeReadOnlyQuerySqlGenerator().generate(request, allow("customer_id"), allow("id")));
+        }
+    }
+
+    @Test
     void rejectsInjectionInEveryIdentifierAndPolicyViolations() {
         LakeReadOnlyQuerySqlGenerator generator = new LakeReadOnlyQuerySqlGenerator();
         LakeQueryTableIdentityDTO[] unsafeTables = {
