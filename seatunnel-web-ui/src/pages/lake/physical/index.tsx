@@ -21,7 +21,7 @@ import {
   Typography,
   message,
 } from 'antd';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createOdsDatabase,
   fetchPhysicalSource,
@@ -91,6 +91,18 @@ const PhysicalResourcesPage: React.FC = () => {
   const [category, setCategory] = useState<DataSourceCategoryKey | 'ALL'>('RELATIONAL');
   const [resourceStatus, setResourceStatus] = useState<LakeResourceStatus>();
   const [listError, setListError] = useState<string>();
+  const listRequest = useRef(0);
+  const navigationRequest = useRef(0);
+
+  useEffect(() => () => {
+    listRequest.current += 1;
+    navigationRequest.current += 1;
+  }, []);
+
+  const openSource = (sourceId: number) => {
+    navigationRequest.current += 1;
+    history.push(physicalSourcePath(sourceId));
+  };
 
   const reload = () => {
     actionRef.current?.reload();
@@ -115,10 +127,12 @@ const PhysicalResourcesPage: React.FC = () => {
 
   const physicalTypes = ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'];
   const startPhysical = async (record: PhysicalDataSource) => {
+    const navigation = ++navigationRequest.current;
     setStartingId(record.sourceDataSourceId);
     try {
       // Re-read before creating so a stale list cannot produce a second binding.
       const latest = await fetchPhysicalSource(record.sourceDataSourceId);
+      if (navigation !== navigationRequest.current) return;
       if (latest.code !== 0 || !latest.data) throw new Error(latest.message || latest.msg || '数据源读取失败');
       if (String(latest.data.sourceDataSourceId) !== String(record.sourceDataSourceId)) {
         console.warn('[lake-physical-list] 数据源与所选行不匹配', { sourceId: record.sourceDataSourceId });
@@ -132,8 +146,13 @@ const PhysicalResourcesPage: React.FC = () => {
       let database = latest.data.odsDatabase;
       if (!database || database.resourceStatus === 'DELETED') {
         const created = await createOdsDatabase(record.sourceDataSourceId, `ds_${record.sourceDataSourceId}`);
+        if (navigation !== navigationRequest.current) return;
         if (created.code !== 0 || !created.data) throw new Error(created.message || created.msg || 'ODS 库准备失败，请检查数据源的单位和业务系统归属');
         database = created.data;
+      }
+      if (database.sourceDataSourceId != null && String(database.sourceDataSourceId) !== String(record.sourceDataSourceId)) {
+        console.warn('[lake-physical-list] 入湖库与所选行不匹配', { sourceId: record.sourceDataSourceId, bindingId: database.id });
+        throw new Error('入湖库与当前数据源不匹配，请刷新后重试。');
       }
       if (database.resourceStatus !== 'READY') {
         message.info('ODS 库尚未就绪，请在资源详情中查看状态或重试');
@@ -141,8 +160,14 @@ const PhysicalResourcesPage: React.FC = () => {
         return;
       }
       history.push(physicalTableCreatePath(record.sourceDataSourceId, database.id));
-    } catch (error) { message.error(error instanceof Error ? error.message : '准备入湖失败'); }
-    finally { setStartingId(undefined); reload(); }
+    } catch (error) {
+      if (navigation === navigationRequest.current) message.error(error instanceof Error ? error.message : '准备入湖失败');
+    } finally {
+      if (navigation === navigationRequest.current) {
+        setStartingId(undefined);
+        reload();
+      }
+    }
   };
 
   const columns = useMemo<ProColumns<PhysicalDataSource>[]>(
@@ -165,7 +190,7 @@ const PhysicalResourcesPage: React.FC = () => {
         width: 210,
         ellipsis: true,
         render: (_, record) => (
-          <Button type="link" className="lake-source-link" onClick={() => history.push(physicalSourcePath(record.sourceDataSourceId))}>
+          <Button type="link" className="lake-source-link" onClick={() => openSource(record.sourceDataSourceId)}>
             {record.sourceDataSourceName || `DataSource #${record.sourceDataSourceId}`}
             <RightOutlined />
           </Button>
@@ -201,7 +226,7 @@ const PhysicalResourcesPage: React.FC = () => {
               <Button type="link" disabled={!supported || busy || record.sourceEnabled === false} loading={startingId === record.sourceDataSourceId}
                 onClick={() => void startPhysical(record)}>{database?.resourceStatus === 'READY' ? '新增入湖表' : '开始入湖'}</Button>
             </Tooltip>
-            <Button type="link" onClick={() => history.push(physicalSourcePath(record.sourceDataSourceId))}>查看入湖表</Button>
+            <Button type="link" onClick={() => openSource(record.sourceDataSourceId)}>查看入湖表</Button>
             {canRetry && <Button type="link" loading={operationLoading && operationId === database?.id}
               onClick={() => void operate('retry', database)}>重试</Button>}
             {canReconcile && <Dropdown trigger={['click']} menu={{ items: [{ key: 'reconcile', label: '检查入湖库' }], onClick: () => void operate('reconcile', database) }}>
@@ -255,6 +280,7 @@ const PhysicalResourcesPage: React.FC = () => {
           </Space>}
           params={{ current: page, pageSize, keyword, resourceStatus, category }}
           request={async (params) => {
+            const request = ++listRequest.current;
             setListError(undefined);
             try {
               const response = await withTimeout(
@@ -268,13 +294,16 @@ const PhysicalResourcesPage: React.FC = () => {
                 10000,
                 '物理入湖列表请求超时，请稍后重试',
               );
+              if (request !== listRequest.current) return { data: [], success: false, total: 0 };
               if (response.code !== 0) throw new Error(response.message || response.msg || '物理入湖列表加载失败');
               const page = unwrapPage(response.data);
               setTotal(page.total);
               return { data: page.rows, success: true, total: page.total };
             } catch (error) {
-              setTotal(0);
-              setListError(error instanceof Error ? error.message : '物理入湖列表加载失败');
+              if (request === listRequest.current) {
+                setTotal(0);
+                setListError(error instanceof Error ? error.message : '物理入湖列表加载失败');
+              }
               return { data: [], success: false, total: 0 };
             }
           }}

@@ -23,7 +23,7 @@ const PHYSICAL_API = '/api/v1/lake/physical';
 export const fetchPhysicalSources = (params: Record<string, unknown>): Promise<ApiResponse<LakePage<PhysicalDataSource>>> =>
   HttpUtils.post(`${PHYSICAL_API}/datasources/page`, params);
 
-export const fetchPhysicalSource = (sourceDataSourceId: number): Promise<ApiResponse<PhysicalDataSource>> =>
+export const fetchPhysicalSource = (sourceDataSourceId: string | number): Promise<ApiResponse<PhysicalDataSource>> =>
   HttpUtils.get(`${PHYSICAL_API}/datasources/${encodeURIComponent(String(sourceDataSourceId))}`);
 
 export const fetchReadyOdsDatabases = (sourceDataSourceId: number): Promise<ApiResponse<OdsDatabase[]>> =>
