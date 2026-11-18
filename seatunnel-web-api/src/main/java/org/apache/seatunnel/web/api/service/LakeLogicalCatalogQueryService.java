@@ -1,14 +1,20 @@
 package org.apache.seatunnel.web.api.service;
 
-import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryResultVO;
+import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryPreviewVO;
+import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryResultVO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeJoinQueryDTO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeQueryTableIdentityDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeSingleTableQueryDTO;
 
 import java.util.List;
 
-/** Structured, bounded read-only query facade for logical catalogs. */
+/** Structured, bounded read-only queries over the lake's internal and external tables. */
 public interface LakeLogicalCatalogQueryService {
+
+    LakeReadOnlyQueryResultVO sample(LakeQueryTableIdentityDTO table);
+
+    List<LakeQueryColumnOptionVO> queryColumns(LakeQueryTableIdentityDTO table);
 
     LakeReadOnlyQueryResultVO single(Long catalogBindingId, LakeSingleTableQueryDTO request);
 
@@ -27,6 +33,6 @@ public interface LakeLogicalCatalogQueryService {
 
     List<String> tables(Long catalogBindingId, String database);
 
-    List<org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO> columns(
+    List<LakeQueryColumnOptionVO> columns(
             Long catalogBindingId, String database, String table);
 }

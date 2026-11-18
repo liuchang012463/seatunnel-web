@@ -17,8 +17,8 @@ import type {
   LakePhysicalInventory,
   LakeRecommendation,
   LakeReadOnlyQueryResult,
-  LakeReadOnlyQueryPreview,
   LakeQueryColumnOption,
+  LakeQueryTableIdentity,
   LakeResourceOperation,
   LakeWarehouseConfig,
   LakeJdbcDriver,
@@ -218,8 +218,10 @@ export const lakeCatalogApi = {
     HttpUtils.get(`${WAREHOUSE_CATALOG}/tables?database=${encodeURIComponent(database)}`),
   listColumn: (requestBody: Record<string, unknown>): Promise<LakeApiResponse<any[]>> =>
     HttpUtils.post(`${WAREHOUSE_CATALOG}/columns`, requestBody),
-  getTop20Data: (requestBody: Record<string, unknown>): Promise<LakeApiResponse<any>> =>
-    HttpUtils.post(`${WAREHOUSE_CATALOG}/preview`, requestBody),
+  sample: (table: LakeQueryTableIdentity): Promise<LakeApiResponse<LakeReadOnlyQueryResult>> =>
+    HttpUtils.post(`${WAREHOUSE_CATALOG}/sample`, table),
+  queryColumns: (table: LakeQueryTableIdentity): Promise<LakeApiResponse<LakeQueryColumnOption[]>> =>
+    HttpUtils.post(`${WAREHOUSE_CATALOG}/query-columns`, table),
 };
 
 export async function fetchLakeDorisStatus(): Promise<LakeApiResponse<LakeDorisStatus>> {
@@ -319,30 +321,10 @@ export async function deleteCatalog(id: string | number): Promise<LakeApiRespons
   return HttpUtils.delete(`${LOGICAL}/catalogs/${pathId(id)}`);
 }
 
-export async function queryCatalogSingle(
-  id: string | number,
-  payload: Record<string, unknown>,
-): Promise<LakeApiResponse<LakeReadOnlyQueryResult>> {
-  return HttpUtils.post(`${LOGICAL}/query/single-table?catalogBindingId=${pathId(id)}`, payload);
-}
-
-export async function previewCatalogSingle(
-  id: string | number,
-  payload: Record<string, unknown>,
-): Promise<LakeApiResponse<LakeReadOnlyQueryPreview>> {
-  return HttpUtils.post(`${LOGICAL}/query/single-table/preview?catalogBindingId=${pathId(id)}`, payload);
-}
-
 export async function queryCatalogJoin(
   payload: Record<string, unknown>,
 ): Promise<LakeApiResponse<LakeReadOnlyQueryResult>> {
   return HttpUtils.post(`${LOGICAL}/query/join`, payload);
-}
-
-export async function previewCatalogJoin(
-  payload: Record<string, unknown>,
-): Promise<LakeApiResponse<LakeReadOnlyQueryPreview>> {
-  return HttpUtils.post(`${LOGICAL}/query/join/preview`, payload);
 }
 
 export async function fetchCatalogQueryDatabases(

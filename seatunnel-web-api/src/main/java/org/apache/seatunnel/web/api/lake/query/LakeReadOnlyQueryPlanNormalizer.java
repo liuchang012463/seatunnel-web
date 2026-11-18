@@ -13,6 +13,7 @@ import java.util.Set;
 public final class LakeReadOnlyQueryPlanNormalizer {
 
     public static final int DEFAULT_MAX_ROWS = 1_000;
+    private static final int SAMPLE_ROWS = 10;
 
     private final int maxRows;
 
@@ -29,6 +30,21 @@ public final class LakeReadOnlyQueryPlanNormalizer {
 
     public int maxRows() {
         return maxRows;
+    }
+
+    /** A directory sample projects every selectable column in schema order. */
+    public LakeReadOnlyQueryPlan sample(LakeQueryTableIdentityDTO request, LakeQueryColumnAllowlist allowlist) {
+        LakeQueryTableIdentity table = table(request);
+        validateAllowlist(allowlist);
+        List<LakeQueryOutputColumn> columns = allowlist.columns().stream()
+                .filter(column -> column.selectable() && !column.sensitive())
+                .map(column -> new LakeQueryOutputColumn(
+                        new LakeQueryColumnIdentity(table, column.name()), "t0", column.name()))
+                .toList();
+        if (columns.isEmpty()) {
+            throw invalid(LakeQueryValidationCode.COLUMNS_REQUIRED);
+        }
+        return LakeReadOnlyQueryPlan.single(table, columns, SAMPLE_ROWS, capped(SAMPLE_ROWS), false);
     }
 
     public LakeReadOnlyQueryPlan normalize(

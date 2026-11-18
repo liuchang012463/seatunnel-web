@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.api.lake.LakeDataSourceResolver;
 import org.apache.seatunnel.web.api.lake.LakeErrorCode;
 import org.apache.seatunnel.web.api.lake.LakeServiceException;
 import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogDesiredSpec;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogScope;
 import org.apache.seatunnel.web.api.lake.doris.DorisColumnMetadata;
 import org.apache.seatunnel.web.api.lake.doris.DorisLakeClient;
 import org.apache.seatunnel.web.api.lake.doris.LakeDorisClientProvider;
@@ -14,6 +15,7 @@ import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnMetadata;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryErrorCode;
 import org.apache.seatunnel.web.api.lake.query.LakeQueryExecutionException;
+import org.apache.seatunnel.web.api.lake.query.LakeQueryIdentifier;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryExecutor;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryCancellationRegistry;
 import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryPlanNormalizer;
@@ -26,6 +28,7 @@ import org.apache.seatunnel.web.api.lake.query.LakeQueryValidationException;
 import org.apache.seatunnel.web.api.lake.operation.LakeResourceTypes;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.LakeLogicalCatalogQueryService;
+import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.enums.LakeOperationType;
 import org.apache.seatunnel.web.common.enums.LakeOperationStatus;
 import org.apache.seatunnel.web.common.enums.LakeResourceStatus;
@@ -36,10 +39,11 @@ import org.apache.seatunnel.web.dao.repository.LakeResourceOperationDao;
 import org.apache.seatunnel.web.spi.bean.dto.LakeJoinQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeQueryTableIdentityDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeSingleTableQueryDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -51,11 +55,13 @@ import java.util.UUID;
 
 /**
  * Resolves only server-side catalog metadata and executes through the
- * dedicated bounded read-only JDBC pool.  Every request is recorded in the
+ * dedicated bounded read-only JDBC pool. Executed queries are recorded in the
  * existing operation journal without persisting SQL, rows or credentials.
  */
 @Service
 public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQueryService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LakeLogicalCatalogQueryServiceImpl.class);
 
     private final LakeExternalCatalogBindingDao bindingDao;
     private final LakeExternalCatalogBindingPersistenceService persistenceService;
@@ -65,6 +71,13 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
     private final LakeResourceOperationDao operationDao;
     private final CurrentUserProvider currentUserProvider;
     private final LakeReadOnlyQueryCancellationRegistry cancellationRegistry;
+    private final LakeWarehouseService warehouseService;
+
+    private record ResolvedTable(LakeQueryTableIdentityDTO identity, Long lakeId, Long auditResourceId) {
+        boolean internal() {
+            return LakeCatalogScope.INTERNAL.equals(identity.catalog());
+        }
+    }
 
     @Autowired
     public LakeLogicalCatalogQueryServiceImpl(
@@ -75,7 +88,8 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             LakeReadOnlyQueryProperties queryProperties,
             LakeResourceOperationDao operationDao,
             CurrentUserProvider currentUserProvider,
-            LakeReadOnlyQueryCancellationRegistry cancellationRegistry) {
+            LakeReadOnlyQueryCancellationRegistry cancellationRegistry,
+            LakeWarehouseService warehouseService) {
         this.bindingDao = Objects.requireNonNull(bindingDao, "bindingDao");
         this.persistenceService = Objects.requireNonNull(persistenceService, "persistenceService");
         this.dorisClientProvider = Objects.requireNonNull(dorisClientProvider, "dorisClientProvider");
@@ -84,6 +98,35 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         this.operationDao = Objects.requireNonNull(operationDao, "operationDao");
         this.currentUserProvider = Objects.requireNonNull(currentUserProvider, "currentUserProvider");
         this.cancellationRegistry = Objects.requireNonNull(cancellationRegistry, "cancellationRegistry");
+        this.warehouseService = Objects.requireNonNull(warehouseService, "warehouseService");
+    }
+
+    @Override
+    public LakeReadOnlyQueryResultVO sample(LakeQueryTableIdentityDTO table) {
+        ResolvedTable resolved = resolveTable(table);
+        LakeResourceOperation audit = startAudit(resolved.auditResourceId(), currentUserId(), "SAMPLE");
+        try (DorisLakeClient client = dorisClientProvider.get(resolved.lakeId())) {
+            LakeReadOnlyQueryPlan plan = normalizer().sample(
+                    resolved.identity(), allowlist(client, resolved.identity()));
+            LakeReadOnlyQueryResultVO result = execute(resolved.lakeId(), plan, null);
+            finishAudit(audit, "Structured directory sample completed", null);
+            return result;
+        } catch (RuntimeException exception) {
+            failAudit(audit, queryErrorCode(exception));
+            throw stableQueryFailure(exception);
+        }
+    }
+
+    @Override
+    public List<LakeQueryColumnOptionVO> queryColumns(LakeQueryTableIdentityDTO table) {
+        ResolvedTable resolved = resolveTable(table);
+        LakeQueryTableIdentityDTO identity = resolved.identity();
+        try (DorisLakeClient client = dorisClientProvider.get(resolved.lakeId())) {
+            return columnOptions(client.listCatalogColumns(
+                    identity.catalog(), identity.database(), identity.table()));
+        } catch (RuntimeException exception) {
+            throw stableQueryFailure(exception);
+        }
     }
 
     @Override
@@ -98,12 +141,8 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             requireScope(desired(binding), table);
             try (DorisLakeClient metadataClient = dorisClientProvider.get(binding.getLakeDataSourceId())) {
                 LakeQueryColumnAllowlist allowlist = allowlist(metadataClient, table);
-                DataSource dataSource = dataSourceResolver.resolveReadOnly(binding.getLakeDataSourceId());
-                LakeReadOnlyQueryExecutor executor = new LakeReadOnlyQueryExecutor(
-                        dataSource, queryProperties, cancellationRegistry);
-                LakeReadOnlyQueryResultVO result = executor.execute(
-                        normalizer()
-                                .normalize(request, allowlist), request == null ? null : request.queryId());
+                LakeReadOnlyQueryResultVO result = execute(binding.getLakeDataSourceId(),
+                        normalizer().normalize(request, allowlist), request.queryId());
                 finishAudit(audit, "Structured single-table query completed", null);
                 return result;
             }
@@ -118,42 +157,26 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
 
     @Override
     public LakeReadOnlyQueryResultVO join(LakeJoinQueryDTO request) {
-        LakeQueryTableIdentityDTO left = request == null ? null : request.leftTable();
-        LakeQueryTableIdentityDTO right = request == null ? null : request.rightTable();
-        LakeExternalCatalogBinding leftBinding = activeBindingByName(left);
-        LakeExternalCatalogBinding rightBinding = activeBindingByName(right);
-        Integer operatorId = currentUserId();
-        LakeResourceOperation audit = startAudit(leftBinding.getId(), operatorId, "JOIN");
-        try {
-            if (Objects.equals(leftBinding.getLakeDataSourceId(), rightBinding.getLakeDataSourceId())
-                    && leftBinding.getId().equals(rightBinding.getId())) {
-                throw queryInvalid("join catalogs must be distinct");
-            }
-            requireScope(desired(leftBinding), left);
-            requireScope(desired(rightBinding), right);
-            try (DorisLakeClient metadataClient = dorisClientProvider.get(leftBinding.getLakeDataSourceId())) {
-                LakeQueryColumnAllowlist leftAllowlist = allowlist(metadataClient, left);
-                LakeQueryColumnAllowlist rightAllowlist = allowlist(metadataClient, right);
-                if (!Objects.equals(leftBinding.getLakeDataSourceId(), rightBinding.getLakeDataSourceId())) {
-                    throw queryInvalid("join catalogs must use one configured lake datasource");
-                }
-                DataSource dataSource = dataSourceResolver.resolveReadOnly(leftBinding.getLakeDataSourceId());
-                LakeReadOnlyQueryExecutor executor = new LakeReadOnlyQueryExecutor(
-                        dataSource, queryProperties, cancellationRegistry);
-                LakeReadOnlyQueryResultVO result = executor.execute(
-                        normalizer()
-                                .normalize(request, leftAllowlist, rightAllowlist), request == null ? null : request.queryId());
-                finishAudit(audit, "Structured equality JOIN query completed", null);
-                return result;
-            }
-        } catch (LakeQueryExecutionException exception) {
-            failAudit(audit, exception.errorCode());
-            throw stableQueryFailure(exception);
+        if (request == null) {
+            throw queryInvalid("join request is required");
+        }
+        ResolvedTable left = resolveTable(request.leftTable());
+        ResolvedTable right = resolveTable(request.rightTable());
+        requireJoinTables(left, right);
+        // Keep the external binding in the audit even when the ODS table is on the left.
+        Long resourceId = left.internal() ? right.auditResourceId() : left.auditResourceId();
+        LakeResourceOperation audit = startAudit(resourceId, currentUserId(), "JOIN");
+        try (DorisLakeClient client = dorisClientProvider.get(left.lakeId())) {
+            LakeReadOnlyQueryPlan plan = normalizer().normalize(request,
+                    allowlist(client, left.identity()), allowlist(client, right.identity()));
+            LakeReadOnlyQueryResultVO result = execute(left.lakeId(), plan, request.queryId());
+            finishAudit(audit, "Structured equality JOIN query completed", null);
+            LOG.info("Lake catalog JOIN completed, leftCatalog={}, rightCatalog={}, type={}, rows={}, queryId={}",
+                    left.identity().catalog(), right.identity().catalog(), plan.joinType(),
+                    result.rowCount(), result.queryId());
+            return result;
         } catch (RuntimeException exception) {
             failAudit(audit, queryErrorCode(exception));
-            if (exception instanceof LakeServiceException serviceException) {
-                throw serviceException;
-            }
             throw stableQueryFailure(exception);
         }
     }
@@ -187,28 +210,49 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
 
     @Override
     public LakeReadOnlyQueryPreviewVO previewJoin(LakeJoinQueryDTO request) {
-        LakeQueryTableIdentityDTO left = request == null ? null : request.leftTable();
-        LakeQueryTableIdentityDTO right = request == null ? null : request.rightTable();
-        LakeExternalCatalogBinding leftBinding = activeBindingByName(left);
-        LakeExternalCatalogBinding rightBinding = activeBindingByName(right);
-        try {
-            if (Objects.equals(leftBinding.getLakeDataSourceId(), rightBinding.getLakeDataSourceId())
-                    && leftBinding.getId().equals(rightBinding.getId())) {
-                throw queryInvalid("join catalogs must be distinct");
-            }
-            requireScope(desired(leftBinding), left);
-            requireScope(desired(rightBinding), right);
-            if (!Objects.equals(leftBinding.getLakeDataSourceId(), rightBinding.getLakeDataSourceId())) {
-                throw queryInvalid("join catalogs must use one configured lake datasource");
-            }
-            try (DorisLakeClient metadataClient = dorisClientProvider.get(leftBinding.getLakeDataSourceId())) {
-                LakeReadOnlyQueryPlan plan = normalizer().normalize(
-                        request, allowlist(metadataClient, left), allowlist(metadataClient, right));
-                return LakeReadOnlyQueryPreviewVO.from(
-                        plan, new LakeReadOnlyQuerySqlGenerator(normalizer().maxRows()).generate(plan));
-            }
+        if (request == null) {
+            throw queryInvalid("join request is required");
+        }
+        ResolvedTable left = resolveTable(request.leftTable());
+        ResolvedTable right = resolveTable(request.rightTable());
+        requireJoinTables(left, right);
+        try (DorisLakeClient client = dorisClientProvider.get(left.lakeId())) {
+            LakeReadOnlyQueryPlan plan = normalizer().normalize(request,
+                    allowlist(client, left.identity()), allowlist(client, right.identity()));
+            return LakeReadOnlyQueryPreviewVO.from(
+                    plan, new LakeReadOnlyQuerySqlGenerator(normalizer().maxRows()).generate(plan));
         } catch (RuntimeException exception) {
             throw stableQueryFailure(exception);
+        }
+    }
+
+    private ResolvedTable resolveTable(LakeQueryTableIdentityDTO table) {
+        if (table == null) {
+            throw queryInvalid("table is required");
+        }
+        String catalog = identifier(table.catalog(), "catalog").toLowerCase(Locale.ROOT);
+        String database = identifier(table.database(), "database");
+        LakeQueryTableIdentityDTO identity = new LakeQueryTableIdentityDTO(
+                catalog, database, identifier(table.table(), "table"));
+        if (LakeCatalogScope.INTERNAL.equals(catalog)) {
+            if (!LakeCatalogScope.isVisibleInternalDatabase(database)) {
+                throw queryInvalid("database is outside the lake directory");
+            }
+            Long lakeId = warehouseService.requireSystemDataSourceId();
+            return new ResolvedTable(identity, lakeId, lakeId);
+        }
+        LakeExternalCatalogBinding binding = activeBindingByName(identity);
+        requireScope(desired(binding), identity);
+        Long lakeId = warehouseService.canonicalDataSourceId(binding.getLakeDataSourceId());
+        return new ResolvedTable(identity, lakeId, binding.getId());
+    }
+
+    private static void requireJoinTables(ResolvedTable left, ResolvedTable right) {
+        if (left.identity().catalog().equals(right.identity().catalog())) {
+            throw queryInvalid("join catalogs must be distinct");
+        }
+        if (!left.lakeId().equals(right.lakeId())) {
+            throw queryInvalid("join catalogs must use one configured lake datasource");
         }
     }
 
@@ -381,15 +425,11 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
                 continue;
             }
             String name = column.name();
-            if (name == null || name.isBlank()) {
+            if (!LakeQueryIdentifier.isValid(name)) {
                 continue;
             }
-            String type = column.type() == null ? "" : column.type().toLowerCase(Locale.ROOT);
-            boolean sensitive = name.toLowerCase(Locale.ROOT)
-                    .matches(".*(password|passwd|secret|token|private[_-]?key|access[_-]?key).*");
-            boolean selectable = !type.contains("blob") && !type.contains("binary")
-                    && !type.contains("geometry") && !type.contains("variant");
-            columns.add(new LakeQueryColumnMetadata(name, selectable, sensitive));
+            columns.add(new LakeQueryColumnMetadata(
+                    name, isSupportedType(column.type()), isSensitiveColumn(name)));
         }
         return new LakeQueryColumnAllowlist(columns);
     }
@@ -405,16 +445,27 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             }
             String name = column.name().trim();
             String type = column.type() == null ? "" : column.type().trim();
-            boolean sensitive = name.toLowerCase(Locale.ROOT)
-                    .matches(".*(password|passwd|secret|token|private[_-]?key|access[_-]?key).*");
-            boolean selectable = !type.toLowerCase(Locale.ROOT).matches(".*(blob|binary|geometry|variant).*")
-                    && !sensitive;
-            String reason = sensitive ? "敏感字段不可查询"
-                    : selectable ? null : "当前类型不支持只读结果";
+            String reason = null;
+            if (isSensitiveColumn(name)) {
+                reason = "敏感字段不可查询";
+            } else if (!LakeQueryIdentifier.isValid(name)) {
+                reason = "当前字段名不支持只读查询";
+            } else if (!isSupportedType(type)) {
+                reason = "当前类型不支持只读结果";
+            }
             options.add(new LakeQueryColumnOptionVO(
-                    name, type, column.nullable(), selectable, reason));
+                    name, type, column.nullable(), reason == null, reason));
         }
         return List.copyOf(options);
+    }
+
+    private static boolean isSensitiveColumn(String name) {
+        return name.toLowerCase(Locale.ROOT)
+                .matches(".*(password|passwd|secret|token|private[_-]?key|access[_-]?key).*");
+    }
+
+    private static boolean isSupportedType(String type) {
+        return type == null || !type.toLowerCase(Locale.ROOT).matches(".*(blob|binary|geometry|variant).*");
     }
 
     private static String identifier(String value, String label) {
@@ -422,7 +473,7 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
             throw queryInvalid(label + " is required");
         }
         try {
-            return org.apache.seatunnel.web.api.lake.query.LakeQueryIdentifier.validate(value.trim());
+            return LakeQueryIdentifier.validate(value.trim());
         } catch (RuntimeException exception) {
             throw queryInvalid(label + " identifier is invalid");
         }
@@ -433,6 +484,12 @@ public class LakeLogicalCatalogQueryServiceImpl implements LakeLogicalCatalogQue
         int maxRows = configured > Integer.MAX_VALUE
                 ? Integer.MAX_VALUE : (int) configured;
         return new LakeReadOnlyQueryPlanNormalizer(maxRows);
+    }
+
+    private LakeReadOnlyQueryResultVO execute(Long lakeId, LakeReadOnlyQueryPlan plan, String queryId) {
+        return new LakeReadOnlyQueryExecutor(
+                dataSourceResolver.resolveReadOnly(lakeId), queryProperties, cancellationRegistry)
+                .execute(plan, queryId);
     }
 
     private LakeResourceOperation startAudit(Long resourceId, Integer operatorId, String kind) {

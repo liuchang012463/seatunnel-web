@@ -377,8 +377,33 @@
   border-left: 2px solid var(--st-color-accent);
 }
 
-.lake-catalog-preview-meta .anticon {
-  color: var(--st-color-accent);
+.lake-catalog-preview-pane,
+.lake-catalog-join {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.lake-catalog-join {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lake-catalog-join-controls .ant-select {
+  width: clamp(180px, 16vw, 280px);
+}
+
+.lake-catalog-join-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+}
+
+.lake-catalog-join-fields > div {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
 }
 
 .lake-catalog-inspector__empty,

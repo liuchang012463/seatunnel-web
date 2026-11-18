@@ -4,10 +4,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import org.apache.seatunnel.web.api.lake.catalog.LakeCatalogScope;
+import org.apache.seatunnel.web.api.lake.query.LakeQueryColumnOptionVO;
+import org.apache.seatunnel.web.api.lake.query.LakeReadOnlyQueryResultVO;
 import org.apache.seatunnel.web.api.service.DataSourceCatalogService;
+import org.apache.seatunnel.web.api.service.LakeLogicalCatalogQueryService;
 import org.apache.seatunnel.web.api.service.LakeWarehouseService;
 import org.apache.seatunnel.web.common.QueryResult;
 import org.apache.seatunnel.web.spi.bean.vo.ColumnOptionVO;
+import org.apache.seatunnel.web.spi.bean.dto.LakeQueryTableIdentityDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeWarehouseConfigDTO;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
 import org.apache.seatunnel.web.spi.bean.vo.LakeJdbcDriverVO;
@@ -27,28 +32,21 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @Tag(name = "LAKE_WAREHOUSE_TAG")
 @RequestMapping("/api/v1/lake/warehouse")
 public class LakeWarehouseController {
 
-    private static final Set<String> HIDDEN_SYSTEM_DATABASES = Set.of(
-            "__internal_schema",
-            "_internal_schema",
-            "information_schema",
-            "mysql",
-            "performance_schema",
-            "sys");
-
     @Resource
     private LakeWarehouseService lakeWarehouseService;
 
     @Resource
     private DataSourceCatalogService dataSourceCatalogService;
+
+    @Resource
+    private LakeLogicalCatalogQueryService lakeLogicalCatalogQueryService;
 
     @GetMapping
     @Operation(summary = "getLakeWarehouseConfig")
@@ -74,8 +72,7 @@ public class LakeWarehouseController {
         List<OptionVO> databases = dataSourceCatalogService.listDatabase(
                 lakeWarehouseService.requireSystemDataSourceId());
         return Result.buildSuc(databases.stream()
-                .filter(database -> !HIDDEN_SYSTEM_DATABASES.contains(
-                        String.valueOf(database.getValue()).toLowerCase(Locale.ROOT)))
+                .filter(database -> LakeCatalogScope.isVisibleInternalDatabase(String.valueOf(database.getValue())))
                 .toList());
     }
 
@@ -101,6 +98,16 @@ public class LakeWarehouseController {
         sampleRequest.put("include_total", false);
         return Result.buildSuc(dataSourceCatalogService.getTop20Data(
                 lakeWarehouseService.requireSystemDataSourceId(), sampleRequest));
+    }
+
+    @PostMapping("/catalog/sample")
+    public Result<LakeReadOnlyQueryResultVO> sample(@RequestBody LakeQueryTableIdentityDTO table) {
+        return Result.buildSuc(lakeLogicalCatalogQueryService.sample(table));
+    }
+
+    @PostMapping("/catalog/query-columns")
+    public Result<List<LakeQueryColumnOptionVO>> queryColumns(@RequestBody LakeQueryTableIdentityDTO table) {
+        return Result.buildSuc(lakeLogicalCatalogQueryService.queryColumns(table));
     }
 
     @GetMapping("/status")

@@ -13,10 +13,14 @@ public final class LakeQueryIdentifier {
 
     public static String validate(String value) {
         Objects.requireNonNull(value, "identifier");
-        if (!SAFE.matcher(value).matches()) {
+        if (!isValid(value)) {
             throw new IllegalArgumentException("Invalid query identifier");
         }
         return value;
+    }
+
+    public static boolean isValid(String value) {
+        return value != null && SAFE.matcher(value).matches();
     }
 
     public static String quote(String value) {

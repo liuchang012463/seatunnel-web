@@ -8,10 +8,10 @@ import {
   TableOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Empty, Input, Spin, Table, Tabs, Tree, Tag, Space } from 'antd';
+import { Alert, Button, Empty, Input, Spin, Table, Tabs, Tree, Tag, Space } from 'antd';
 import type { TreeDataNode } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { history } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchCatalogQueryColumns,
@@ -21,9 +21,12 @@ import {
   fetchLakeWarehouse,
   lakeCatalogApi,
   normalizeLakePage,
-  queryCatalogSingle,
 } from '@/services/lake';
-import type { LakeCatalog, LakeManagedTable, LakeQueryColumnOption, LakeWarehouseConfig } from '@/services/lake';
+import type {
+  LakeCatalog, LakeManagedTable, LakeQueryTableIdentity, LakeReadOnlyQueryResult, LakeWarehouseConfig,
+} from '@/services/lake';
+import CatalogJoin, { type JoinDatabase } from './CatalogJoin';
+import QueryRows from './QueryRows';
 import './index.less';
 
 
@@ -49,19 +52,6 @@ interface LogicalDatabaseState {
   items: string[];
 }
 
-interface PreviewColumn {
-  title?: string;
-  dataIndex?: string;
-  key?: string;
-  ellipsis?: boolean;
-}
-
-interface PreviewResult {
-  columns?: PreviewColumn[];
-  data?: Array<Record<string, unknown>>;
-  total?: number;
-}
-
 type TableLoadState = {
   status: 'loading' | 'loaded' | 'error';
   items: CatalogOption[];
@@ -69,11 +59,11 @@ type TableLoadState = {
 
 type CatalogTreeSelection =
   | { type: 'source'; source: CatalogSource }
-  | { type: 'logicalCatalog'; catalogId: number }
+  | { type: 'logicalCatalog'; catalogId: string }
   | { type: 'database'; source: 'physical'; database: string }
-  | { type: 'database'; source: 'logical'; catalogId: number; database: string }
+  | { type: 'database'; source: 'logical'; catalogId: string; database: string }
   | { type: 'table'; source: 'physical'; database: string; table: string }
-  | { type: 'table'; source: 'logical'; catalogId: number; database: string; table: string };
+  | { type: 'table'; source: 'logical'; catalogId: string; database: string; table: string };
 
 const optionValue = (option?: CatalogOption) => String(option?.value ?? '');
 const optionLabel = (option?: CatalogOption) => String(option?.label || option?.value || '');
@@ -97,16 +87,16 @@ const fieldKeyLabel = (value?: unknown) => {
 };
 
 const sourceNodeKey = (source: CatalogSource) => `source:${source}`;
-const logicalCatalogNodeKey = (catalogId: number) => `logical-catalog:${catalogId}`;
+const logicalCatalogNodeKey = (catalogId: string | number) => `logical-catalog:${catalogId}`;
 const physicalDatabaseNodeKey = (database: string) =>
   `physical-database:${encodeURIComponent(database)}`;
-const logicalDatabaseNodeKey = (catalogId: number, database: string) =>
+const logicalDatabaseNodeKey = (catalogId: string, database: string) =>
   `logical-database:${catalogId}:${encodeURIComponent(database)}`;
 const physicalTableNodeKey = (database: string, table: string) =>
   `physical-table:${encodeURIComponent(database)}:${encodeURIComponent(table)}`;
-const logicalTableNodeKey = (catalogId: number, database: string, table: string) =>
+const logicalTableNodeKey = (catalogId: string, database: string, table: string) =>
   `logical-table:${catalogId}:${encodeURIComponent(database)}:${encodeURIComponent(table)}`;
-const tableStateKey = (source: CatalogSource, database: string, catalogId?: number) =>
+const tableStateKey = (source: CatalogSource, database: string, catalogId?: string) =>
   source === 'physical' ? `physical:${database}` : `logical:${catalogId}:${database}`;
 
 const parseTreeSelection = (key: string): CatalogTreeSelection | undefined => {
@@ -114,17 +104,17 @@ const parseTreeSelection = (key: string): CatalogTreeSelection | undefined => {
   if (type === 'source' && (first === 'physical' || first === 'logical')) {
     return { type, source: first };
   }
-  if (type === 'logical-catalog' && Number.isInteger(Number(first))) {
-    return { type: 'logicalCatalog', catalogId: Number(first) };
+  if (type === 'logical-catalog' && first) {
+    return { type: 'logicalCatalog', catalogId: first };
   }
   if (type === 'physical-database' && first) {
     return { type: 'database', source: 'physical', database: decodeURIComponent(first) };
   }
-  if (type === 'logical-database' && first && second && Number.isInteger(Number(first))) {
+  if (type === 'logical-database' && first && second) {
     return {
       type: 'database',
       source: 'logical',
-      catalogId: Number(first),
+      catalogId: first,
       database: decodeURIComponent(second),
     };
   }
@@ -136,11 +126,11 @@ const parseTreeSelection = (key: string): CatalogTreeSelection | undefined => {
       table: decodeURIComponent(second),
     };
   }
-  if (type === 'logical-table' && first && second && third && Number.isInteger(Number(first))) {
+  if (type === 'logical-table' && first && second && third) {
     return {
       type: 'table',
       source: 'logical',
-      catalogId: Number(first),
+      catalogId: first,
       database: decodeURIComponent(second),
       table: decodeURIComponent(third),
     };
@@ -149,6 +139,8 @@ const parseTreeSelection = (key: string): CatalogTreeSelection | undefined => {
 };
 
 const DataLakeCatalogPage: React.FC = () => {
+  const { search } = useLocation();
+  const requestedCatalogId = new URLSearchParams(search).get('catalogId');
   const [warehouse, setWarehouse] = useState<LakeWarehouseConfig>();
   const [warehouseLoading, setWarehouseLoading] = useState(true);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -159,9 +151,11 @@ const DataLakeCatalogPage: React.FC = () => {
   const [tableStates, setTableStates] = useState<Record<string, TableLoadState>>({});
   const [tableLoadingByDatabase, setTableLoadingByDatabase] = useState<Record<string, boolean>>({});
   const [columns, setColumns] = useState<CatalogColumn[]>([]);
-  const [preview, setPreview] = useState<PreviewResult>({});
+  const [preview, setPreview] = useState<LakeReadOnlyQueryResult>();
+  const [previewError, setPreviewError] = useState('');
   const [selectedSource, setSelectedSource] = useState<CatalogSource>('physical');
-  const [selectedCatalogId, setSelectedCatalogId] = useState<number>();
+  // Binding IDs can be serialized as strings to preserve their full precision.
+  const [selectedCatalogId, setSelectedCatalogId] = useState<string>();
   const [selectedDatabase, setSelectedDatabase] = useState('');
   const [selectedTable, setSelectedTable] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -196,10 +190,18 @@ const DataLakeCatalogPage: React.FC = () => {
   const selectedTableOption = selectedTableState?.items.find(
     (item) => optionValue(item) === selectedTable,
   );
-  const selectedLogicalCatalog = logicalCatalogs.find((catalog) => catalog.id === selectedCatalogId);
+  const selectedLogicalCatalog = logicalCatalogs.find((catalog) => String(catalog.id) === selectedCatalogId);
+  const selectedDatabaseLabel = optionLabel(databases.find((database) => optionValue(database) === selectedDatabase))
+    || selectedDatabase;
   const selectedTablePath = selectedSource === 'logical'
     ? [selectedLogicalCatalog?.targetCatalogName, selectedDatabase, selectedTable].filter(Boolean).join('.')
-    : [selectedDatabase, selectedTable].filter(Boolean).join('.');
+    : [selectedDatabaseLabel, selectedTable].filter(Boolean).join('.');
+  const selectedCatalogName = selectedSource === 'physical' ? 'internal' : selectedLogicalCatalog?.targetCatalogName;
+  const selectedIdentity = useMemo<LakeQueryTableIdentity | undefined>(
+    () => selectedCatalogName && selectedDatabase && selectedTable
+      ? { catalog: selectedCatalogName, database: selectedDatabase, table: selectedTable } : undefined,
+    [selectedCatalogName, selectedDatabase, selectedTable],
+  );
   const selectedTableComment = selectedTableOption?.description?.trim();
   const logicalDatabaseCount = Object.values(logicalDatabaseStates).reduce(
     (total, state) => total + (state.status === 'loaded' ? state.items.length : 0),
@@ -207,7 +209,7 @@ const DataLakeCatalogPage: React.FC = () => {
   );
 
   const loadTablesForDatabase = useCallback(
-    async (source: CatalogSource, database: string, catalogId?: number) => {
+    async (source: CatalogSource, database: string, catalogId?: string) => {
       if (!configured || !catalogReady || !database || (source === 'logical' && !catalogId)) {
         return;
       }
@@ -233,7 +235,7 @@ const DataLakeCatalogPage: React.FC = () => {
           }
           nextTables = Array.isArray(response.data) ? response.data : [];
         } else {
-          const response = await fetchCatalogQueryTables(catalogId as number, database);
+          const response = await fetchCatalogQueryTables(catalogId as string, database);
           if (response.code !== 0) {
             throw new Error(response.message || response.msg || '逻辑表列表读取失败');
           }
@@ -356,57 +358,48 @@ const DataLakeCatalogPage: React.FC = () => {
 
   const loadDetail = useCallback(async () => {
     const requestId = ++detailRequest.current;
-    if (!configured || !catalogReady || !selectedDatabase || !selectedTable || (selectedSource === 'logical' && !selectedCatalogId)) {
-      setColumns([]);
-      setPreview({});
+    setColumns([]);
+    setPreview(undefined);
+    setPreviewError('');
+    if (!configured || !catalogReady || !selectedIdentity || activeTab === 'join') {
       setDetailLoading(false);
       return;
     }
     setDetailLoading(true);
     setCatalogError('');
-    setColumns([]);
-    setPreview({});
-    let columnsRead = false;
     try {
-      if (selectedSource === 'physical') {
+      if (activeTab === 'preview') {
+        const response = await lakeCatalogApi.sample(selectedIdentity);
+        if (requestId !== detailRequest.current) return;
+        if (response.code !== 0 || !response.data) throw new Error(response.message || response.msg || '数据预览失败');
+        setPreview(response.data);
+      } else if (selectedSource === 'physical') {
         const request = { read_mode: 'table', table_path: selectedTable, database: selectedDatabase };
         const columnResponse = await lakeCatalogApi.listColumn(request);
         if (requestId !== detailRequest.current) return;
         if (columnResponse.code !== 0) throw new Error(columnResponse.message || '字段读取失败');
         setColumns(Array.isArray(columnResponse.data) ? columnResponse.data : []);
-        columnsRead = true;
-        if (activeTab === 'preview') {
-          const sample = await lakeCatalogApi.getTop20Data(request);
-          if (requestId !== detailRequest.current) return;
-          if (sample.code !== 0) throw new Error(sample.message || '样本读取失败');
-          setPreview((sample.data || {}) as PreviewResult);
-        }
       } else {
-        const catalogId = selectedCatalogId as number;
+        const catalogId = selectedCatalogId as string;
         const result = await fetchCatalogQueryColumns(catalogId, selectedDatabase, selectedTable);
         if (requestId !== detailRequest.current) return;
         if (result.code !== 0) throw new Error(result.message || result.msg || '逻辑字段读取失败');
-        const logicalColumns: LakeQueryColumnOption[] = result.data || [];
-        setColumns(logicalColumns.map((column, index) => ({ key: index + 1, fieldName: column.name, fieldType: column.type, isNullable: column.nullable == null ? undefined : column.nullable ? 'YES' : 'NO' })));
-        columnsRead = true;
-        const selectable = logicalColumns.filter((column) => column.selectable !== false && column.name);
-        if (activeTab === 'preview' && selectable.length) {
-          const table = { catalog: selectedLogicalCatalog?.targetCatalogName || '', database: selectedDatabase, table: selectedTable };
-          const sample = await queryCatalogSingle(catalogId, { table, selectedColumns: selectable.map((column) => ({ table, column: column.name })), limit: 20, explain: false });
-          if (requestId !== detailRequest.current) return;
-          if (sample.code !== 0 || !sample.data) throw new Error(sample.message || sample.msg || '逻辑样本读取失败');
-          setPreview({ columns: (sample.data.columns || []).map((column) => ({ title: column, dataIndex: column, key: column })), data: sample.data.rows || [] });
-        }
+        setColumns((result.data || []).map((column, index) => ({
+          key: index + 1,
+          fieldName: column.name,
+          fieldType: column.type,
+          isNullable: column.nullable == null ? undefined : column.nullable ? 'YES' : 'NO',
+        })));
       }
     } catch (error) {
       if (requestId !== detailRequest.current) return;
-      if (!columnsRead) setColumns([]);
-      setPreview({});
-      setCatalogError(error instanceof Error ? error.message : '表详情读取失败');
+      const message = error instanceof Error ? error.message : '表详情读取失败';
+      if (activeTab === 'preview') setPreviewError(message);
+      else setCatalogError(message);
     } finally {
       if (requestId === detailRequest.current) setDetailLoading(false);
     }
-  }, [activeTab, catalogReady, configured, selectedCatalogId, selectedDatabase, selectedLogicalCatalog, selectedSource, selectedTable]);
+  }, [activeTab, catalogReady, configured, selectedCatalogId, selectedDatabase, selectedIdentity, selectedSource, selectedTable]);
 
   useEffect(() => {
     let active = true;
@@ -435,6 +428,10 @@ const DataLakeCatalogPage: React.FC = () => {
   }, [loadDirectories]);
 
   useEffect(() => {
+    initialDirectoryExpanded.current = false;
+  }, [requestedCatalogId]);
+
+  useEffect(() => {
     if (initialDirectoryExpanded.current) {
       return;
     }
@@ -444,7 +441,9 @@ const DataLakeCatalogPage: React.FC = () => {
       const state = catalog.id ? logicalDatabaseStates[String(catalog.id)] : undefined;
       return Boolean(catalog.id && state?.status === 'loaded' && state.items.length);
     });
-    if (!firstPhysicalDatabase && !firstLogicalCatalog) return;
+    const requested = logicalCatalogs.find((catalog) => String(catalog.id) === requestedCatalogId);
+    const initialLogicalCatalog = requested || (!firstPhysicalDatabase ? firstLogicalCatalog : undefined);
+    if (!firstPhysicalDatabase && !initialLogicalCatalog) return;
 
     initialDirectoryExpanded.current = true;
     const nextExpandedKeys = [sourceNodeKey('physical'), sourceNodeKey('logical')];
@@ -453,26 +452,27 @@ const DataLakeCatalogPage: React.FC = () => {
         nextExpandedKeys.push(logicalCatalogNodeKey(catalog.id));
       }
     });
-    if (firstPhysicalDatabase) {
+    if (initialLogicalCatalog?.id) {
+      const catalogId = String(initialLogicalCatalog.id);
+      const database = logicalDatabaseStates[catalogId]?.items[0] || '';
+      setSelectedSource('logical');
+      setSelectedCatalogId(catalogId);
+      setSelectedDatabase(database);
+      setSelectedTable('');
+      if (database) {
+        nextExpandedKeys.push(logicalDatabaseNodeKey(catalogId, database));
+        void loadTablesForDatabase('logical', database, catalogId);
+      }
+    } else if (firstPhysicalDatabase) {
       setSelectedSource('physical');
       setSelectedCatalogId(undefined);
       setSelectedDatabase(firstPhysicalDatabase);
       setSelectedTable('');
       nextExpandedKeys.push(physicalDatabaseNodeKey(firstPhysicalDatabase));
       void loadTablesForDatabase('physical', firstPhysicalDatabase);
-    } else if (firstLogicalCatalog?.id) {
-      const firstDatabase = logicalDatabaseStates[String(firstLogicalCatalog.id)]?.items[0];
-      if (firstDatabase) {
-        setSelectedSource('logical');
-        setSelectedCatalogId(firstLogicalCatalog.id);
-        setSelectedDatabase(firstDatabase);
-        setSelectedTable('');
-        nextExpandedKeys.push(logicalDatabaseNodeKey(firstLogicalCatalog.id, firstDatabase));
-        void loadTablesForDatabase('logical', firstDatabase, firstLogicalCatalog.id);
-      }
     }
     setExpandedKeys(nextExpandedKeys);
-  }, [databases, loadTablesForDatabase, logicalCatalogs, logicalDatabaseStates]);
+  }, [databases, loadTablesForDatabase, logicalCatalogs, logicalDatabaseStates, requestedCatalogId]);
 
   useEffect(() => {
     if (!selectedDatabase || selectedTableState?.status !== 'loaded') {
@@ -550,7 +550,7 @@ const DataLakeCatalogPage: React.FC = () => {
           || (state?.items || []).some((database) => database.toLowerCase().includes(databaseSearch.trim().toLowerCase()));
       })
       .map((catalog) => {
-        const catalogId = catalog.id as number;
+        const catalogId = String(catalog.id);
         const state = logicalDatabaseStates[String(catalogId)];
         const visibleLogicalDatabases = (state?.items || []).filter((database) => {
           const databaseKeyword = databaseSearch.trim().toLowerCase();
@@ -662,11 +662,11 @@ const DataLakeCatalogPage: React.FC = () => {
   const selectedTreeKeys = selectedTable
     ? [selectedSource === 'physical'
       ? physicalTableNodeKey(selectedDatabase, selectedTable)
-      : logicalTableNodeKey(selectedCatalogId as number, selectedDatabase, selectedTable)]
+      : logicalTableNodeKey(selectedCatalogId as string, selectedDatabase, selectedTable)]
     : selectedDatabase
       ? [selectedSource === 'physical'
         ? physicalDatabaseNodeKey(selectedDatabase)
-        : logicalDatabaseNodeKey(selectedCatalogId as number, selectedDatabase)]
+        : logicalDatabaseNodeKey(selectedCatalogId as string, selectedDatabase)]
       : [];
 
   const handleExpand = (keys: React.Key[]) => {
@@ -721,33 +721,44 @@ const DataLakeCatalogPage: React.FC = () => {
     setSelectedTable(selection.table);
   };
 
-  const previewColumns = useMemo<ColumnsType<Record<string, unknown>>>(() => {
-    const resultColumns = Array.isArray(preview.columns) ? preview.columns : [];
-    if (resultColumns.length > 0) {
-      return resultColumns.map((column) => ({
-        title: column.title || column.dataIndex || column.key,
-        dataIndex: column.dataIndex || column.key,
-        key: column.key || column.dataIndex,
-        ellipsis: true,
-      }));
-    }
-    const firstRow = preview.data?.[0];
-    return Object.keys(firstRow || {}).map((key) => ({
-      title: key,
-      dataIndex: key,
-      key,
-      ellipsis: true,
-    }));
-  }, [preview]);
+  const joinDatabases = useMemo<JoinDatabase[]>(() => {
+    const tableOptions = (state?: TableLoadState) => ({
+      status: state?.status,
+      tables: (state?.items || []).map((item) => ({ label: optionLabel(item), value: optionValue(item) })),
+    });
+    return [
+      ...databases.map((item) => {
+        const database = optionValue(item);
+        return {
+          key: physicalDatabaseNodeKey(database),
+          label: optionLabel(item),
+          catalog: 'internal',
+          database,
+          ...tableOptions(tableStates[tableStateKey('physical', database)]),
+        };
+      }),
+      ...logicalCatalogs.flatMap((item) => {
+        if (!item.id || !item.targetCatalogName) return [];
+        const catalogId = String(item.id);
+        const catalog = item.targetCatalogName;
+        return (logicalDatabaseStates[catalogId]?.items || []).map((database) => ({
+          key: logicalDatabaseNodeKey(catalogId, database),
+          label: `${catalog} · ${database}`,
+          catalog,
+          database,
+          ...tableOptions(tableStates[tableStateKey('logical', database, catalogId)]),
+        }));
+      }),
+    ];
+  }, [databases, logicalCatalogs, logicalDatabaseStates, tableStates]);
 
-  const previewRows = useMemo(
-    () =>
-      (preview.data || []).map((row, index) => ({
-        ...row,
-        __lakeCatalogRowKey: `${selectedDatabase}.${selectedTable}.${index}`,
-      })),
-    [preview.data, selectedDatabase, selectedTable],
-  );
+  const loadJoinTables = (key: string) => {
+    const selection = parseTreeSelection(key);
+    if (selection?.type === 'database') {
+      void loadTablesForDatabase(selection.source, selection.database,
+        selection.source === 'logical' ? selection.catalogId : undefined);
+    }
+  };
 
   const columnTableColumns: ColumnsType<CatalogColumn> = [
     { title: '字段名', dataIndex: 'fieldName', key: 'fieldName', width: 180, ellipsis: true },
@@ -884,7 +895,7 @@ const DataLakeCatalogPage: React.FC = () => {
               </div>
               {selectedTable && <Space wrap>
                 <Tag>{selectedSource === 'logical' ? '逻辑挂载' : managementError ? '管理信息暂不可读' : management === undefined ? '读取管理信息…' : management?.managementLevel === 'MANAGED' ? '受管 ODS 表' : management?.managementLevel === 'AUTO_CREATED' ? '任务自动建表' : '未纳管表'}</Tag>
-                {selectedSource === 'logical' ? <Button onClick={() => history.push(`/lake/logical-access/${selectedCatalogId}`)}>查看挂载与查询</Button>
+                {selectedSource === 'logical' ? <Button onClick={() => history.push(`/lake/logical-access/${selectedCatalogId}`)}>查看挂载</Button>
                   : management?.id ? <Button onClick={() => history.push(`/lake/resources/table/${management.id}`)}>入湖配置与关联任务</Button> : null}
               </Space>}
             </div>
@@ -920,29 +931,28 @@ const DataLakeCatalogPage: React.FC = () => {
                     },
                     {
                       key: 'preview',
-                      label: `样本数据${preview.data?.length ? ` · ${preview.data.length}` : ''}`,
+                      label: '数据预览',
+                      className: 'lake-catalog-preview-pane',
                       children: (
                         <Spin spinning={detailLoading}>
-                          <div className="lake-catalog-preview-meta">
-                            <InfoCircleOutlined />
-                            <span>
-                              样本返回 {preview.data?.length ?? 0} 行，最多展示 20 行。
-                            </span>
-                          </div>
-                          <Table<Record<string, unknown>>
-                            rowKey={(record) => String(record.__lakeCatalogRowKey)}
-                            columns={previewColumns}
-                            dataSource={previewRows}
-                            pagination={false}
-                            size="small"
-                            scroll={{
-                              x: Math.max(620, previewColumns.length * 150),
-                              y: 'calc(100vh - 445px)',
-                            }}
-                            locale={{ emptyText: '暂无样本数据' }}
-                          />
+                          {previewError ? <Alert showIcon type="error" message={previewError} /> : null}
+                          {preview ? <QueryRows result={preview} /> : null}
                         </Spin>
                       ),
+                    },
+                    {
+                      key: 'join',
+                      label: '联合查询',
+                      destroyOnHidden: true,
+                      children: selectedIdentity ? (
+                        <CatalogJoin
+                          key={JSON.stringify(selectedIdentity)}
+                          selectedTable={selectedIdentity}
+                          selectedLabel={selectedTablePath}
+                          databases={joinDatabases}
+                          loadTables={loadJoinTables}
+                        />
+                      ) : null,
                     },
                   ]}
                 />
@@ -950,7 +960,7 @@ const DataLakeCatalogPage: React.FC = () => {
             ) : (
               <div className="lake-catalog-inspector__empty">
                 <TableOutlined />
-                <span>从左侧目录选择表，查看字段和前 20 行样本。</span>
+                <span>从左侧目录选择表。</span>
               </div>
             )}
           </section>

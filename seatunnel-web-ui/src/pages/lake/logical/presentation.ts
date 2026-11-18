@@ -1,4 +1,4 @@
-import type { LakeCatalog, LakeQueryColumnOption, LakeReadOnlyQueryResult } from '@/services/lake';
+import type { LakeCatalog } from '@/services/lake';
 
 const STATUS_LABELS: Record<string, string> = {
   READY: '可查询',
@@ -44,29 +44,3 @@ export const catalogScopeLabel = (catalog: LakeCatalog) => {
     }）`;
   return '未设置';
 };
-
-/** Defaults stay inside the server's selectable allowlist and bound the initial preview width. */
-export const defaultQueryColumns = (columns: LakeQueryColumnOption[]) =>
-  columns
-    .filter((column) => column.selectable !== false)
-    .slice(0, 20)
-    .map((column) => column.name);
-
-export type DisplayQueryResult = LakeReadOnlyQueryResult & {
-  columnTitles?: Record<string, string>;
-};
-
-/** Keep API aliases as row keys; human-readable titles also distinguish the two sides of a join. */
-export const labelQueryResult = (
-  result: LakeReadOnlyQueryResult,
-  left: string[],
-  right?: string[],
-): DisplayQueryResult => ({
-  ...result,
-  columnTitles: result.explain
-    ? {}
-    : Object.fromEntries([
-        ...left.map((name, index) => [right ? `left_c${index}` : `c${index}`, right ? `左表 · ${name}` : name]),
-        ...(right || []).map((name, index) => [`right_c${index}`, `右表 · ${name}`]),
-      ]),
-});

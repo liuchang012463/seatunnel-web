@@ -7,12 +7,15 @@ import org.apache.seatunnel.web.spi.bean.dto.LakeQueryTableIdentityDTO;
 import org.apache.seatunnel.web.spi.bean.dto.LakeSingleTableQueryDTO;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LakeReadOnlyQuerySqlGeneratorTest {
 
@@ -30,6 +33,22 @@ class LakeReadOnlyQuerySqlGeneratorTest {
 
         assertEquals("SELECT `t0`.`OrderId` AS `c0`, `t0`.`CustomerName` AS `c1`"
                         + " FROM `SalesCatalog`.`SalesDB`.`Orders` AS `t0` LIMIT 10", sql);
+    }
+
+    @Test
+    void directorySampleUsesAllSelectableColumnsInOrderAndCapsRowsAtTen() {
+        List<String> names = IntStream.range(0, 24).mapToObj(index -> "field_" + index).toList();
+        List<LakeQueryColumnMetadata> columns = new ArrayList<>(
+                allow(names.toArray(String[]::new)).columns());
+        columns.add(new LakeQueryColumnMetadata("password", true, true));
+        columns.add(new LakeQueryColumnMetadata("blob_value", false, false));
+
+        LakeReadOnlyQueryPlan plan = new LakeReadOnlyQueryPlanNormalizer().sample(
+                LEFT, new LakeQueryColumnAllowlist(columns));
+
+        assertEquals(names, plan.outputColumns().stream().map(LakeQueryOutputColumn::outputAlias).toList());
+        assertFalse(plan.explain());
+        assertTrue(new LakeReadOnlyQuerySqlGenerator().generate(plan).endsWith(" LIMIT 10"));
     }
 
     @Test
