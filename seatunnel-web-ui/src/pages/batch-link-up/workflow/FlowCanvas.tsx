@@ -25,6 +25,7 @@ import useFlowBuilder from './hooks/useFlowBuilder';
 import useNodePlacement from './hooks/useNodePlacement';
 import CustomNode from './nodes';
 import WorkflowPanel from './panel';
+import SavedNodePanel from './panel/SavedNodePanel';
 
 const nodeTypesConfig = {
   custom: CustomNode,
@@ -67,6 +68,7 @@ interface FlowCanvasProps {
   scheduleConfig?: any;
   isIncremental?: boolean;
   jobDefinitionId?: string | number;
+  readOnly?: boolean;
 }
 
 function buildInitialGraph(
@@ -249,6 +251,7 @@ export default function FlowCanvas({
   scheduleConfig,
   isIncremental = false,
   jobDefinitionId,
+  readOnly = false,
 }: FlowCanvasProps) {
   const store = useStoreApi();
   const flow = useFlowBuilder({ form, params });
@@ -383,7 +386,7 @@ export default function FlowCanvas({
         ...edge,
         type: edge.type || 'custom',
         selected: edge.id === flow.selectedEdgeId,
-        data: {
+        data: readOnly ? {} : {
           ...(edge.data || {}),
           onEdgeClick: flow.onEdgeClick,
           onEdgeMouseEnter: flow.onEdgeMouseEnter,
@@ -397,8 +400,12 @@ export default function FlowCanvas({
       flow.onEdgeMouseEnter,
       flow.onEdgeMouseLeave,
       openEdgeInsertMenu,
+      readOnly,
     ],
   );
+  const canvasNodes = useMemo(() => readOnly
+    ? flow.nodes.map((node) => ({ ...node, draggable: false, connectable: false, deletable: false }))
+    : flow.nodes, [flow.nodes, readOnly]);
 
   useEffect(() => {
     if (!initializedRef.current) return;
@@ -421,7 +428,7 @@ export default function FlowCanvas({
     // useFlowBuilder loads an existing workflow in its own effect. Do not let
     // the new-task fallback race that effect and overwrite the saved node
     // configuration while opening an edit page.
-    if (hasPersistedGraph(params)) {
+    if (readOnly || hasPersistedGraph(params)) {
       initializedRef.current = true;
       return;
     }
@@ -441,6 +448,7 @@ export default function FlowCanvas({
     sourceType,
     targetType,
     isIncremental,
+    readOnly,
     flow.nodes,
     flow.setNodes,
     flow.setEdges,
@@ -522,13 +530,13 @@ export default function FlowCanvas({
       style={{
         height: '100%',
         width: '100%',
-        cursor: flow.controlMode === ControlMode.Hand ? 'grab' : 'default',
+        cursor: readOnly || flow.controlMode === ControlMode.Hand ? 'grab' : 'default',
       }}
       ref={placement.reactFlowWrapper}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      onDragOver={readOnly ? undefined : onDragOver}
+      onDrop={readOnly ? undefined : onDrop}
     >
-      <CanvasToolbar
+      {!readOnly && <CanvasToolbar
         canDeleteEdge={flow.canDeleteEdge}
         canRedo={flow.canRedo}
         canUndo={flow.canUndo}
@@ -539,27 +547,27 @@ export default function FlowCanvas({
         onFitView={flow.fitWorkflowView}
         onRedo={flow.redo}
         onUndo={flow.undo}
-      />
+      />}
 
       {canvasReady ? (
         <ReactFlow
-          nodes={flow.nodes}
+          nodes={canvasNodes}
           edges={interactiveEdges}
           nodeTypes={nodeTypesConfig}
           edgeTypes={edgeTypes}
           onNodesChange={flow.onNodesChange}
           onEdgesChange={flow.onEdgesChange}
-          onConnect={flow.onConnect}
+          onConnect={readOnly ? undefined : flow.onConnect}
           onNodeClick={flow.onNodeClick}
-          onEdgeClick={flow.onEdgeClick}
-          onNodeContextMenu={flow.onNodeContextMenu}
+          onEdgeClick={readOnly ? undefined : flow.onEdgeClick}
+          onNodeContextMenu={readOnly ? undefined : flow.onNodeContextMenu}
           onPaneClick={handlePaneClick}
           onSelectionChange={flow.onSelectionChange}
           onSelectionEnd={clearSelectionRect}
-          onSelectionContextMenu={flow.onSelectionContextMenu}
+          onSelectionContextMenu={readOnly ? undefined : flow.onSelectionContextMenu}
           onNodeMouseEnter={flow.onNodeMouseEnter}
           onNodeMouseLeave={flow.onNodeMouseLeave}
-          onPaneContextMenu={flow.onPaneContextMenu}
+          onPaneContextMenu={readOnly ? undefined : flow.onPaneContextMenu}
           isValidConnection={flow.isValidConnection}
           selectionMode={SelectionMode.Partial}
           multiSelectionKeyCode={null}
@@ -567,17 +575,17 @@ export default function FlowCanvas({
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           nodesDraggable={
-            !flow.nodesReadOnly && flow.controlMode === ControlMode.Pointer
+            !readOnly && !flow.nodesReadOnly && flow.controlMode === ControlMode.Pointer
           }
-          nodesConnectable={!flow.nodesReadOnly}
+          nodesConnectable={!readOnly && !flow.nodesReadOnly}
           nodesFocusable={!flow.nodesReadOnly}
           edgesFocusable={!flow.nodesReadOnly}
-          panOnDrag={flow.controlMode === ControlMode.Hand}
+          panOnDrag={readOnly || flow.controlMode === ControlMode.Hand}
           zoomOnPinch={!flow.workflowReadOnly}
           zoomOnScroll={!flow.workflowReadOnly}
           zoomOnDoubleClick={!flow.workflowReadOnly}
           selectionOnDrag={
-            flow.controlMode === ControlMode.Pointer && !flow.workflowReadOnly
+            !readOnly && flow.controlMode === ControlMode.Pointer && !flow.workflowReadOnly
           }
           fitView
           fitViewOptions={{
@@ -729,7 +737,9 @@ export default function FlowCanvas({
         />
       </Dropdown>
 
-      {flow.drawerVisible && (
+      {flow.drawerVisible && (readOnly ? (
+        <SavedNodePanel node={flow.selectedNode} onClose={flow.onCloseDrawer} />
+      ) : (
         <WorkflowPanel
           selectedNode={flow.selectedNode}
           onClose={flow.onCloseDrawer}
@@ -746,7 +756,7 @@ export default function FlowCanvas({
             flow.nodes.find((node: any) => node?.data?.nodeType === 'source')?.data?.config?.dataSourceId || ''
           )}
         />
-      )}
+      ))}
     </div>
   );
 }

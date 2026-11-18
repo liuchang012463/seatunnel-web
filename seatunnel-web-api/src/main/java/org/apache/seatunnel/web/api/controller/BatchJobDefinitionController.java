@@ -206,6 +206,13 @@ public class BatchJobDefinitionController {
         return Result.buildSuc(batchJobDefinitionService.selectEditDetail(id));
     }
 
+    @GetMapping("/{id}/config-detail")
+    @Operation(summary = "查看单表批量任务配置")
+    @ApiException(QUERY_BATCH_JOB_DEFINITION_ERROR)
+    public Result<JobDefinitionEditDetailVO> selectSingleConfigDetail(@PathVariable("id") Long id) {
+        return Result.buildSuc(batchJobDefinitionService.selectSingleConfigDetail(id));
+    }
+
     /**
      * 上线任务定义
      */

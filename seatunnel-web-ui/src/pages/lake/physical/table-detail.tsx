@@ -43,16 +43,17 @@ import {
   retryManagedTable,
   unbindUnmanagedTable,
 } from './service';
-import type { ApiResponse, InventoryRelation, ManagedTable, PhysicalInventory, TargetColumn } from './types';
+import type { ApiResponse, InventoryRelation, ManagedTable, PhysicalDataSource, PhysicalInventory, TargetColumn } from './types';
 import {
   LakeConsistencyTag,
+  LakeRelationStatusTag,
   LakeResourceStatusTag,
   relationSchemaMode,
   relationSourceDataSource,
   relationTargetTable,
 } from '../components/LakeStatus';
 import { lakeTaskForm } from './taskPrefill';
-import { physicalResourcesPath, physicalSourcePath } from './paths';
+import { lakeTaskConfigPath, physicalResourcesPath, physicalSourcePath } from './paths';
 import { TABLE_MODEL_LABELS } from './tableDefaults';
 import './table-detail.less';
 
@@ -64,6 +65,8 @@ const managementLabel = { MANAGED: '平台建表', AUTO_CREATED: '任务建表',
 interface TaskSummary {
   jobName?: string;
   lastJobStatus?: string;
+  mode?: string;
+  releaseState?: string;
 }
 
 const responseMessage = <T,>(response: ApiResponse<T>, fallback: string) => response.message || response.msg || fallback;
@@ -114,7 +117,7 @@ const relationColumns: ProColumns<InventoryRelation>[] = [
   { title: '目标表', key: 'targetTable', width: 180, ellipsis: true, render: (_, row) => relationTargetTable(row) || <Text type="secondary">按任务动态生成</Text> },
   { title: 'Schema Mode', key: 'schemaSaveMode', width: 190, ellipsis: true, render: (_, row) => relationSchemaMode(row) || <Text type="secondary">未记录</Text> },
   { title: '源 DataSource', key: 'sourceDataSource', width: 130, render: (_, row) => relationSourceDataSource(row) || '-' },
-  { title: '状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <Tag>{row.relationStatus || 'UNKNOWN'}</Tag> },
+  { title: '关系状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <LakeRelationStatusTag status={row.relationStatus} /> },
 ];
 
 const TableDeleteModal: React.FC<{
@@ -185,7 +188,7 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
   const [table, setTable] = useState<ManagedTable>();
   const [inventory, setInventory] = useState<PhysicalInventory>();
   const [inventoryError, setInventoryError] = useState(false);
-  const [sourceName, setSourceName] = useState<string>();
+  const [physicalSource, setPhysicalSource] = useState<PhysicalDataSource>();
   const [taskSummaries, setTaskSummaries] = useState<Record<string, TaskSummary>>({});
   const [lifecycle, setLifecycle] = useState<Record<string, unknown>>();
   const [loading, setLoading] = useState(true);
@@ -230,7 +233,7 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
       }
       setLifecycle(retention.status === 'fulfilled' && retention.value.code === 0 ? retention.value.data : undefined);
       const sourceData = source.status === 'fulfilled' && source.value?.code === 0 ? source.value.data : undefined;
-      setSourceName(sourceData && String(sourceData.sourceDataSourceId) === String(current.sourceDataSourceId) ? sourceData.sourceDataSourceName : undefined);
+      setPhysicalSource(sourceData && String(sourceData.sourceDataSourceId) === String(current.sourceDataSourceId) ? sourceData : undefined);
     } catch (reason) {
       if (request !== requestId.current) return;
       console.warn('[lake-physical-table] 入湖表详情读取失败', { mappingId, reason });
@@ -383,6 +386,11 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
     action={<Space><Button onClick={() => history.push(physicalResourcesPath)}>返回物理入湖</Button><Button onClick={() => void load()}>重试</Button></Space>} /></PageContainer>;
 
   const target = [table.databaseName, table.targetTableName].filter(Boolean).join('.');
+  const sourceDatabase = physicalSource?.odsDatabase;
+  const odsName = sourceDatabase && String(sourceDatabase.id) === String(table.odsDatabaseBindingId)
+    ? sourceDatabase.displayName || physicalSource?.sourceDataSourceName
+    : undefined;
+  const targetLabel = [odsName, table.targetTableName].filter(Boolean).join('.');
   const sourceTable = [table.sourceDatabaseName, table.sourceSchemaName === table.sourceDatabaseName ? undefined : table.sourceSchemaName,
     table.sourceTableName].filter(Boolean).join('.') || table.omFqn;
   const backPath = table.sourceDataSourceId ? physicalSourcePath(table.sourceDataSourceId) : physicalResourcesPath;
@@ -448,9 +456,13 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
             : refreshAction} />}
         <Card size="small">
           <Descriptions size="small" column={{ md: 2, xl: 2 }}>
-            <Descriptions.Item label="数据源">{table.sourceDataSourceId ? <Button type="link" className="lake-table-source-link" onClick={() => history.push(backPath)}>{sourceName || table.sourceDbType || '查看来源数据源'}</Button> : '未关联'}</Descriptions.Item>
+            <Descriptions.Item label="数据源">{table.sourceDataSourceId ? <Button type="link" className="lake-table-source-link" onClick={() => history.push(backPath)}>{physicalSource?.sourceDataSourceName || table.sourceDbType || '查看来源数据源'}</Button> : '未关联'}</Descriptions.Item>
             <Descriptions.Item label="来源表">{sourceTable || '未关联'}</Descriptions.Item>
-            <Descriptions.Item label="入湖表" span="filled"><Text copyable={target ? { text: target } : false}>{target || '—'}</Text></Descriptions.Item>
+            <Descriptions.Item label="入湖表" span="filled">
+              <Text copyable={target ? { text: target, tooltips: ['复制 Doris 实际表名', '已复制'] } : false}>
+                {targetLabel || '—'}
+              </Text>
+            </Descriptions.Item>
             <Descriptions.Item label="表模型">{model ? TABLE_MODEL_LABELS[model] : '待检查'}</Descriptions.Item>
             <Descriptions.Item label="保留规则">{retentionLabel}</Descriptions.Item>
           </Descriptions>
@@ -465,10 +477,13 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
                 const summary = taskSummaries[String(relation.relationId)];
                 const name = summary?.jobName || (streaming ? '实时引接任务' : '批量引接任务');
                 const run = summary?.lastJobStatus ? getJobStatusView(summary.lastJobStatus, streaming ? 'stream' : 'batch') : undefined;
-                const path = `/sync/${streaming ? 'stream' : 'batch'}-link-up/${relation.jobId}/detail`;
+                const path = relation.jobId && lakeTaskConfigPath(relation.jobId, relation.jobRuntimeType, summary?.mode, summary?.releaseState, table.id);
                 return <div className="lake-table-task" key={String(relation.relationId ?? relation.jobId)}>
                   <Space wrap><Text>{name}</Text>{run ? <StatusChip tone={run.tone} label={run.label.defaultMessage} /> : <Text type="secondary">已配置</Text>}</Space>
-                  <Button type="link" aria-label={`查看任务 ${name}`} onClick={() => history.push(path)}>查看任务</Button>
+                  <Button type="link" aria-label={`查看任务 ${name}`} onClick={() => {
+                    if (path) history.push(path);
+                    else message.warning('暂时无法读取此任务的配置，请刷新后重试。');
+                  }}>查看任务</Button>
                 </div>;
               })}
             </Space> : <Text type="secondary">{canConfigure ? '还没有配置引接任务' : '暂无关联的引接任务'}</Text>}

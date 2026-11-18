@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { App, Button, Col, Form, Popover, Row, Space, Tooltip } from "antd";
+import { App, Button, Col, Form, Popover, Row, Space, Tag, Tooltip } from "antd";
 import {
   Blocks,
   Braces,
@@ -49,6 +49,8 @@ interface WorkflowProps {
 
   params: any;
   goBack: () => void;
+  backLabel?: string;
+  readOnly?: boolean;
   /** 返回引接链路配置（上一步） */
   goPreviousStep?: () => void;
   sourceType: any;
@@ -235,6 +237,8 @@ export default function Workflow({
   contextKey,
   params,
   goBack,
+  backLabel = "返回任务列表",
+  readOnly = false,
   goPreviousStep,
   sourceType,
   targetType,
@@ -680,7 +684,7 @@ export default function Workflow({
               onClick={goBack}
               className={WORKFLOW_BACK_BUTTON_CLASS}
             >
-              返回任务列表
+              {backLabel}
             </Button>
           </div>
         </div>
@@ -696,7 +700,7 @@ export default function Workflow({
                     任务配置
                   </div>
 
-                  <Space size={10}>
+                  {readOnly ? <Tag>只读配置</Tag> : <Space size={10}>
                     <CheckListPopover
                       checkStat={checkStat}
                       checkGroups={checkGroups}
@@ -754,12 +758,12 @@ export default function Workflow({
                     >
                       保存配置
                     </Button>
-                  </Space>
+                  </Space>}
                 </div>
 
                 <div className="generic-workflow-editor-page__canvas-body min-h-0 flex-1 bg-white p-[18px] [background:radial-gradient(circle_at_top_left,rgba(78,116,248,0.04),transparent_22%),#ffffff]">
                   <Row className="generic-workflow-editor-page__canvas-layout" gutter={24} style={{ height: "100%" }}>
-                    <Col className="generic-workflow-editor-page__sidebar-col" span={4}>
+                    {!readOnly && <Col className="generic-workflow-editor-page__sidebar-col" span={4}>
                       <div className="generic-workflow-editor-page__sidebar flex h-full flex-col gap-3 overflow-auto border-r border-slate-100 p-3">
                         <div className="px-0.5 pb-2 pt-1 text-[14px] font-semibold text-slate-700">
                           节点组件
@@ -825,9 +829,9 @@ export default function Workflow({
                           </div>
                         </div>
                       </div>
-                    </Col>
+                    </Col>}
 
-                    <Col className="generic-workflow-editor-page__canvas-col" span={20}>
+                    <Col className="generic-workflow-editor-page__canvas-col" span={readOnly ? 24 : 20}>
                       <div className="generic-workflow-editor-page__canvas h-full overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-[14px] text-slate-400">
                         <ReactFlowProvider>
                           <FlowCanvas
@@ -836,7 +840,8 @@ export default function Workflow({
                             goBack={goBack}
                             sourceType={sourceType}
                             targetType={targetType}
-                            onWorkflowChange={handleWorkflowChange}
+                            onWorkflowChange={readOnly ? undefined : handleWorkflowChange}
+                            readOnly={readOnly}
                             scheduleConfig={scheduleConfig}
                             isIncremental={basicConfig?.mode === "GUIDE_SINGLE_INCREMENTAL"}
                             jobDefinitionId={jobDefinitionId}
@@ -873,12 +878,13 @@ export default function Workflow({
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 params={params}
+                contentDisabled={readOnly}
                 basicConfig={basicConfig}
-                setBasicConfig={setBasicConfig}
+                setBasicConfig={readOnly ? undefined : setBasicConfig}
                 scheduleConfig={scheduleConfig}
-                setScheduleConfig={setScheduleConfig}
+                setScheduleConfig={readOnly ? undefined : setScheduleConfig}
                 envConfig={envConfig}
-                setEnvConfig={setEnvConfig}
+                setEnvConfig={readOnly ? undefined : setEnvConfig}
               />
             </div>
           </div>

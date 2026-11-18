@@ -7,6 +7,7 @@ import {
   resolveConfigPageScene,
   type ConfigPageScene,
 } from "@/pages/common/utils/configPageScene";
+import { physicalTablePath } from "@/pages/lake/physical/paths";
 import {
   BasicConfig,
   defaultEnvConfig,
@@ -220,6 +221,7 @@ const buildPageParamsForEdit = (editData?: any) => {
     id: editData?.id,
     mode: editData?.mode,
     runtimeType: editData?.runtimeType,
+    odsDatabaseBindingId: editData?.odsDatabaseBindingId,
 
     jobName: basic?.jobName || "",
     jobDesc: basic?.jobDesc || "",
@@ -262,6 +264,13 @@ const isOnlyOfflineJobEditableError = (rawMessage?: unknown) =>
 export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {}) {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const scene = searchParams.get("scene");
+  const viewing = scene === "view";
+  const lakeMappingId = searchParams.get("lakeMappingId");
+  const lakeTablePath = scene !== "create" && lakeMappingId && /^[1-9]\d*$/.test(lakeMappingId)
+    ? physicalTablePath(lakeMappingId) : undefined;
+  const backLabel = lakeTablePath ? "返回入湖表" : "返回任务列表";
 
   const [pageScene, setPageScene] = useState<PageScene>("create");
   const [params, setParams] = useState<any>(null);
@@ -293,9 +302,8 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   useEffect(() => {
     if (!id) return;
 
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get("scene");
     const cacheKey = `batch-link-up-detail-${id}`;
+    let active = true;
 
     const initCreate = () => {
       setPageScene("create");
@@ -325,13 +333,16 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
       }
     };
 
-    const initEdit = async () => {
+    const initSavedConfig = async () => {
       try {
         setLoading(true);
         setLoadError(undefined);
         setPageScene("edit");
 
-        const res = await seatunnelJobDefinitionApi.selectEditDetail(id);
+        const res = viewing
+          ? await seatunnelJobDefinitionApi.selectSingleConfigDetail(id)
+          : await seatunnelJobDefinitionApi.selectEditDetail(id);
+        if (!active) return;
         if (res?.code !== 0 || !res?.data) {
           const rawMessage = res?.message || res?.msg;
           setLoadError(
@@ -353,6 +364,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         setScheduleConfig(buildInitialScheduleConfigForEdit(data, modeOverride));
         setEnvConfig(buildInitialEnvConfigForEdit(data));
       } catch (error) {
+        if (!active) return;
         const rawMessage =
           (error as any)?.message ||
           (error as any)?.response?.msg ||
@@ -364,7 +376,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         );
         setParams(null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
@@ -375,11 +387,12 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
 
     // Missing scene values are legacy edit links. Never let a stale create
     // draft in sessionStorage replace the saved definition from the server.
-    initEdit();
-  }, [id, location.search]);
+    void initSavedConfig();
+    return () => { active = false; };
+  }, [id, scene, viewing]);
 
   const goBack = () => {
-    history.push("/sync/batch-link-up");
+    history.push(lakeTablePath || "/sync/batch-link-up");
   };
 
   /** 回到引接链路配置步骤（保留当前任务草稿） */
@@ -404,9 +417,7 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
         <Empty description={loadError || "任务配置加载失败，请返回列表重试。"}>
-          <Button type="primary" onClick={goBack}>
-            返回任务列表
-          </Button>
+          <Button type="primary" onClick={goBack}>{backLabel}</Button>
         </Empty>
       </div>
     );
@@ -429,7 +440,9 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
         contextKey={workflowContextKey}
         params={params}
         goBack={goBack}
-        goPreviousStep={goPreviousStep}
+        backLabel={backLabel}
+        goPreviousStep={viewing || lakeTablePath ? undefined : goPreviousStep}
+        readOnly={viewing}
         sourceType={sourceType}
         setSourceType={setSourceType}
         targetType={targetType}

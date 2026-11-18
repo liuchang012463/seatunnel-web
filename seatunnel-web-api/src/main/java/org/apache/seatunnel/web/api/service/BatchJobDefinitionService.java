@@ -46,6 +46,9 @@ public interface BatchJobDefinitionService {
 
     JobDefinitionEditDetailVO selectEditDetail(Long id);
 
+    /** Read the saved single-table configuration regardless of release state. */
+    JobDefinitionEditDetailVO selectSingleConfigDetail(Long id);
+
     Boolean updateReleaseState(Long id, ReleaseState releaseState);
 
     List<BatchJobDefinitionVO> listByIds(List<Long> ids);

@@ -345,12 +345,26 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
 
     @Override
     public JobDefinitionEditDetailVO selectEditDetail(Long id) {
+        return loadConfigDetail(id, true);
+    }
+
+    @Override
+    public JobDefinitionEditDetailVO selectSingleConfigDetail(Long id) {
+        return loadConfigDetail(id, false);
+    }
+
+    private JobDefinitionEditDetailVO loadConfigDetail(Long id, boolean forEditing) {
         validateId(id);
 
         try {
             JobDefinitionEntity definition = definitionQueryService.getDefinitionOrThrow(id);
 
-            validateEditable(definition);
+            if (forEditing) {
+                validateEditable(definition);
+            } else if (definition.getMode() != JobDefinitionMode.GUIDE_SINGLE
+                    && definition.getMode() != JobDefinitionMode.GUIDE_SINGLE_INCREMENTAL) {
+                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "单表任务类型");
+            }
 
             JobDefinitionContentEntity latestContent =
                     jobDefinitionContentDao.queryLatestByJobDefinitionId(id);
@@ -372,7 +386,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Query batch job definition edit detail failed, id={}", id, e);
+            log.error("Query batch job configuration failed, id={}, forEditing={}", id, forEditing, e);
             throw new ServiceException(e.getMessage());
         }
     }
