@@ -12,9 +12,9 @@ describe('datasource capability options', () => {
     expect(values.slice(0, 3)).toEqual(['DAMENG', 'KINGBASE', 'VASTBASE']);
   });
 
-  it('limits task target options to Kingbase and Vastbase', () => {
+  it('limits task target options to ZeoneDB-D and Vastbase', () => {
     expect(generateTaskTargetDataSourceOptions().map((item) => item.value)).toEqual([
-      'KINGBASE',
+      'ZEONEDB',
       'VASTBASE',
     ]);
   });

@@ -1,3 +1,4 @@
+import { DEFAULT_TASK_TARGET_DATASOURCE_TYPE } from '@/pages/data-source/dataSourceRegistry';
 import { PlusOutlined } from '@ant-design/icons';
 import { Alert, Button, Divider, Pagination, message, Modal } from 'antd';
 import moment from 'moment';
@@ -219,18 +220,14 @@ const getPageRecords = (res: any) => {
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
 
 const RealtimeSyncPage: React.FC = () => {
-  // 实时引接默认源仍用 MySQL-CDC；去向仅金仓/海量，默认金仓
+  // 实时引接默认源仍用 MySQL-CDC；去向统一使用注册表默认值（ZeoneDB-D）
   const sourceType = {
     dbType: 'MYSQL',
     connectorType: 'MySQL-CDC',
     pluginName: 'MySQL-CDC',
   };
 
-  const sinkType = {
-    dbType: 'KINGBASE',
-    connectorType: 'Jdbc',
-    pluginName: 'JDBC-KINGBASE',
-  };
+  const sinkType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
   const ref = useRef<any>(null);
   const refDetail = useRef<any>(null);

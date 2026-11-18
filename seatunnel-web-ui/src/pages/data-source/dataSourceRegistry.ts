@@ -89,15 +89,15 @@ export const DEFAULT_TASK_DATASOURCE_TYPE = {
 } as const;
 
 /**
- * 引接任务「去向」仅开放人大金仓 / 海量。
- * 顺序：金仓 → 海量；新建任务默认去向为金仓。
+ * 引接任务「去向」仅开放 ZeoneDB-D / 海量。
+ * 顺序：ZeoneDB-D → 海量；新建任务默认使用 ZeoneDB-D。
  */
-export const TASK_TARGET_DB_TYPES = ['KINGBASE', 'VASTBASE'] as const;
+export const TASK_TARGET_DB_TYPES = ['ZEONEDB', 'VASTBASE'] as const;
 
 export const DEFAULT_TASK_TARGET_DATASOURCE_TYPE = {
-  dbType: 'KINGBASE',
+  dbType: 'ZEONEDB',
   connectorType: 'Jdbc',
-  pluginName: 'JDBC-KINGBASE',
+  pluginName: 'JDBC-POSTGRESQL',
 } as const;
 
 /** JDBC-backed task sources that expose database-first metadata. */

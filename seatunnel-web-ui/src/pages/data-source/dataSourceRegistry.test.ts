@@ -12,18 +12,18 @@ import {
 } from './dataSourceRegistry';
 
 describe('dataSourceRegistry', () => {
-  it('defaults new tasks to Dameng source / Kingbase target and lists domestic DBs first', () => {
+  it('defaults new tasks to Dameng source / ZeoneDB-D target and lists domestic DBs first', () => {
     expect(DEFAULT_TASK_DATASOURCE_TYPE).toEqual({
       dbType: 'DAMENG',
       connectorType: 'Jdbc',
       pluginName: 'JDBC-DAMENG',
     });
     expect(DEFAULT_TASK_TARGET_DATASOURCE_TYPE).toEqual({
-      dbType: 'KINGBASE',
+      dbType: 'ZEONEDB',
       connectorType: 'Jdbc',
-      pluginName: 'JDBC-KINGBASE',
+      pluginName: 'JDBC-POSTGRESQL',
     });
-    expect([...TASK_TARGET_DB_TYPES]).toEqual(['KINGBASE', 'VASTBASE']);
+    expect([...TASK_TARGET_DB_TYPES]).toEqual(['ZEONEDB', 'VASTBASE']);
     expect(
       DATA_SOURCE_REGISTRY.filter((item) => item.taskSelector)
         .map((item) => item.dbType)

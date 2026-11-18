@@ -61,13 +61,12 @@ export const generateOfflineSourceDataSourceOptions = (): DataSourceType[] => [
 export const generateDataSourceOptions = (): DataSourceType[] =>
   taskRegistry().filter((item) => item.sink).map(toOption);
 
-/** 引接任务基础配置「去向」：仅人大金仓、海量。 */
+/** 引接任务基础配置「去向」：仅 ZeoneDB-D、海量。 */
 export const generateTaskTargetDataSourceOptions = (): DataSourceType[] => {
-  const allowed = new Set<string>(TASK_TARGET_DB_TYPES);
-  return taskRegistry()
-    .filter((item) => item.sink && allowed.has(item.dbType))
-    .map(toOption);
-};
+  // 按去向配置顺序生成，避免来源注册表的排序改变默认展示。
+  return TASK_TARGET_DB_TYPES.flatMap((dbType) =>
+    taskRegistry().filter((item) => item.sink && item.dbType === dbType).map(toOption),
+  );};
 
 export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   {
