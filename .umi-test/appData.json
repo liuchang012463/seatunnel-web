@@ -1,0 +1,2290 @@
+{
+  "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+  "pkg": {},
+  "pkgPath": "",
+  "plugins": {
+    "./seatunnel-web-ui/node_modules/@umijs/core/dist/service/servicePlugin": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "preset",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/core/dist/service/servicePlugin.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/core/dist/service/servicePlugin",
+      "key": "servicePlugin",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "@umijs/preset-umi": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "preset",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/index.js",
+      "id": "@umijs/preset-umi",
+      "key": "umi",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 36
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/max/dist/preset": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "preset",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/max/dist/preset.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/max/dist/preset",
+      "key": "preset",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 11
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/registerMethods": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/registerMethods.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/registerMethods",
+      "key": "registerMethods",
+      "config": {},
+      "time": {
+        "hooks": {
+          "onStart": [
+            1
+          ]
+        },
+        "register": 7
+      },
+      "enableBy": "register"
+    },
+    "@umijs/did-you-know": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/did-you-know/dist/plugin.js",
+      "id": "@umijs/did-you-know",
+      "key": "umijsDidYouKnow",
+      "config": {},
+      "time": {
+        "hooks": {
+          "onStart": [
+            3
+          ]
+        },
+        "register": 6
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/404/404": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/404/404.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/404/404",
+      "key": "404",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyRoutes": [
+            0
+          ]
+        },
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/aiDev/aiDev": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/aiDev/aiDev.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/aiDev/aiDev",
+      "key": "aiDev",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/appData": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/appData.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/appData",
+      "key": "appData",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyAppData": [
+            6
+          ]
+        },
+        "register": 43
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/umiInfo": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/umiInfo.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/appData/umiInfo",
+      "key": "umiInfo",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/check": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/check.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/check",
+      "key": "check",
+      "config": {},
+      "time": {
+        "hooks": {
+          "onCheckConfig": [
+            0
+          ],
+          "onCheck": [
+            0
+          ]
+        },
+        "register": 5
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/babel722": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/babel722.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/check/babel722",
+      "key": "babel722",
+      "config": {},
+      "time": {
+        "hooks": {
+          "onCheck": [
+            0
+          ]
+        },
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/codeSplitting/codeSplitting": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/codeSplitting/codeSplitting.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/codeSplitting/codeSplitting",
+      "key": "codeSplitting",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/configPlugins/configPlugins": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/configPlugins/configPlugins.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/configPlugins/configPlugins",
+      "key": "configPlugins",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyConfig": [
+            0
+          ]
+        },
+        "register": 19
+      },
+      "enableBy": "register"
+    },
+    "virtual: config-title": {
+      "id": "virtual: config-title",
+      "key": "title",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-styles": {
+      "id": "virtual: config-styles",
+      "key": "styles",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-scripts": {
+      "id": "virtual: config-scripts",
+      "key": "scripts",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-routes": {
+      "id": "virtual: config-routes",
+      "key": "routes",
+      "config": {
+        "onChange": "regenerateTmpFiles"
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-routeLoader": {
+      "id": "virtual: config-routeLoader",
+      "key": "routeLoader",
+      "config": {
+        "default": {
+          "moduleType": "esm"
+        }
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-reactRouter5Compat": {
+      "id": "virtual: config-reactRouter5Compat",
+      "key": "reactRouter5Compat",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-presets": {
+      "id": "virtual: config-presets",
+      "key": "presets",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-plugins": {
+      "id": "virtual: config-plugins",
+      "key": "plugins",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-npmClient": {
+      "id": "virtual: config-npmClient",
+      "key": "npmClient",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-mountElementId": {
+      "id": "virtual: config-mountElementId",
+      "key": "mountElementId",
+      "config": {
+        "default": "root"
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-metas": {
+      "id": "virtual: config-metas",
+      "key": "metas",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-links": {
+      "id": "virtual: config-links",
+      "key": "links",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-historyWithQuery": {
+      "id": "virtual: config-historyWithQuery",
+      "key": "historyWithQuery",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-history": {
+      "id": "virtual: config-history",
+      "key": "history",
+      "config": {
+        "default": {
+          "type": "browser"
+        }
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-headScripts": {
+      "id": "virtual: config-headScripts",
+      "key": "headScripts",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-esbuildMinifyIIFE": {
+      "id": "virtual: config-esbuildMinifyIIFE",
+      "key": "esbuildMinifyIIFE",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-conventionRoutes": {
+      "id": "virtual: config-conventionRoutes",
+      "key": "conventionRoutes",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-conventionLayout": {
+      "id": "virtual: config-conventionLayout",
+      "key": "conventionLayout",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-base": {
+      "id": "virtual: config-base",
+      "key": "base",
+      "config": {
+        "default": "/"
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-analyze": {
+      "id": "virtual: config-analyze",
+      "key": "analyze",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-writeToDisk": {
+      "id": "virtual: config-writeToDisk",
+      "key": "writeToDisk",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-transformRuntime": {
+      "id": "virtual: config-transformRuntime",
+      "key": "transformRuntime",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-theme": {
+      "id": "virtual: config-theme",
+      "key": "theme",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-targets": {
+      "id": "virtual: config-targets",
+      "key": "targets",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-svgr": {
+      "id": "virtual: config-svgr",
+      "key": "svgr",
+      "config": {
+        "default": {}
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-svgo": {
+      "id": "virtual: config-svgo",
+      "key": "svgo",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-stylusLoader": {
+      "id": "virtual: config-stylusLoader",
+      "key": "stylusLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-styleLoader": {
+      "id": "virtual: config-styleLoader",
+      "key": "styleLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-srcTranspilerOptions": {
+      "id": "virtual: config-srcTranspilerOptions",
+      "key": "srcTranspilerOptions",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-srcTranspiler": {
+      "id": "virtual: config-srcTranspiler",
+      "key": "srcTranspiler",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-sassLoader": {
+      "id": "virtual: config-sassLoader",
+      "key": "sassLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-runtimePublicPath": {
+      "id": "virtual: config-runtimePublicPath",
+      "key": "runtimePublicPath",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-purgeCSS": {
+      "id": "virtual: config-purgeCSS",
+      "key": "purgeCSS",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-publicPath": {
+      "id": "virtual: config-publicPath",
+      "key": "publicPath",
+      "config": {
+        "default": "/"
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-proxy": {
+      "id": "virtual: config-proxy",
+      "key": "proxy",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-postcssLoader": {
+      "id": "virtual: config-postcssLoader",
+      "key": "postcssLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-outputPath": {
+      "id": "virtual: config-outputPath",
+      "key": "outputPath",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-normalCSSLoaderModules": {
+      "id": "virtual: config-normalCSSLoaderModules",
+      "key": "normalCSSLoaderModules",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-mfsu": {
+      "id": "virtual: config-mfsu",
+      "key": "mfsu",
+      "config": {
+        "default": {
+          "strategy": "eager"
+        }
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-mdx": {
+      "id": "virtual: config-mdx",
+      "key": "mdx",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-manifest": {
+      "id": "virtual: config-manifest",
+      "key": "manifest",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-lessLoader": {
+      "id": "virtual: config-lessLoader",
+      "key": "lessLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-jsMinifierOptions": {
+      "id": "virtual: config-jsMinifierOptions",
+      "key": "jsMinifierOptions",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-jsMinifier": {
+      "id": "virtual: config-jsMinifier",
+      "key": "jsMinifier",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-inlineLimit": {
+      "id": "virtual: config-inlineLimit",
+      "key": "inlineLimit",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-ignoreMomentLocale": {
+      "id": "virtual: config-ignoreMomentLocale",
+      "key": "ignoreMomentLocale",
+      "config": {
+        "default": true
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-https": {
+      "id": "virtual: config-https",
+      "key": "https",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-hash": {
+      "id": "virtual: config-hash",
+      "key": "hash",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-forkTSChecker": {
+      "id": "virtual: config-forkTSChecker",
+      "key": "forkTSChecker",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-fastRefresh": {
+      "id": "virtual: config-fastRefresh",
+      "key": "fastRefresh",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-extraPostCSSPlugins": {
+      "id": "virtual: config-extraPostCSSPlugins",
+      "key": "extraPostCSSPlugins",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-extraBabelPresets": {
+      "id": "virtual: config-extraBabelPresets",
+      "key": "extraBabelPresets",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-extraBabelPlugins": {
+      "id": "virtual: config-extraBabelPlugins",
+      "key": "extraBabelPlugins",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-extraBabelIncludes": {
+      "id": "virtual: config-extraBabelIncludes",
+      "key": "extraBabelIncludes",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-externals": {
+      "id": "virtual: config-externals",
+      "key": "externals",
+      "config": {
+        "default": {}
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-esm": {
+      "id": "virtual: config-esm",
+      "key": "esm",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-devtool": {
+      "id": "virtual: config-devtool",
+      "key": "devtool",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-depTranspiler": {
+      "id": "virtual: config-depTranspiler",
+      "key": "depTranspiler",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-define": {
+      "id": "virtual: config-define",
+      "key": "define",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-deadCode": {
+      "id": "virtual: config-deadCode",
+      "key": "deadCode",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cssPublicPath": {
+      "id": "virtual: config-cssPublicPath",
+      "key": "cssPublicPath",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cssMinifierOptions": {
+      "id": "virtual: config-cssMinifierOptions",
+      "key": "cssMinifierOptions",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cssMinifier": {
+      "id": "virtual: config-cssMinifier",
+      "key": "cssMinifier",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cssLoaderModules": {
+      "id": "virtual: config-cssLoaderModules",
+      "key": "cssLoaderModules",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cssLoader": {
+      "id": "virtual: config-cssLoader",
+      "key": "cssLoader",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-copy": {
+      "id": "virtual: config-copy",
+      "key": "copy",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-checkDepCssModules": {
+      "id": "virtual: config-checkDepCssModules",
+      "key": "checkDepCssModules",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-chainWebpack": {
+      "id": "virtual: config-chainWebpack",
+      "key": "chainWebpack",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-cacheDirectoryPath": {
+      "id": "virtual: config-cacheDirectoryPath",
+      "key": "cacheDirectoryPath",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-babelLoaderCustomize": {
+      "id": "virtual: config-babelLoaderCustomize",
+      "key": "babelLoaderCustomize",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-autoprefixer": {
+      "id": "virtual: config-autoprefixer",
+      "key": "autoprefixer",
+      "config": {},
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-autoCSSModules": {
+      "id": "virtual: config-autoCSSModules",
+      "key": "autoCSSModules",
+      "config": {
+        "default": true
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "virtual: config-alias": {
+      "id": "virtual: config-alias",
+      "key": "alias",
+      "config": {
+        "default": {
+          "umi": "@@/exports",
+          "react": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react",
+          "react-dom": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-dom",
+          "react-router": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-router",
+          "react-router-dom": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-router-dom"
+        }
+      },
+      "type": "plugin",
+      "enableBy": "register",
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/crossorigin/crossorigin": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/crossorigin/crossorigin.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/crossorigin/crossorigin",
+      "key": "crossorigin",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/depsOnDemand/depsOnDemand": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/depsOnDemand/depsOnDemand.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/depsOnDemand/depsOnDemand",
+      "key": "depsOnDemand",
+      "config": {},
+      "time": {
+        "hooks": {
+          "onStart": [
+            1
+          ]
+        },
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/devTool/devTool": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/devTool/devTool.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/devTool/devTool",
+      "key": "devTool",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esbuildHelperChecker/esbuildHelperChecker": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esbuildHelperChecker/esbuildHelperChecker.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esbuildHelperChecker/esbuildHelperChecker",
+      "key": "esbuildHelperChecker",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 122
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esmi/esmi": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esmi/esmi.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/esmi/esmi",
+      "key": "esmi",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 133
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/exportStatic/exportStatic": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/exportStatic/exportStatic.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/exportStatic/exportStatic",
+      "key": "exportStatic",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 53
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/favicons/favicons": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/favicons/favicons.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/favicons/favicons",
+      "key": "favicons",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyAppData": [
+            0
+          ]
+        },
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/helmet/helmet": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/helmet/helmet.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/helmet/helmet",
+      "key": "helmet",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/icons/icons": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/icons/icons.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/icons/icons",
+      "key": "icons",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 4
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mock/mock": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mock/mock.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mock/mock",
+      "key": "mock",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 43
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mpa/mpa": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mpa/mpa.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mpa/mpa",
+      "key": "mpa",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/okam/okam": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/okam/okam.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/okam/okam",
+      "key": "okam",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/overrides/overrides": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/overrides/overrides.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/overrides/overrides",
+      "key": "overrides",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 0
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/phantomDependency/phantomDependency": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/phantomDependency/phantomDependency.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/phantomDependency/phantomDependency",
+      "key": "phantomDependency",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/polyfill": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/polyfill.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/polyfill",
+      "key": "polyfill",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyConfig": [
+            1
+          ]
+        },
+        "register": 3
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/publicPathPolyfill": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/publicPathPolyfill.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/polyfill/publicPathPolyfill",
+      "key": "publicPathPolyfill",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/prepare/prepare": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/prepare/prepare.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/prepare/prepare",
+      "key": "prepare",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePrefetch/routePrefetch": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePrefetch/routePrefetch.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePrefetch/routePrefetch",
+      "key": "routePrefetch",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/stagewise/stagewise": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/stagewise/stagewise.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/stagewise/stagewise",
+      "key": "stagewise",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 0
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/terminal/terminal": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/terminal/terminal.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/terminal/terminal",
+      "key": "terminal",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/tmpFiles": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/tmpFiles.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/tmpFiles",
+      "key": "tmpFiles",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 13
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clientLoader/clientLoader": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clientLoader/clientLoader.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clientLoader/clientLoader",
+      "key": "clientLoader",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routeProps/routeProps": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routeProps/routeProps.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routeProps/routeProps",
+      "key": "routeProps",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ssr/ssr": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ssr/ssr.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ssr/ssr",
+      "key": "ssr",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/configTypes": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/configTypes.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/tmpFiles/configTypes",
+      "key": "configTypes",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/transform/transform": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/transform/transform.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/transform/transform",
+      "key": "transform",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/lowImport/lowImport": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/lowImport/lowImport.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/lowImport/lowImport",
+      "key": "lowImport",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/vite/vite": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/vite/vite.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/vite/vite",
+      "key": "vite",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/apiRoute/apiRoute": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/apiRoute/apiRoute.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/apiRoute/apiRoute",
+      "key": "apiRoute",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 9
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/monorepo/redirect": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/monorepo/redirect.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/monorepo/redirect",
+      "key": "monorepoRedirect",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 26
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/test/test": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/test/test.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/test/test",
+      "key": "test",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clickToComponent/clickToComponent": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clickToComponent/clickToComponent.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/clickToComponent/clickToComponent",
+      "key": "clickToComponent",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/legacy/legacy": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/legacy/legacy.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/legacy/legacy",
+      "key": "legacy",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/classPropertiesLoose/classPropertiesLoose": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/classPropertiesLoose/classPropertiesLoose.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/classPropertiesLoose/classPropertiesLoose",
+      "key": "classPropertiesLoose",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/webpack/webpack": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/webpack/webpack.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/webpack/webpack",
+      "key": "preset-umi:webpack",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/swc/swc": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/swc/swc.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/swc/swc",
+      "key": "swc",
+      "config": {},
+      "time": {
+        "hooks": {
+          "addOnDemandDeps": [
+            1
+          ]
+        },
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ui/ui": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ui/ui.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/ui/ui",
+      "key": "ui",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mako/mako": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mako/mako.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/mako/mako",
+      "key": "mako",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/utoopack/utoopack": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/utoopack/utoopack.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/utoopack/utoopack",
+      "key": "utoopack",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/hmrGuardian/hmrGuardian",
+      "key": "hmrGuardian",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 10
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePreloadOnLoad/routePreloadOnLoad": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePreloadOnLoad/routePreloadOnLoad.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/routePreloadOnLoad/routePreloadOnLoad",
+      "key": "routePreloadOnLoad",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 38
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/forget/forget": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/forget/forget.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/forget/forget",
+      "key": "forget",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/bundler/bundler": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/bundler/bundler.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/features/bundler/bundler",
+      "key": "preset-umi:bundler",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/build": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/build.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/build",
+      "key": "build",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 6
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/config/config": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/config/config.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/config/config",
+      "key": "config",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 41
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/dev/dev": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/dev/dev.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/dev/dev",
+      "key": "dev",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 58
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/help": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/help.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/help",
+      "key": "help",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/lint": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/lint.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/lint",
+      "key": "lint",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/setup": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/setup.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/setup",
+      "key": "setup",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/deadcode": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/deadcode.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/deadcode",
+      "key": "deadcode",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/version": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/version.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/version",
+      "key": "version",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 0
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/page": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/page.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/page",
+      "key": "generator:page",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/prettier": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/prettier.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/prettier",
+      "key": "generator:prettier",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tsconfig": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tsconfig.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tsconfig",
+      "key": "generator:tsconfig",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/jest": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/jest.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/jest",
+      "key": "generator:jest",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tailwindcss": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tailwindcss.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/tailwindcss",
+      "key": "generator:tailwindcss",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 0
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/dva": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/dva.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/dva",
+      "key": "generator:dva",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/component": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/component.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/component",
+      "key": "generator:component",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/mock": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/mock.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/mock",
+      "key": "generator:mock",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 0
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/cypress": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/cypress.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/cypress",
+      "key": "generator:cypress",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/api": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/api.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/api",
+      "key": "generator:api",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/precommit": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/precommit.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/generators/precommit",
+      "key": "generator:precommit",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/plugin": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/plugin.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/plugin",
+      "key": "command:plugin",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/verify-commit": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/verify-commit.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/verify-commit",
+      "key": "verifyCommit",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/preview": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/preview.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/preview",
+      "key": "preview",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 24
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/mfsu/mfsu": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/mfsu/mfsu.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/preset-umi/dist/commands/mfsu/mfsu",
+      "key": "mfsu-cli",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "@umijs/plugin-run": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugin-run/dist/index.js",
+      "id": "@umijs/plugin-run",
+      "key": "run",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/access": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/access.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/access",
+      "key": "access",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/analytics": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/analytics.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/analytics",
+      "key": "analytics",
+      "config": {
+        "onChange": "reload"
+      },
+      "time": {
+        "hooks": {},
+        "register": 0
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/antd": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/antd.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/antd",
+      "key": "antd",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 9
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/dva": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/dva.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/dva",
+      "key": "dva",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 10
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/initial-state": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/initial-state.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/initial-state",
+      "key": "initialState",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/layout": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/layout.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/layout",
+      "key": "layout",
+      "config": {
+        "onChange": "regenerateTmpFiles"
+      },
+      "time": {
+        "hooks": {},
+        "register": 5
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/locale": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/locale.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/locale",
+      "key": "locale",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 4
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/mf": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/mf.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/mf",
+      "key": "mf",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/model": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/model.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/model",
+      "key": "model",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/moment2dayjs": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/moment2dayjs.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/moment2dayjs",
+      "key": "moment2dayjs",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun",
+      "key": "qiankun",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/master": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/master.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/master",
+      "key": "qiankun-master",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 4
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/slave": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/slave.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/qiankun/slave",
+      "key": "qiankun-slave",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 5
+      }
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/react-query": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/react-query.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/react-query",
+      "key": "reactQuery",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/request": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/request.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/request",
+      "key": "request",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 8
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/styled-components": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/styled-components.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/styled-components",
+      "key": "styledComponents",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 3
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/tailwindcss": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/tailwindcss.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/tailwindcss",
+      "key": "tailwindcss",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/valtio": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/plugins/dist/valtio.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/plugins/dist/valtio",
+      "key": "valtio",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 2
+      },
+      "enableBy": "config"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAlias": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAlias.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAlias",
+      "key": "maxAlias",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyConfig": [
+            0
+          ]
+        },
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAppData": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAppData.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxAppData",
+      "key": "maxAppData",
+      "config": {},
+      "time": {
+        "hooks": {
+          "modifyAppData": [
+            0
+          ]
+        },
+        "register": 0
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxChecker": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxChecker.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/max/dist/plugins/maxChecker",
+      "key": "maxChecker",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    },
+    "./seatunnel-web-ui/node_modules/@umijs/core/dist/service/generatePlugin": {
+      "cwd": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "type": "plugin",
+      "path": "D:/空天code/beijing/前端/seatunnel-web/seatunnel-web-ui/node_modules/@umijs/core/dist/service/generatePlugin.js",
+      "id": "./seatunnel-web-ui/node_modules/@umijs/core/dist/service/generatePlugin",
+      "key": "generatePlugin",
+      "config": {},
+      "time": {
+        "hooks": {},
+        "register": 1
+      },
+      "enableBy": "register"
+    }
+  },
+  "presets": [],
+  "name": "setup",
+  "args": {
+    "quiet": true,
+    "_": []
+  },
+  "userConfig": {},
+  "mainConfigFile": null,
+  "config": {
+    "routeLoader": {
+      "moduleType": "esm"
+    },
+    "mountElementId": "root",
+    "history": {
+      "type": "browser"
+    },
+    "base": "/",
+    "svgr": {},
+    "publicPath": "/",
+    "mfsu": {
+      "strategy": "eager"
+    },
+    "ignoreMomentLocale": true,
+    "externals": {},
+    "autoCSSModules": true,
+    "alias": {
+      "umi": "@@/exports",
+      "react": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react",
+      "react-dom": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-dom",
+      "react-router": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-router",
+      "react-router-dom": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-router-dom",
+      "@": "D:\\空天code\\beijing\\前端\\seatunnel-web",
+      "@@": "D:/空天code/beijing/前端/seatunnel-web/.umi-test",
+      "regenerator-runtime": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\regenerator-runtime",
+      "@umijs/max": "@@/exports"
+    },
+    "targets": {
+      "chrome": 80
+    }
+  },
+  "routes": {},
+  "apiRoutes": {},
+  "hasSrcDir": false,
+  "npmClient": "npm",
+  "umi": {
+    "version": "4.6.34",
+    "name": "Umi Max",
+    "importSource": "@umijs/max",
+    "cliName": "max"
+  },
+  "bundleStatus": {
+    "done": false
+  },
+  "mfsuBundleStatus": {
+    "done": false
+  },
+  "react": {
+    "version": "18.3.1",
+    "path": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react"
+  },
+  "react-dom": {
+    "version": "18.3.1",
+    "path": "D:\\空天code\\beijing\\前端\\seatunnel-web\\seatunnel-web-ui\\node_modules\\react-dom"
+  },
+  "appJS": null,
+  "locale": "C",
+  "globalCSS": [],
+  "globalJS": [],
+  "overridesCSS": [],
+  "bundler": "webpack",
+  "git": {
+    "originUrl": "http://34820ezzw144.vicp.fun:12530/liuchang/seatunnel-web.git"
+  },
+  "framework": "react",
+  "typescript": {},
+  "faviconFiles": []
+}
