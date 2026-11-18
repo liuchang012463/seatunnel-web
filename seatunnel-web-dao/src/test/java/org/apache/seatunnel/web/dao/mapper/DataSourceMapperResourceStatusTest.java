@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,5 +56,10 @@ class DataSourceMapperResourceStatusTest {
         assertTrue(sql.contains("(D.SOURCE_ENABLED = TRUE OR D.SOURCE_ENABLED IS NULL)"), sql);
         assertTrue(sql.contains("D.NAME LIKE CONCAT('%', ?, '%')"), sql);
         assertFalse(sql.contains(" IN "), sql);
+
+        params.put("dbTypes", List.of("VASTBASE", "KINGBASE"));
+        var filtered = statement.getBoundSql(params);
+        assertTrue(filtered.getSql().replaceAll("\\s+", " ").contains("d.db_type IN ( ? , ? )"), filtered.getSql());
+        assertTrue(filtered.getParameterMappings().size() == 4);
     }
 }

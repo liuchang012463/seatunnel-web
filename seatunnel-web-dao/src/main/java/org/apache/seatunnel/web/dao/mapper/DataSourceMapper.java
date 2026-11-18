@@ -15,7 +15,8 @@ public interface DataSourceMapper extends BaseMapper<DataSource> {
     IPage<DataSource> selectPageByLakeResourceStatus(
             IPage<DataSource> page,
             @Param("keyword") String keyword,
-            @Param("resourceStatus") String resourceStatus);
+            @Param("resourceStatus") String resourceStatus,
+            @Param("dbTypes") List<String> dbTypes);
 
     @Select("SELECT DISTINCT data_source_unit "
             + "FROM t_seatunnel_web_datasource "

@@ -223,11 +223,14 @@ class LakeOdsDatabaseServiceImplTest {
         sourcePage.setRecords(List.of(source(7L, "orders", 11L, DbType.MYSQL)));
         when(dataSourceDao.queryPage(any())).thenReturn(sourcePage);
 
-        var result = service.page(new LakePhysicalDataSourcePageDTO());
+        var request = new LakePhysicalDataSourcePageDTO();
+        request.setDbTypes(List.of(DbType.MYSQL, DbType.VASTBASE));
+        var result = service.page(request);
 
         assertEquals(1, result.getData().getPagination().getTotal());
         verify(dataSourceDao).queryPage(argThat(query -> Boolean.TRUE.equals(query.getSourceEnabled())
-                && Boolean.TRUE.equals(query.getExcludeSystemManaged())));
+                && Boolean.TRUE.equals(query.getExcludeSystemManaged())
+                && List.of(DbType.MYSQL, DbType.VASTBASE).equals(query.getDbTypes())));
     }
 
     @Test
@@ -236,6 +239,7 @@ class LakeOdsDatabaseServiceImplTest {
         request.setPageNo(2);
         request.setPageSize(1);
         request.setResourceStatus(LakeResourceStatus.READY.getCode());
+        request.setDbTypes(List.of(DbType.MYSQL));
 
         Page<DataSource> filteredPage = new Page<>(2, 1);
         filteredPage.setTotal(2);
@@ -250,7 +254,8 @@ class LakeOdsDatabaseServiceImplTest {
         assertEquals(1, result.getData().getPagination().getPageSize());
         assertEquals(1, result.getData().getBizData().size());
         verify(dataSourceDao).queryPageByLakeResourceStatus(
-                argThat(query -> Boolean.TRUE.equals(query.getSourceEnabled())), eq(LakeResourceStatus.READY));
+                argThat(query -> Boolean.TRUE.equals(query.getSourceEnabled())
+                        && List.of(DbType.MYSQL).equals(query.getDbTypes())), eq(LakeResourceStatus.READY));
         verify(dataSourceDao, never()).queryPage(any());
     }
 

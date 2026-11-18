@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.dao.repository.BaseDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.MyBatisColumn;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
+import org.apache.seatunnel.web.spi.enums.DbType;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -61,8 +62,9 @@ public class DataSourceDaoImpl extends BaseDao<DataSource, DataSourceMapper> imp
     public IPage<DataSource> queryPageByLakeResourceStatus(
             DataSourceDTO dto, LakeResourceStatus resourceStatus) {
         IPage<DataSource> page = new Page<>(dto.getPageNo(), dto.getPageSize());
+        List<String> dbTypes = dto.getDbTypes() == null ? List.of() : dto.getDbTypes().stream().map(DbType::getCode).toList();
         return dataSourceMapper.selectPageByLakeResourceStatus(
-                page, dto.getName(), resourceStatus == null ? null : resourceStatus.getCode());
+                page, dto.getName(), resourceStatus == null ? null : resourceStatus.getCode(), dbTypes);
     }
 
     static LambdaQueryWrapper<DataSource> buildQueryWrapper(DataSourceDTO dto) {

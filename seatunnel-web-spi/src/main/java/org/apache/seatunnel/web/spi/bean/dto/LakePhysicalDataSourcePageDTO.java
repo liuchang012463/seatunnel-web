@@ -3,6 +3,9 @@ package org.apache.seatunnel.web.spi.bean.dto;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
+import org.apache.seatunnel.web.spi.enums.DbType;
+
+import java.util.List;
 
 /** Query-only pagination for physical lake source resources. */
 @Data
@@ -12,4 +15,6 @@ public class LakePhysicalDataSourcePageDTO extends PaginationBaseDTO {
     private String keyword;
 
     private String resourceStatus;
+
+    private List<DbType> dbTypes;
 }
