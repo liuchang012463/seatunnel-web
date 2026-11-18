@@ -1,4 +1,5 @@
 import { Link } from '@umijs/max';
+import { withLayoutPrefix } from '@/utils/iframeLayout';
 import MetricsGrid from './MetricsGrid';
 import { integerFormat, numberFormat, asNumber, toRecords, toBytes, chartRecordsToRaw, chartBytesToRaw, formatRecords, formatBytes, formatTime } from './metricFormat';
 import { Spin } from 'antd';
@@ -554,7 +555,7 @@ const IngestionSituationPage: React.FC = () => {
           <section className={'panel source-panel' + (activeSourceTab === 'breakdown' ? ' is-breakdown' : '')}>
             <div className="panel-heading">
               <h2>数据源接入情况</h2>
-              <Link className="dashboard-exit" to="/metrics" title="返回任务概览" aria-label="退出大屏并打开任务概览">
+              <Link className="dashboard-exit" to={withLayoutPrefix('/metrics')} title="返回任务概览" aria-label="退出大屏并打开任务概览">
                 <ArrowLeft size={15} />
               </Link>
             </div>
@@ -733,7 +734,7 @@ const IngestionSituationPage: React.FC = () => {
                 <div className="system-list">
                   {businessSystems.slice(0, 4).map((system, index) => (
                     <Link
-                      to="/data-source"
+                      to={withLayoutPrefix('/data-source')}
                       key={system.key}
                       className={'system-row ' + SOURCE_TONES[index % SOURCE_TONES.length]}
                       title="打开数据源管理"
@@ -1205,7 +1206,7 @@ const IngestionSituationPage: React.FC = () => {
               <div className="inspect-foot">
                 <span><i className="legend-dot cyan" />运行中 {taskMetrics ? integerFormat.format(totals.running) : '—'}</span>
                 <span><i className="legend-dot red" />失败 {taskMetrics ? integerFormat.format(totals.failed) : '—'}</span>
-                <Link to="/metrics">查看任务概览 <List size={12} /></Link>
+                <Link to={withLayoutPrefix('/metrics')}>查看任务概览 <List size={12} /></Link>
               </div>
             </div>
           </section>
@@ -1302,7 +1303,8 @@ const IngestionSituationPage: React.FC = () => {
                   ? integerFormat.format(profileCoverage.knownRowCount) + ' 行 · ' + formatBytes(profileCoverage.knownSizeInByte).value + ' ' + formatBytes(profileCoverage.knownSizeInByte).unit
                   : inventoryError || '等待资源目录指标'}
               </span>
-              <Link to="/data-source">查看 <ChevronDown size={12} /></Link>
+              {/* Link 的 href 也保留嵌入前缀，兼容普通点击及新标签页打开。 */}
+              <Link to={withLayoutPrefix('/data-source')}>查看 <ChevronDown size={12} /></Link>
             </div>
           </section>
         </aside>
