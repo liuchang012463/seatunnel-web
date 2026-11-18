@@ -142,8 +142,8 @@ class JdbcDorisLakeClientCatalogTest {
         when(statement.executeQuery("SHOW CATALOG `source_catalog`")).thenReturn(properties);
         when(statement.executeQuery("SHOW DATABASES FROM `source_catalog`")).thenReturn(databases);
         when(statement.executeQuery("SHOW TABLES FROM `source_catalog`.`Sales_DB`")).thenReturn(tables);
-        when(catalogs.next()).thenReturn(true, false);
-        when(catalogs.getString(1)).thenReturn("source_catalog");
+        stubCatalogList(catalogs);
+        when(catalogs.getString("CatalogName")).thenReturn("source_catalog");
         stubProperties(properties, desired(), false);
         when(databases.next()).thenReturn(true, false);
         when(databases.getString(1)).thenReturn("Sales_DB");
@@ -206,8 +206,7 @@ class JdbcDorisLakeClientCatalogTest {
         when(statement.executeQuery("SHOW CATALOGS")).thenReturn(catalogs);
         when(statement.executeQuery("SHOW CATALOG `source_catalog`")).thenReturn(catalogProperties);
         when(statement.executeQuery("SHOW DATABASES FROM `source_catalog`")).thenReturn(databases);
-        when(catalogs.next()).thenReturn(true, false);
-        when(catalogs.getString(1)).thenReturn("source_catalog");
+        stubCatalogList(catalogs);
         LakeCatalogDesiredSpec databaseDesired = new LakeCatalogDesiredSpec(
                 "source_catalog", 17L, "source-v1", LakeJdbcAdapterType.POSTGRESQL,
                 LakeCatalogScope.DATABASE, "jdbc:postgresql://source.example/app",
@@ -241,8 +240,7 @@ class JdbcDorisLakeClientCatalogTest {
         when(statement.executeQuery("SHOW CATALOG `source_catalog`")).thenReturn(catalogProperties);
         when(statement.executeQuery("SHOW DATABASES FROM `source_catalog`")).thenReturn(databases);
         when(statement.executeQuery("SHOW TABLES FROM `source_catalog`.`Sales_DB`")).thenReturn(tables);
-        when(catalogs.next()).thenReturn(true, false);
-        when(catalogs.getString(1)).thenReturn("source_catalog");
+        stubCatalogList(catalogs);
         LakeCatalogDesiredSpec tableDesired = desired();
         stubProperties(catalogProperties, tableDesired, false);
         when(databases.next()).thenReturn(true, false);
@@ -271,8 +269,7 @@ class JdbcDorisLakeClientCatalogTest {
         when(statement.executeQuery("SHOW CATALOG `source_catalog`")).thenReturn(catalogProperties);
         when(statement.executeQuery("SHOW DATABASES FROM `source_catalog`"))
                 .thenThrow(new SQLException("jdbc_url=jdbc:postgresql://user:secret@db/source"));
-        when(catalogs.next()).thenReturn(true, false);
-        when(catalogs.getString(1)).thenReturn("source_catalog");
+        stubCatalogList(catalogs);
         stubProperties(catalogProperties, desired(), false);
 
         var result = new JdbcDorisLakeClient(dataSource, new LakeProperties())
@@ -319,6 +316,13 @@ class JdbcDorisLakeClientCatalogTest {
                 "file:/opt/drivers/postgresql.jar", "org.postgresql.Driver", CHECKSUM,
                 "drivers-v1", "credential-v1", List.of("Sales_DB"),
                 List.of("Orders"), Map.of());
+    }
+
+    private static void stubCatalogList(ResultSet catalogs) throws SQLException {
+        // SHOW CATALOGS returns CatalogId first and CatalogName second.
+        when(catalogs.next()).thenReturn(true, false);
+        when(catalogs.getString(1)).thenReturn("10001");
+        when(catalogs.getString(2)).thenReturn("source_catalog");
     }
 
     private static void stubProperties(
