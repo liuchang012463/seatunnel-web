@@ -50,10 +50,8 @@ import org.springframework.stereotype.Service;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -218,58 +216,6 @@ public class LakeOdsDatabaseServiceImpl implements LakeOdsDatabaseService {
             return List.of();
         }
         return List.of(toVO(binding));
-    }
-
-    @Override
-    public Map<String, String> catalogDatabaseLabels(Long lakeDataSourceId, Set<String> databaseNames) {
-        if (databaseNames.isEmpty()) {
-            return Map.of();
-        }
-        Map<Long, Boolean> compatibleIds = new HashMap<>();
-        List<LakeOdsDatabaseBinding> bindings = bindingDao.queryAll().stream()
-                .filter(binding -> !Boolean.TRUE.equals(binding.getDeleted()))
-                .filter(binding -> databaseNames.contains(binding.getDatabaseName()))
-                .filter(binding -> compatibleIds.computeIfAbsent(binding.getLakeDataSourceId(),
-                        id -> usesCatalogWarehouse(id, lakeDataSourceId)))
-                .sorted(Comparator.comparing(binding -> !lakeDataSourceId.equals(binding.getLakeDataSourceId())))
-                .toList();
-        if (bindings.isEmpty()) {
-            return Map.of();
-        }
-        Set<Long> sourceIds = bindings.stream().map(LakeOdsDatabaseBinding::getSourceDataSourceId)
-                .collect(Collectors.toSet());
-        Map<Long, String> sourceNames = new HashMap<>();
-        for (DataSource source : dataSourceDao.queryByIds(sourceIds)) {
-            if (source.getName() != null && !source.getName().isBlank()) {
-                sourceNames.put(source.getId(), source.getName());
-            }
-        }
-        Map<String, String> labels = new HashMap<>();
-        for (LakeOdsDatabaseBinding binding : bindings) {
-            String name = binding.getDatabaseName();
-            // The binding snapshots the codes used at creation, even if master data later changes.
-            String prefix = "ods_" + binding.getUnitCode() + "_" + binding.getSystemCode() + "_";
-            String suffix = name.startsWith(prefix) ? name.substring(prefix.length()) : "";
-            String label = suffix.isEmpty() || suffix.equals("ds_" + binding.getSourceDataSourceId())
-                    ? sourceNames.getOrDefault(binding.getSourceDataSourceId(), name) : suffix;
-            labels.putIfAbsent(name, label);
-        }
-        return labels;
-    }
-
-    private boolean usesCatalogWarehouse(Long bindingLakeId, Long lakeDataSourceId) {
-        if (lakeDataSourceId.equals(bindingLakeId)) {
-            return true;
-        }
-        if (warehouseService == null || bindingLakeId == null) {
-            return false;
-        }
-        try {
-            return lakeDataSourceId.equals(warehouseService.canonicalDataSourceId(bindingLakeId));
-        } catch (LakeServiceException exception) {
-            // An orphaned legacy binding should not label a database in a different warehouse.
-            return false;
-        }
     }
 
     @Override
