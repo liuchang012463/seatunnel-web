@@ -65,9 +65,6 @@ public final class DorisContractReader {
                     TargetType.parseDorisType(parsed.type()), parsed.nullable(),
                     keyClause.columns().contains(targetName), index + 1));
         }
-        if (keyClause.columns().isEmpty()) {
-            throw malformed("Doris key clause is missing");
-        }
         for (String key : keyClause.columns()) {
             if (!columnsByName.containsKey(key)) {
                 throw malformed("Doris key column is not declared");
@@ -130,10 +127,14 @@ public final class DorisContractReader {
         return columns;
     }
 
-    private static KeyClause parseKeyClause(String sql, int start) {
+    private KeyClause parseKeyClause(String sql, int start) {
         Matcher matcher = MODEL_AND_KEY.matcher(sql);
         if (!matcher.find(start)) {
-            return new KeyClause(null, List.of());
+            // SHOW CREATE TABLE omits KEY for this model and publishes the explicit property instead.
+            if (Boolean.parseBoolean(readProperties(sql).get(DorisDdlBuilder.DUPLICATE_WITHOUT_KEYS))) {
+                return new KeyClause(LakeTableModel.DUPLICATE, List.of());
+            }
+            throw malformed("Doris key clause is missing");
         }
         int open = sql.indexOf('(', matcher.start());
         int close = matchingParenthesis(sql, open);

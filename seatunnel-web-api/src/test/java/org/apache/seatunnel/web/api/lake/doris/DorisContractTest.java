@@ -72,6 +72,24 @@ class DorisContractTest {
     }
 
     @Test
+    void duplicateWithoutSortColumnsRoundTripsWithoutChangingNullability() {
+        TargetContract desired = new TargetContract(LakeTableModel.DUPLICATE,
+                List.of(new TargetColumn("id", 1, "id", new TargetType(DorisTypeBase.INT), true, false, 1)),
+                List.of(), TargetPartition.disabled(), TargetDistribution.random());
+        String ddl = new DorisDdlBuilder().build("lake_db", "student", desired, Map.of("replication_num", "1"));
+
+        assertFalse(ddl.contains("DUPLICATE KEY"));
+        assertTrue(ddl.contains("`id` INT NULL"));
+        assertTrue(ddl.contains("DISTRIBUTED BY RANDOM BUCKETS AUTO"));
+        assertTrue(ddl.contains("\"enable_duplicate_without_keys_by_default\" = \"true\""));
+        assertTrue(ddl.contains("\"replication_num\" = \"1\""));
+        assertEquals(TargetContractCanonicalizer.sha256(desired),
+                TargetContractCanonicalizer.sha256(new DorisContractReader().read(ddl)));
+        assertThrows(IllegalArgumentException.class, () -> new DorisContractReader().read(
+                ddl.replace("\"enable_duplicate_without_keys_by_default\" = \"true\"", "\"enable_duplicate_without_keys_by_default\" = \"false\"")));
+    }
+
+    @Test
     void renamedSourceColumnHasTheSameHashAfterDorisCreateAndShowCreate() {
         TargetContract desired = new TargetContract(LakeTableModel.DUPLICATE, List.of(
                 new TargetColumn("SOURCE_ID", 17, "target_id", TargetType.varchar(255), false, true, 1),

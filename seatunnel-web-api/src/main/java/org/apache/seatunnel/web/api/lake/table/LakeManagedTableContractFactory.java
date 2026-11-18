@@ -47,9 +47,6 @@ public final class LakeManagedTableContractFactory {
         Map<String, LakeManagedTableColumnDTO> overrides = columnOverrides(request.getColumns());
         List<String> primaryKeys = primaryKeyNames(source.constraints());
         Set<String> requestedKeys = requestedKeys(request, primaryKeys, overrides);
-        if (requestedKeys.isEmpty()) {
-            throw new IllegalArgumentException("MANAGED table requires at least one key column");
-        }
 
         Map<String, TargetColumn> bySource = new LinkedHashMap<>();
         for (SourceColumnSnapshot sourceColumn : sourceColumns) {
@@ -68,9 +65,6 @@ public final class LakeManagedTableContractFactory {
                     ? DorisIdentifier.normalize(sourceName) : DorisIdentifier.normalize(override.getTargetField());
             TargetType targetType = targetType(override == null ? null : override.getTargetType(), key, sourceColumn);
             boolean nullable = !Boolean.FALSE.equals(sourceColumn.nullable());
-            if (key && nullable) {
-                throw new IllegalArgumentException("Key columns must be NOT NULL in the source");
-            }
             TargetColumn targetColumn = new TargetColumn(
                     sourceName,
                     effectiveOrdinal(sourceColumn, bySource.size() + 1),
@@ -230,7 +224,7 @@ public final class LakeManagedTableContractFactory {
         } else {
             order.addAll(requestedKeys);
         }
-        if (order.isEmpty() || order.stream().anyMatch(item -> !bySource.containsKey(item))) {
+        if (order.stream().anyMatch(item -> !bySource.containsKey(item))) {
             throw new IllegalArgumentException("Key column is not declared by the source");
         }
         return List.copyOf(order);

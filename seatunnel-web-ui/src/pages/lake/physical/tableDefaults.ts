@@ -1,4 +1,9 @@
-import type { OdsSourceColumn, OdsSourceTableDetail } from './types';
+import type { LakeTableModel, OdsSourceColumn, OdsSourceTableDetail } from './types';
+
+export const TABLE_MODEL_LABELS: Record<LakeTableModel, string> = {
+  DUPLICATE: '保留明细（DUPLICATE KEY）',
+  UNIQUE: '按键合并（UNIQUE KEY）',
+};
 
 /** One ODS database serves a source; namespace prefixes avoid table collisions. */
 export const suggestedTableName = (database: string, schema: string, table: string): string => {
@@ -21,10 +26,10 @@ export const sourceNullable = (column: OdsSourceColumn, keys: Set<string>): bool
   !keys.has(column.name.toLowerCase()) && !/NOT[_ ]NULL|PRIMARY/i.test(column.constraint || '');
 
 /** Only suggest known scalar conversions; leave other values as explicit strings. */
-export function suggestedDorisType(column: OdsSourceColumn, key = false): string {
+export function suggestedDorisType(column: OdsSourceColumn): string {
   const type = String(column.dataType || column.dataTypeDisplay || '').toUpperCase().split('(')[0].trim();
   const numeric: Record<string, string> = { BYTE: 'TINYINT', TINYINT: 'TINYINT', SMALLINT: 'SMALLINT', SHORT: 'SMALLINT', INTEGER: 'INT', INT: 'INT', LONG: 'BIGINT', BIGINT: 'BIGINT', LARGEINT: 'LARGEINT', BOOLEAN: 'BOOLEAN', BOOL: 'BOOLEAN', FLOAT: 'FLOAT', DOUBLE: 'DOUBLE', REAL: 'DOUBLE' };
-  if (numeric[type] && !(key && ['FLOAT', 'DOUBLE'].includes(numeric[type]))) return numeric[type];
+  if (numeric[type]) return numeric[type];
   if (type === 'DATE') return 'DATE';
   if (['DATETIME', 'TIMESTAMP', 'DATETIMEV2'].includes(type)) {
     const scale = Number(column.scale || 0);
@@ -36,7 +41,7 @@ export function suggestedDorisType(column: OdsSourceColumn, key = false): string
     const scale = Number(column.scale ?? parameters?.[2] ?? 0);
     if (precision >= 1 && precision <= 38 && scale >= 0 && scale <= precision) return `DECIMAL(${precision},${scale})`;
   }
-  if (key || ['VARCHAR', 'CHAR'].includes(type)) {
+  if (['VARCHAR', 'CHAR'].includes(type)) {
     const parameter = /\((\d+)\)/.exec(column.dataTypeDisplay || '');
     const length = Number(column.dataLength || parameter?.[1] || 255);
     return `VARCHAR(${Math.max(1, Math.min(1048576, length))})`;

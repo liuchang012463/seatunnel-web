@@ -4,7 +4,7 @@ test('table-only composite primary keys are usable even without column constrain
   const columns = [{ name: 'tenant_id', dataType: 'BIGINT' }, { name: 'id', dataType: 'BIGINT' }];
   const keys = primaryKeyNames({ id: 'table', name: 'orders', fullyQualifiedName: 'svc.db.schema.orders', columns, tableConstraints: [{ constraintType: 'PRIMARY_KEY', columns: ['TENANT_ID', 'id'] }] });
   expect(columns.every((column) => !sourceNullable(column, keys))).toBe(true);
-  expect(suggestedDorisType(columns[0], true)).toBe('BIGINT');
+  expect(suggestedDorisType(columns[0])).toBe('BIGINT');
 });
 
 test('date and decimal defaults retain usable partition types and precision', () => {

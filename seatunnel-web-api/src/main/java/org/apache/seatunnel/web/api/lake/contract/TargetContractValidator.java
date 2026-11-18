@@ -79,8 +79,9 @@ public final class TargetContractValidator {
         columns.sort(NonNullFunctions.comparing(TargetColumn::getPhysicalOrdinal));
 
         List<String> keyColumns = normalizeNames(contract.getKeyColumns(), "key column");
-        if (keyColumns.isEmpty()) {
-            throw new IllegalArgumentException("TargetContract must contain at least one key column");
+        boolean unique = contract.getTableModel() == LakeTableModel.UNIQUE;
+        if (unique && keyColumns.isEmpty()) {
+            throw new IllegalArgumentException("Unique tables must contain at least one merge key column");
         }
         Set<String> keySet = new HashSet<>(keyColumns);
         if (keySet.size() != keyColumns.size()) {
@@ -94,8 +95,8 @@ public final class TargetContractValidator {
             if (!Boolean.TRUE.equals(column.getKey())) {
                 throw new IllegalArgumentException("Key column flag does not match keyColumns");
             }
-            if (Boolean.TRUE.equals(column.getNullable())) {
-                throw new IllegalArgumentException("Key columns must be NOT NULL");
+            if (unique && Boolean.TRUE.equals(column.getNullable())) {
+                throw new IllegalArgumentException("Unique merge key columns must be NOT NULL");
             }
             if (column.getTargetType().getBase().isKeyForbidden()) {
                 throw new IllegalArgumentException("Doris key type is not supported");

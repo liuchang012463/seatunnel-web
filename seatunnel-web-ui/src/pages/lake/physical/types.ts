@@ -10,6 +10,7 @@ export type LakeResourceStatus =
   | 'DELETED';
 
 export type LakeManagementLevel = 'MANAGED' | 'AUTO_CREATED' | 'UNMANAGED';
+export type LakeTableModel = 'DUPLICATE' | 'UNIQUE';
 export type LakeConsistencyStatus = 'CONSISTENT' | 'DRIFT' | 'MISSING' | 'UNKNOWN' | 'UNBOUND';
 
 export interface PhysicalDataSource {
@@ -94,7 +95,7 @@ export interface TargetColumn {
 }
 
 export interface TargetContract {
-  tableModel?: 'DUPLICATE' | 'UNIQUE';
+  tableModel?: LakeTableModel;
   columns?: TargetColumn[];
   keyColumns?: string[];
   partition?: {
@@ -133,7 +134,7 @@ export interface ManagedTable {
   databaseName?: string;
   targetTableName?: string;
   managementLevel?: LakeManagementLevel;
-  tableModel?: 'DUPLICATE' | 'UNIQUE';
+  tableModel?: LakeTableModel;
   resourceStatus?: LakeResourceStatus;
   generation?: number;
   lockVersion?: number;

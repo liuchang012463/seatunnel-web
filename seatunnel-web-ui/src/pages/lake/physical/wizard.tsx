@@ -1,4 +1,3 @@
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import {
@@ -10,7 +9,6 @@ import {
   Descriptions,
   Form,
   Input,
-  InputNumber,
   Select,
   Space,
   Spin,
@@ -34,8 +32,8 @@ import {
   fetchSourceTables,
   previewManagedTable,
 } from './service';
-import type { ApiResponse, OdsSourceTable, OdsSourceTableDetail, PhysicalDataSource } from './types';
-import { primaryKeyNames, sourceNullable, suggestedDorisType, suggestedTableName } from './tableDefaults';
+import type { ApiResponse, LakeTableModel, OdsSourceTable, OdsSourceTableDetail, PhysicalDataSource } from './types';
+import { primaryKeyNames, sourceNullable, suggestedDorisType, suggestedTableName, TABLE_MODEL_LABELS } from './tableDefaults';
 import './wizard.less';
 
 const { Text } = Typography;
@@ -43,10 +41,9 @@ const { Text } = Typography;
 interface WizardColumn {
   sourceField: string;
   sourceType?: string;
-  sourceNullable?: boolean;
+  sourceNullable: boolean;
   targetField: string;
   targetType: string;
-  key: boolean;
 }
 
 interface WizardValues {
@@ -54,7 +51,7 @@ interface WizardValues {
   schemaFqn?: string;
   tableId?: string;
   targetTableName?: string;
-  tableModel?: 'DUPLICATE' | 'UNIQUE';
+  tableModel?: LakeTableModel;
   partitionEnabled?: boolean;
   partitionColumn?: string;
   granularity?: 'DAY' | 'MONTH' | 'YEAR';
@@ -93,6 +90,7 @@ const ManagedTableWizard: React.FC = () => {
   const [selectedTable, setSelectedTable] = useState<OdsSourceTable>();
   const [tableDetail, setTableDetail] = useState<OdsSourceTableDetail>();
   const [columns, setColumns] = useState<WizardColumn[]>([]);
+  const [customKeyFields, setCustomKeyFields] = useState<Partial<Record<LakeTableModel, string[]>>>({});
   const [policies, setPolicies] = useState<LakeLifecyclePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
@@ -102,7 +100,29 @@ const ManagedTableWizard: React.FC = () => {
   const [warningsAcknowledged, setWarningsAcknowledged] = useState(false);
   const databaseFqn = Form.useWatch('databaseFqn', { form, preserve: true });
   const schemaFqn = Form.useWatch('schemaFqn', { form, preserve: true });
+  const tableModel: LakeTableModel = Form.useWatch('tableModel', { form, preserve: true }) ?? 'DUPLICATE';
   const partitionEnabled = Form.useWatch('partitionEnabled', { form, preserve: true });
+  const unique = tableModel === 'UNIQUE';
+
+  const primaryKeys = tableDetail ? primaryKeyNames(tableDetail) : new Set<string>();
+  const columnsBySource = new Map(columns.map((column) => [column.sourceField.toLowerCase(), column]));
+  const primaryKeyFields = [...primaryKeys].flatMap((name) => {
+    const field = columnsBySource.get(name);
+    return field && !field.sourceNullable && !isKeyForbiddenType(field.targetType) ? [field.sourceField] : [];
+  });
+  const usablePrimaryKey = primaryKeys.size > 0 && primaryKeyFields.length === primaryKeys.size;
+  const firstSortField = columns.find((field) => !field.sourceNullable && !isKeyForbiddenType(field.targetType));
+  // A sort default may pick a non-key field. Only a complete source primary key is safe to suggest for merging.
+  const keyFields = customKeyFields[tableModel]?.filter((name) => columnsBySource.has(name.toLowerCase())) ?? (usablePrimaryKey
+    ? primaryKeyFields
+    : !unique && firstSortField ? [firstSortField.sourceField] : []);
+  const keySet = new Set(keyFields);
+  const keyTargets = keyFields.map((name) => columnsBySource.get(name.toLowerCase())!.targetField);
+  const usesSourcePrimaryKey = usablePrimaryKey && keySet.size === primaryKeyFields.length && primaryKeyFields.every((name) => keySet.has(name));
+  const keySummary = keyFields.length
+    ? `按${usesSourcePrimaryKey ? '源表主键' : ''} ${keyFields.join('、')} ${unique ? '合并' : '排序'}`
+    : unique ? '请选择能唯一识别一条记录的字段' : '无排序字段';
+  const partitionFields = columns.filter((field) => !field.sourceNullable && isDateType(field.targetType));
 
   const load = useCallback(async () => {
     if (!sourceId || !bindingId) {
@@ -118,6 +138,11 @@ const ManagedTableWizard: React.FC = () => {
         fetchApplicableLifecyclePolicies(sourceId),
       ]);
       if (sourceResponse.code !== 0 || !sourceResponse.data) throw new Error(responseMessage(sourceResponse, '数据源加载失败'));
+      if (String(sourceResponse.data.sourceDataSourceId) !== String(sourceId)
+        || String(sourceResponse.data.odsDatabaseBindingId) !== String(bindingId)) {
+        console.warn('[lake-physical-wizard] 数据源与入湖库不匹配', { sourceId, bindingId });
+        throw new Error('入湖库与当前数据源不匹配，请返回后重新选表。');
+      }
       setSource(sourceResponse.data);
       if (databaseResponse.code !== 0) throw new Error(responseMessage(databaseResponse, '源数据库读取失败'));
       const nextDatabases = (databaseResponse.data || []).map((item) => ({ value: item.fullyQualifiedName || item.name, label: item.name || item.fullyQualifiedName }));
@@ -175,6 +200,8 @@ const ManagedTableWizard: React.FC = () => {
     setSelectedTable(table);
     setTableDetail(undefined);
     setColumns([]);
+    setCustomKeyFields({});
+    setAdvanced([]);
     setTableLoading(true);
     try {
       const response = await fetchSourceTableDetail(sourceId, table.id);
@@ -182,21 +209,13 @@ const ManagedTableWizard: React.FC = () => {
       if (response.code !== 0 || !response.data) throw new Error(responseMessage(response, '源表结构读取失败'));
       setTableDetail(response.data);
       const keys = primaryKeyNames(response.data);
-      const nextColumns = (response.data.columns || []).map((column) => {
-        const key = keys.has(column.name.toLowerCase());
-        return {
+      const nextColumns = (response.data.columns || []).map((column) => ({
           sourceField: column.name,
           sourceType: column.dataTypeDisplay || column.dataType,
           sourceNullable: sourceNullable(column, keys),
           targetField: column.name,
-          targetType: suggestedDorisType(column, key),
-          key,
-        };
-      });
-      if (!nextColumns.some((column) => column.key)) {
-        const fallback = nextColumns.find((column) => !column.sourceNullable && !isKeyForbiddenType(column.targetType));
-        if (fallback) fallback.key = true;
-      }
+          targetType: suggestedDorisType(column),
+      }));
       setColumns(nextColumns);
       form.setFieldsValue({
         targetTableName: suggestedTableName(databases.find((item) => item.value === databaseFqn)?.label || '', schemas.find((item) => item.value === schemaFqn)?.label || '', table.name),
@@ -216,15 +235,7 @@ const ManagedTableWizard: React.FC = () => {
   };
 
   const updateColumn = (index: number, patch: Partial<WizardColumn>) => {
-    setColumns((currentColumns) => currentColumns.map((column, columnIndex) => {
-      if (columnIndex !== index) return column;
-      const next = { ...column, ...patch };
-      if (patch.key && isKeyForbiddenType(next.targetType)) next.targetType = 'VARCHAR(255)';
-      if (patch.targetType !== undefined && next.key && isKeyForbiddenType(next.targetType)) {
-        next.targetType = 'VARCHAR(255)';
-      }
-      return next;
-    }));
+    setColumns((currentColumns) => currentColumns.map((column, columnIndex) => columnIndex === index ? { ...column, ...patch } : column));
   };
 
   const payload = () => {
@@ -236,11 +247,12 @@ const ManagedTableWizard: React.FC = () => {
       lifecyclePolicyId: values.lifecyclePolicyId,
       targetTableName: values.targetTableName,
       tableModel: values.tableModel || 'DUPLICATE',
-      columns: columns.map((column) => ({ sourceField: column.sourceField, targetField: column.targetField, targetType: column.targetType, key: column.key })),
-      keyColumns: columns.filter((column) => column.key).map((column) => column.targetField),
+      columns: columns.map((column) => ({ sourceField: column.sourceField, targetField: column.targetField, targetType: column.targetType, key: keySet.has(column.sourceField) })),
+      // Send source names so a renamed target column cannot select a different source column with the same name.
+      keyColumns: keyFields,
       partition: { enabled: Boolean(values.partitionEnabled), column: values.partitionEnabled ? values.partitionColumn : undefined, granularity: values.partitionEnabled ? values.granularity : undefined },
       distribution: values.tableModel === 'UNIQUE'
-        ? { type: 'HASH', columns: columns.filter((column) => column.key).map((column) => column.targetField), buckets: 'AUTO' }
+        ? { type: 'HASH', columns: keyTargets, buckets: 'AUTO' }
         : { type: 'RANDOM', columns: [], buckets: 'AUTO' },
     };
   };
@@ -251,12 +263,15 @@ const ManagedTableWizard: React.FC = () => {
       if (!selectedTable || !tableDetail || !columns.length) throw new Error('请先选择并读取源表结构');
       const names = columns.map((column) => column.targetField.trim().toUpperCase());
       if (names.some((name) => !name) || new Set(names).size !== names.length) throw new Error('目标字段名不能为空或重复，请检查高级配置');
-      if (!columns.some((column) => column.key)) throw new Error('请在高级配置中至少选择一个非空字段作为排序键');
-      if (columns.some((column) => column.key && column.sourceNullable)) throw new Error('排序键必须是源端非空字段，请检查高级配置');
+      if (unique && !keyFields.length) throw new Error('请选择能唯一识别一条记录的非空字段');
+      if (columns.some((column) => keySet.has(column.sourceField) && (isKeyForbiddenType(column.targetType) || (unique && column.sourceNullable)))) {
+        throw new Error(unique ? '用于识别记录的字段必须非空且类型受支持' : '所选字段的目标类型无法用于排序');
+      }
       if (form.getFieldValue('partitionEnabled')) {
         const partitionColumn = form.getFieldValue('partitionColumn');
-        if (!columns.some((column) => column.targetField === partitionColumn && !column.sourceNullable && isDateType(column.targetType))) throw new Error('请选择非空的日期或时间字段作为分区字段');
-        if (form.getFieldValue('tableModel') === 'UNIQUE' && !columns.some((column) => column.targetField === partitionColumn && column.key)) throw new Error('按键合并时，分区字段也必须是排序键');
+        const field = partitionFields.find((column) => column.targetField === partitionColumn);
+        if (!field) throw new Error('请选择非空的日期或时间字段作为分区字段');
+        if (unique && !keySet.has(field.sourceField)) throw new Error('按键合并时，分区字段也要用于识别同一条记录');
       }
       setPreviewLoading(true);
       const response = await previewManagedTable(payload());
@@ -312,15 +327,19 @@ const ManagedTableWizard: React.FC = () => {
     }
   };
 
-  const sourceColumns = useMemo(() => [
-    { title: '排序键', dataIndex: 'key', width: 72, render: (_: unknown, row: WizardColumn, index: number) => <Checkbox aria-label={`${row.sourceField}设为排序键`} checked={row.key} onChange={(event) => updateColumn(index, { key: event.target.checked })} /> },
+  const sourceColumns = [
+    { title: unique ? '用于合并' : '用于排序', key: 'key', width: 110, render: (_: unknown, row: WizardColumn) => (
+      <Checkbox aria-label={`${row.sourceField}用于${unique ? '合并' : '排序'}`} checked={keySet.has(row.sourceField)}
+        disabled={isKeyForbiddenType(row.targetType) || (unique && row.sourceNullable)}
+        onChange={(event) => setCustomKeyFields((previous) => ({ ...previous, [tableModel]: event.target.checked
+          ? [...keyFields, row.sourceField] : keyFields.filter((name) => name !== row.sourceField) }))} />
+    ) },
     { title: '源字段', dataIndex: 'sourceField', width: 180 },
     { title: '源类型', dataIndex: 'sourceType', width: 160, render: (value: string) => <Text type="secondary">{value || '-'}</Text> },
     { title: '允许空值', dataIndex: 'sourceNullable', width: 100, render: (value: boolean) => value ? '是' : '否' },
     { title: '目标字段', dataIndex: 'targetField', width: 190, render: (_: unknown, row: WizardColumn, index: number) => <Input aria-label={`${row.sourceField}的目标字段名`} value={row.targetField} onChange={(event) => updateColumn(index, { targetField: event.target.value })} /> },
-    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select aria-label={`${row.sourceField}的目标类型`} value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={Array.from(new Set([row.targetType, 'STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'])).map((value) => ({ value, label: value, disabled: row.key && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
-    { title: '说明', key: 'hint', render: (_: unknown, row: WizardColumn) => row.key && row.targetType === 'VARCHAR(255)' ? <Text type="warning"><InfoCircleOutlined /> Key 不使用 STRING</Text> : null },
-  ], [columns]);
+    { title: '目标类型', dataIndex: 'targetType', width: 180, render: (_: unknown, row: WizardColumn, index: number) => <Select aria-label={`${row.sourceField}的目标类型`} value={row.targetType} onChange={(value) => updateColumn(index, { targetType: value })} options={Array.from(new Set([row.targetType, 'STRING', 'VARCHAR(255)', 'BIGINT', 'INT', 'DATE', 'DATETIME', 'DECIMAL(18,2)', 'DOUBLE'])).map((value) => ({ value, label: value, disabled: keySet.has(row.sourceField) && isKeyForbiddenType(value) }))} style={{ width: 150 }} /> },
+  ];
 
   if (loading) return <PageContainer title={false}><Spin /></PageContainer>;
   if (loadError) return <PageContainer title={false}><Alert type="error" showIcon message={loadError} action={<Button onClick={load}>重新加载</Button>} /></PageContainer>;
@@ -329,7 +348,7 @@ const ManagedTableWizard: React.FC = () => {
   return <PageContainer title={false}>
     <div className="lake-wizard-page">
       <Card className="lake-wizard-card">
-        <Steps current={current} items={[{ title: '选表与配置' }, { title: '确认并创建任务' }]} />
+        <Steps current={current} items={[{ title: '选表与配置' }, { title: '确认并建表' }]} />
         <div className="lake-wizard-body">
           <Form name="lake-managed-table" form={form} layout="vertical" preserve>
             {current === 0 && <div className="lake-step-panel">
@@ -344,31 +363,42 @@ const ManagedTableWizard: React.FC = () => {
               </Space>
               {!tables.length && schemaFqn && <Alert type="info" message="此范围暂无已采集的表结构" description="可在数据源管理中采集元数据后，返回此处刷新。" action={<Button onClick={() => history.push('/data-source')}>查看数据源</Button>} />}
               {tableDetail && !tableLoading && <>
-                <Form.Item name="targetTableName" label="ODS 表名" extra={`已按源结构生成 ${columns.length} 个字段；默认自动分桶、长期保留。`} rules={[{ required: true, message: '请输入表名' }, { pattern: /^[A-Za-z0-9_]+$/, message: '仅支持字母、数字和下划线' }]}>
+                <Form.Item name="targetTableName" label="ODS 表名" rules={[{ required: true, message: '请输入表名' }, { pattern: /^[A-Za-z0-9_]+$/, message: '仅支持字母、数字和下划线' }]}>
                   <Input style={{ maxWidth: 560 }} /></Form.Item>
+                <Form.Item name="tableModel" label="表模型" extra={keySummary}>
+                  <Select style={{ maxWidth: 360 }} options={Object.entries(TABLE_MODEL_LABELS).map(([value, label]) => ({ value, label }))}
+                    onChange={(value) => {
+                      if (value === 'UNIQUE' && !(customKeyFields.UNIQUE?.length ?? usablePrimaryKey)) setAdvanced(['structure']);
+                    }} />
+                </Form.Item>
                 <Form.Item name="lifecyclePolicyId" label="生命周期策略" extra="只展示适用于当前数据源的启用策略。选定策略后自动开启时间分区。">
                   <Select allowClear style={{ maxWidth: 560 }} placeholder="长期保留（默认）"
                     options={policies.map((policy, index) => ({ value: policy.id, label: `${index === 0 ? '推荐 · ' : ''}${policy.policyName} · ${policy.retentionCount} 个历史${({ DAY: '日', MONTH: '月', YEAR: '年' })[policy.granularity || 'DAY']}分区` }))}
                     onChange={(id) => {
                       const policy = policies.find((item) => item.id === id);
-                      form.setFieldsValue({ partitionEnabled: !!id, granularity: policy?.granularity || 'DAY', partitionColumn: id ? columns.find((column) => !column.sourceNullable && isDateType(column.targetType))?.targetField : undefined });
+                      const field = partitionFields.find((column) => !unique || keySet.has(column.sourceField));
+                      form.setFieldsValue({ partitionEnabled: !!id, granularity: policy?.granularity || 'DAY', partitionColumn: id ? field?.targetField : undefined });
                       if (id) setAdvanced(['partition']);
                     }} /></Form.Item>
                 <Collapse activeKey={advanced} onChange={(keys) => setAdvanced(Array.isArray(keys) ? keys : [keys])} items={[
-                  { key: 'structure', forceRender: true, label: `字段映射与表模型（${columns.length} 个字段，自动分桶）`, children: <>
-                    <Form.Item name="tableModel" label="表模型"><Select style={{ width: 320 }} options={[{ value: 'DUPLICATE', label: '保留明细（默认）' }, { value: 'UNIQUE', label: '按键合并（相同键保留最新记录）' }]} /></Form.Item>
-                    <Table rowKey="sourceField" columns={sourceColumns} dataSource={columns} pagination={false} scroll={{ x: 1100 }} />
+                  { key: 'structure', label: `字段映射（${columns.length} 个字段）`, children: <>
+                    {unique && <Typography.Paragraph type="secondary">用于合并的字段组合应唯一标识一条记录。相同组合的后续写入会覆盖原记录。</Typography.Paragraph>}
+                    <Table rowKey="sourceField" columns={sourceColumns} dataSource={columns} pagination={false} scroll={{ x: 920 }} />
                   </> },
-                  { key: 'partition', forceRender: true, label: '时间分区与存储设置', children: <>
+                  { key: 'partition', label: '时间分区与存储设置', children: <>
+                    <Typography.Paragraph type="secondary">自动分桶（{unique ? '按用于合并的字段分布' : '随机分布'}）</Typography.Paragraph>
                     <Space style={{ marginBottom: 16 }}><Switch aria-label="启用时间分区" checked={!!partitionEnabled} onChange={(enabled) => {
                       form.setFieldsValue({ partitionEnabled: enabled, ...(enabled ? {} : { partitionColumn: undefined, lifecyclePolicyId: undefined }) });
                     }} />启用时间分区</Space>
                     {partitionEnabled && <Space align="start" wrap>
                       <Form.Item name="partitionColumn" label="分区时间字段" rules={[{ required: true, message: '请选择分区字段' }]}>
-                        <Select style={{ width: 280 }} placeholder="选择非空时间字段" options={columns.filter((column) => !column.sourceNullable && isDateType(column.targetType)).map((column) => ({ value: column.targetField, label: column.targetField }))} /></Form.Item>
+                        <Select style={{ width: 280 }} placeholder="选择非空时间字段" options={partitionFields.map((column) => ({ value: column.targetField, label: column.targetField, disabled: unique && !keySet.has(column.sourceField) }))} /></Form.Item>
                       <Form.Item name="granularity" label="分区粒度"><Select style={{ width: 160 }} options={[{ value: 'DAY', label: '按天' }, { value: 'MONTH', label: '按月' }, { value: 'YEAR', label: '按年' }]} onChange={() => form.setFieldValue('lifecyclePolicyId', undefined)} /></Form.Item>
                     </Space>}
-                    {partitionEnabled && !columns.some((column) => !column.sourceNullable && isDateType(column.targetType)) && <Alert type="warning" message="没有可用的非空日期或时间字段；请保持长期保留，或先调整源表结构。" />}
+                    {partitionEnabled && !partitionFields.length && <Alert type="warning" message="源表没有可用的非空日期或时间字段，请关闭时间分区。" />}
+                    {partitionEnabled && unique && !!partitionFields.length && !partitionFields.some((column) => keySet.has(column.sourceField)) && (
+                      <Alert type="warning" message="按键合并时，分区字段也要用于识别同一条记录。" />
+                    )}
                   </> },
                 ]} />
               </>}
@@ -379,6 +409,7 @@ const ManagedTableWizard: React.FC = () => {
             <Descriptions bordered column={1} style={{ marginTop: 20 }}>
               <Descriptions.Item label="来源表">{selectedTable?.fullyQualifiedName}</Descriptions.Item>
               <Descriptions.Item label="目标表">{source.odsDatabase?.databaseName}.{preview?.targetTableName}</Descriptions.Item>
+              <Descriptions.Item label="表模型">{TABLE_MODEL_LABELS[preview?.targetContract?.tableModel ?? tableModel]} · {keySummary}</Descriptions.Item>
               <Descriptions.Item label="字段数">{preview?.targetContract?.columns?.length}</Descriptions.Item>
               <Descriptions.Item label="任务写入">全量覆盖：每次先清空目标数据再重导，失败后需重新执行。</Descriptions.Item>
               <Descriptions.Item label="保留方式">{form.getFieldValue('lifecyclePolicyId') ? policies.find((policy) => policy.id === form.getFieldValue('lifecyclePolicyId'))?.policyName : '长期保留'}</Descriptions.Item>

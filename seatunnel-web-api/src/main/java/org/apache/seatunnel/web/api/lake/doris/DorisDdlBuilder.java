@@ -12,9 +12,12 @@ import org.apache.seatunnel.web.api.lake.contract.TargetType;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /** Builds deterministic, identifier-safe CREATE TABLE statements for Doris. */
 public final class DorisDdlBuilder {
+
+    static final String DUPLICATE_WITHOUT_KEYS = "enable_duplicate_without_keys_by_default";
 
     public String build(String databaseName, String tableName, TargetContract contract) {
         return build(databaseName, tableName, contract, Map.of());
@@ -25,7 +28,7 @@ public final class DorisDdlBuilder {
         TargetContract normalised = TargetContractValidator.validateAndNormalize(contract);
         String database = DorisIdentifier.validate(databaseName);
         String table = DorisIdentifier.validate(tableName);
-        Map<String, String> properties = DorisTablePropertyWhitelist.validateAndCopy(tableProperties);
+        Map<String, String> properties = new TreeMap<>(DorisTablePropertyWhitelist.validateAndCopy(tableProperties));
 
         StringBuilder ddl = new StringBuilder(512);
         ddl.append("CREATE TABLE ").append(DorisIdentifier.quote(database)).append('.')
@@ -41,9 +44,14 @@ public final class DorisDdlBuilder {
                     .append(Boolean.TRUE.equals(column.getNullable()) ? "NULL" : "NOT NULL");
         }
         ddl.append("\n) ENGINE=OLAP\n");
-        ddl.append(normalised.getTableModel().getCode()).append(" KEY(");
-        appendIdentifiers(ddl, normalised.getKeyColumns());
-        ddl.append(")\n");
+        if (normalised.getKeyColumns().isEmpty()) {
+            // Doris infers leading sort columns unless this property is set and the KEY clause is omitted.
+            properties.put(DUPLICATE_WITHOUT_KEYS, "true");
+        } else {
+            ddl.append(normalised.getTableModel().getCode()).append(" KEY(");
+            appendIdentifiers(ddl, normalised.getKeyColumns());
+            ddl.append(")\n");
+        }
 
         TargetPartition partition = normalised.getPartition();
         if (Boolean.TRUE.equals(partition.getEnabled())) {

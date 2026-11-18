@@ -49,6 +49,29 @@ class LakeManagedTableContractFactoryTest {
     }
 
     @Test
+    void duplicateAcceptsNullableFieldsWithOrWithoutSortingWhileUniqueRequiresNonNullKey() {
+        var source = new SourceObjectSnapshot("om-table", "svc.db.public.student",
+                List.of(new SourceColumnSnapshot("id", 1, "INT", "integer", null, null, null, null, true)),
+                List.of(), "source-hash", "snapshot");
+        var request = new LakeManagedTablePreviewDTO();
+        var withoutSort = factory.build(source, request);
+        assertEquals(List.of(), withoutSort.getKeyColumns());
+        assertEquals(true, withoutSort.getColumns().get(0).getNullable());
+        assertDoesNotThrow(() -> factory.validateAgainstSource(withoutSort, source));
+
+        request.setKeyColumns(List.of("id"));
+        var withSort = factory.build(source, request);
+        assertEquals(List.of("id"), withSort.getKeyColumns());
+        assertEquals(true, withSort.getColumns().get(0).getNullable());
+        assertDoesNotThrow(() -> factory.validateAgainstSource(withSort, source));
+
+        request.setTableModel(LakeTableModel.UNIQUE);
+        assertThrows(IllegalArgumentException.class, () -> factory.build(source, request));
+        request.setKeyColumns(List.of());
+        assertThrows(IllegalArgumentException.class, () -> factory.build(source, request));
+    }
+
+    @Test
     void targetNameAndTypeAreStructuredAndSourceFactsRemainAuthoritative() {
         LakeManagedTablePreviewDTO request = new LakeManagedTablePreviewDTO();
         LakeManagedTableColumnDTO id = new LakeManagedTableColumnDTO();
