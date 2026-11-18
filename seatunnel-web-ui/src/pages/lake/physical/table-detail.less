@@ -1,4 +1,7 @@
 .lake-table-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -8,19 +11,31 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
-.lake-table-status-card {
-  margin-bottom: 18px;
+.lake-table-name,
+.lake-table-detail .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
 }
 
-.lake-table-tabs {
-  margin-top: 18px;
+.lake-table-source-link {
+  height: auto;
+  padding: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
 }
 
 .lake-table-tab-content {
   width: 100%;
+}
+
+.lake-table-task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
 
 .lake-impact-card {
