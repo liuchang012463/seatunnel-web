@@ -6,7 +6,9 @@
   min-height: 0;
 }
 
-.ant-pro-layout .ant-pro-page-container-children-container > .lake-resource-detail {
+/* Match the shared PageContainer override so the table fills the space below the source summary. */
+.ant-pro-layout .ant-pro-page-container:has(.lake-resource-detail)
+  .ant-pro-page-container-children-container > .lake-resource-detail {
   display: flex;
   flex: 1 !important;
   flex-direction: column;
