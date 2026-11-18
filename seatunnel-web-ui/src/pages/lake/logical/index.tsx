@@ -21,7 +21,6 @@ import { history, useLocation } from '@umijs/max';
 import {
   Alert,
   Button,
-  Card,
   Collapse,
   Drawer,
   Empty,
@@ -422,12 +421,14 @@ const LogicalAccessPage: React.FC = () => {
       title: '查询状态',
       dataIndex: 'resourceStatus',
       width: 110,
+      align: 'center',
       render: (_, row) => <Tag color={statusColor(row.resourceStatus)}>{statusLabel(row.resourceStatus)}</Tag>,
     },
     {
       title: '配置检查',
       dataIndex: 'validationStatus',
       width: 120,
+      align: 'center',
       render: (_, row) => <Tag color={statusColor(row.validationStatus)}>{statusLabel(row.validationStatus)}</Tag>,
     },
     {
@@ -439,12 +440,13 @@ const LogicalAccessPage: React.FC = () => {
     {
       title: '操作',
       valueType: 'option',
-      width: 100,
+      width: 110,
+      align: 'center',
       fixed: 'right',
       render: (_, row) =>
         row.id ? (
           <Button type="link" onClick={() => history.push('/lake/logical-access/' + row.id)}>
-            查看数据
+            查看详情
           </Button>
         ) : null,
     },
@@ -479,78 +481,81 @@ const LogicalAccessPage: React.FC = () => {
           }
         />
       ) : null}
-      <ProTable<LakeCatalog>
-        className="lake-catalog-table"
-        rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
-        actionRef={actionRef}
-        columns={columns}
-        scroll={{ x: 950 }}
-        search={false}
-        // The default toolbar renders refresh/settings as non-focusable spans; the explicit
-        // refresh button below is keyboard accessible.
-        options={false}
-        pagination={false}
-        params={{ current: pageNumber, pageSize }}
-        toolBarRender={() => [
-          <Button
-            key="create"
-            type="primary"
-            icon={<PlusOutlined />}
-            disabled={sourcesLoading || !sources.length}
-            onClick={() => setCreateOpen(true)}
-          >
-            创建挂载
-          </Button>,
-          <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>
-            刷新
-          </Button>,
-        ]}
-        request={async (params) => {
-          setCatalogError(undefined);
-          try {
-            const response = await withTimeout(
-              fetchCatalogs({
-                pageNo: Number(params.current || 1),
-                pageSize: Number(params.pageSize || 10),
-                targetCatalogName: params.targetCatalogName,
-                sourceDataSourceId: params.sourceDataSourceId,
-                adapter: params.adapter,
-                resourceStatus: params.resourceStatus,
-                validationStatus: params.validationStatus,
-              }),
-              10000,
-              '逻辑入湖列表请求超时，请稍后重试',
-            );
-            if (response.code !== 0) throw new Error(responseMessage(response));
-            const page = normalizeLakePage(response.data);
-            setTotal(page.total);
-            return { data: page.data, success: true, total: page.total };
-          } catch (error) {
-            setTotal(0);
-            setCatalogError(error instanceof Error ? error.message : '逻辑入湖列表加载失败');
-            return { data: [], success: false, total: 0 };
-          }
-        }}
-      />
-      <div className="lake-logical-pagination">
-        <Pagination
-          current={pageNumber}
-          pageSize={pageSize}
-          total={total}
-          showSizeChanger
-          showTotal={(count) => `共 ${count} 个挂载`}
-          onChange={(next, size) => {
-            setPageNumber(next);
-            setPageSize(size);
+      <div className="lake-logical-frame">
+        <ProTable<LakeCatalog>
+          className="lake-catalog-table"
+          rowKey={(row) => String(row.id || `${row.sourceDataSourceId}-${row.targetCatalogName}`)}
+          actionRef={actionRef}
+          columns={columns}
+          tableLayout="fixed"
+          scroll={{ x: 960 }}
+          search={false}
+          // The default toolbar renders refresh/settings as non-focusable spans; the explicit
+          // refresh button below is keyboard accessible.
+          options={false}
+          pagination={false}
+          locale={{
+            emptyText: (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={!sourcesLoading && !sources.length ? '暂无可用业务数据源' : '暂无逻辑挂载'} />
+            ),
+          }}
+          params={{ current: pageNumber, pageSize }}
+          toolBarRender={() => [
+            <Button
+              key="create"
+              type="primary"
+              icon={<PlusOutlined />}
+              disabled={sourcesLoading || !sources.length}
+              onClick={() => setCreateOpen(true)}
+            >
+              创建挂载
+            </Button>,
+            <Button key="refresh" icon={<ReloadOutlined />} onClick={() => actionRef.current?.reloadAndRest?.()}>
+              刷新
+            </Button>,
+          ]}
+          request={async (params) => {
+            setCatalogError(undefined);
+            try {
+              const response = await withTimeout(
+                fetchCatalogs({
+                  pageNo: Number(params.current || 1),
+                  pageSize: Number(params.pageSize || 10),
+                  targetCatalogName: params.targetCatalogName,
+                  sourceDataSourceId: params.sourceDataSourceId,
+                  adapter: params.adapter,
+                  resourceStatus: params.resourceStatus,
+                  validationStatus: params.validationStatus,
+                }),
+                10000,
+                '逻辑入湖列表请求超时，请稍后重试',
+              );
+              if (response.code !== 0) throw new Error(responseMessage(response));
+              const page = normalizeLakePage(response.data);
+              setTotal(page.total);
+              return { data: page.data, success: true, total: page.total };
+            } catch (error) {
+              setTotal(0);
+              setCatalogError(error instanceof Error ? error.message : '逻辑入湖列表加载失败');
+              return { data: [], success: false, total: 0 };
+            }
           }}
         />
+        <div className="lake-logical-pagination">
+          <Pagination
+            current={pageNumber}
+            pageSize={pageSize}
+            total={total}
+            showSizeChanger
+            showTotal={(count) => `共 ${count} 个挂载`}
+            onChange={(next, size) => {
+              setPageNumber(next);
+              setPageSize(size);
+            }}
+          />
+        </div>
       </div>
-      {!sourcesLoading && !sources.length ? (
-        <Card className="lake-logical-empty">
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可用业务数据源" />
-          <Typography.Text type="secondary">请先在数据源管理中创建 MySQL、PostgreSQL 或 Oracle 连接。</Typography.Text>
-        </Card>
-      ) : null}
       <CreateCatalogDrawer
         open={createOpen}
         onClose={() => setCreateOpen(false)}
