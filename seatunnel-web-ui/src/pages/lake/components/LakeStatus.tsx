@@ -77,6 +77,12 @@ export const LakeConsistencyTag: React.FC<{ status?: LakeConsistencyStatus | str
   return <Tag color={config?.color}>{config?.label || status || '未设置'}</Tag>;
 };
 
+export const LakeRelationStatusTag: React.FC<{ status?: string }> = ({ status }) => {
+  if (status === 'ACTIVE') return <Tag color="success" title="任务当前配置关联此入湖库或表">有效</Tag>;
+  if (status === 'STALE') return <Tag title="任务已删除，或当前配置已不再匹配此关系">已失效</Tag>;
+  return <Tag>未知</Tag>;
+};
+
 export const CapabilityReason: React.FC<{ reasons?: string[]; fallback?: string }> = ({ reasons, fallback }) => {
   const values = reasons?.filter(Boolean) || [];
   if (!values.length) return <Typography.Text type="secondary">{fallback || '暂无能力限制'}</Typography.Text>;

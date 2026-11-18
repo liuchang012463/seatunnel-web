@@ -76,13 +76,6 @@ export const deleteManagedTable = (
   payload: { targetTableName: string; impactHash: string },
 ): Promise<ApiResponse<void>> => HttpUtils.delete(`${PHYSICAL_API}/tables/${encodeURIComponent(String(mappingId))}`, payload);
 
-export const bindUnmanagedTable = (payload: {
-  odsDatabaseBindingId: number;
-  targetTableName: string;
-  sourceDataSourceId: number;
-  omEntityId: string;
-}): Promise<ApiResponse<ManagedTable>> => HttpUtils.post(`${PHYSICAL_API}/unmanaged/bind`, payload);
-
 export const unbindUnmanagedTable = (mappingId: number): Promise<ApiResponse<ManagedTable>> =>
   HttpUtils.delete(`${PHYSICAL_API}/unmanaged/${encodeURIComponent(String(mappingId))}/binding`);
 

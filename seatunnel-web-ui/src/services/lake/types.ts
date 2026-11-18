@@ -38,6 +38,7 @@ export interface LakeOdsDatabase {
   unitCode?: string;
   systemCode?: string;
   databaseName?: string;
+  displayName?: string;
   resourceStatus?: LakeResourceStatus;
   generation?: number;
   lockVersion?: number;

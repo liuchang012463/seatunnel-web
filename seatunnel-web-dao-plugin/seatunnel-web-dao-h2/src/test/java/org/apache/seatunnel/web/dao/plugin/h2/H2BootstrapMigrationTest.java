@@ -13,7 +13,7 @@ class H2BootstrapMigrationTest {
                 .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").outOfOrder(true).load();
         flyway.migrate();
         flyway.validate();
-        assertEquals("1.0.58", flyway.info().current().getVersion().toString());
+        assertEquals("1.0.59", flyway.info().current().getVersion().toString());
         try (var connection = DriverManager.getConnection(url, "sa", "");
              var stmt = connection.createStatement()) {
             // Query real application columns and Quartz tables, not just SQL syntax.
@@ -21,6 +21,7 @@ class H2BootstrapMigrationTest {
             stmt.executeQuery("SELECT exploration_pipeline_version, exploration_pipeline_retry_at FROM t_seatunnel_web_metadata_binding");
             stmt.executeQuery("SELECT system_managed, source_enabled, sink_enabled FROM t_seatunnel_web_datasource");
             stmt.executeQuery("SELECT schedule_config_json, target_database, datapack_config_json FROM t_seatunnel_web_offline_import_task");
+            stmt.executeQuery("SELECT database_name, display_name FROM t_seatunnel_web_lake_ods_database_binding");
             stmt.executeQuery("SELECT LOCK_NAME FROM QRTZ_LOCKS WHERE SCHED_NAME='test'");
             stmt.executeUpdate("INSERT INTO QRTZ_JOB_DETAILS (SCHED_NAME, JOB_NAME, JOB_GROUP, "
                     + "JOB_CLASS_NAME, IS_DURABLE, IS_NONCONCURRENT, IS_UPDATE_DATA, REQUESTS_RECOVERY) "
@@ -37,7 +38,8 @@ class H2BootstrapMigrationTest {
     void doesNotApplyBootstrapToAnExistingHistory() throws Exception {
         String url = "jdbc:h2:mem:existing_bootstrap;MODE=MySQL;DB_CLOSE_DELAY=-1";
         var flyway = Flyway.configure().dataSource(url, "sa", "")
-                .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").baselineVersion("1.0.58").load();
+                .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2")
+                .baselineVersion("1.0.58").target("1.0.58").load();
         // Model a pre-existing history through Flyway's API, never edit history rows.
         flyway.baseline();
         assertEquals(0, flyway.migrate().migrationsExecuted);
@@ -70,7 +72,8 @@ class H2BootstrapMigrationTest {
                     + "(id, resource_type, resource_id, generation, operation_type, operation_token, status) "
                     + "VALUES (10, 'ODS_TABLE_MAPPING', 100, 1, 'CREATE', 'shared_lease', 'FAILED')");
         }
-        var current = Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration/h2").load();
+        var current = Flyway.configure().dataSource(url, "sa", "")
+                .locations("classpath:db/migration/h2").target("1.0.58").load();
         assertEquals(1, current.migrate().migrationsExecuted);
         current.validate();
         try (var connection = DriverManager.getConnection(url, "sa", ""); var statement = connection.createStatement()) {
@@ -86,6 +89,27 @@ class H2BootstrapMigrationTest {
             try (var rows = statement.executeQuery("SELECT operation_token FROM t_seatunnel_web_lake_table_lifecycle_binding WHERE id=10")) {
                 assertTrue(rows.next());
                 assertNull(rows.getString(1));
+            }
+        }
+    }
+
+    @Test
+    void addsAnOptionalDisplayNameWithoutRenamingExistingDatabases() throws Exception {
+        String url = "jdbc:h2:mem:ods_display_name;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1";
+        Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration/h2")
+                .target("1.0.58").load().migrate();
+        try (var connection = DriverManager.getConnection(url, "sa", ""); var statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO t_seatunnel_web_lake_ods_database_binding "
+                    + "(id, lake_data_source_id, source_data_source_id, unit_code, system_code, database_name) "
+                    + "VALUES (1, 2, 3, 'unit', 'system', 'ods_unit_system_ds_3')");
+            var current = Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration/h2")
+                    .target("1.0.59").load();
+            assertEquals(1, current.migrate().migrationsExecuted);
+            try (var rows = statement.executeQuery("SELECT database_name, display_name "
+                    + "FROM t_seatunnel_web_lake_ods_database_binding WHERE id=1")) {
+                assertTrue(rows.next());
+                assertEquals("ods_unit_system_ds_3", rows.getString("database_name"));
+                assertNull(rows.getString("display_name"));
             }
         }
     }

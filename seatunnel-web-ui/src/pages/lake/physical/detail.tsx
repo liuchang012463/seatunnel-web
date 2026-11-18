@@ -14,11 +14,8 @@ import {
   Card,
   Collapse,
   Descriptions,
-  Drawer,
   Empty,
-  Form,
   Modal,
-  Select,
   Space,
   Spin,
   Tabs,
@@ -31,13 +28,9 @@ import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import OdsNameDialog from './OdsNameDialog';
 import {
-  bindUnmanagedTable,
   createOdsDatabase,
   fetchPhysicalInventory,
   fetchPhysicalSource,
-  fetchSourceDatabases,
-  fetchSourceSchemas,
-  fetchSourceTables,
   reconcileOdsDatabase,
   retryOdsDatabase,
   unbindUnmanagedTable,
@@ -46,11 +39,11 @@ import type {
   ApiResponse,
   InventoryRelation,
   InventoryTable,
-  OdsSourceTable,
   PhysicalDataSource,
   PhysicalInventory,
 } from './types';
 import {
+  LakeRelationStatusTag,
   LakeResourceStatusTag,
   relationSchemaMode,
   relationSourceDataSource,
@@ -81,102 +74,8 @@ const relationColumns: ProColumns<InventoryRelation>[] = [
   { title: '目标表', key: 'targetTable', width: 180, ellipsis: true, render: (_, row) => relationTargetTable(row) || <Text type="secondary">按任务动态生成</Text> },
   { title: 'Schema Mode', key: 'schemaSaveMode', width: 190, ellipsis: true, render: (_, row) => relationSchemaMode(row) || <Text type="secondary">未记录</Text> },
   { title: '源 DataSource', key: 'sourceDataSource', width: 130, render: (_, row) => relationSourceDataSource(row) || '-' },
-  { title: '关系状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <Tag>{row.relationStatus || 'UNKNOWN'}</Tag> },
+  { title: '关系状态', dataIndex: 'relationStatus', width: 120, render: (_, row) => <LakeRelationStatusTag status={row.relationStatus} /> },
 ];
-
-const BindUnmanagedDrawer: React.FC<{
-  open: boolean;
-  source?: PhysicalDataSource;
-  table?: InventoryTable;
-  onClose: () => void;
-  onSuccess: () => void;
-}> = ({ open, source, table, onClose, onSuccess }) => {
-  const [form] = Form.useForm<{ databaseFqn: string; schemaFqn: string; tableId: string }>();
-  const [databases, setDatabases] = useState<Array<{ value: string; label: string }>>([]);
-  const [schemas, setSchemas] = useState<Array<{ value: string; label: string }>>([]);
-  const [tables, setTables] = useState<OdsSourceTable[]>([]);
-  const [loading, setLoading] = useState(false);
-  const databaseFqn = Form.useWatch('databaseFqn', form);
-  const schemaFqn = Form.useWatch('schemaFqn', form);
-
-  useEffect(() => {
-    if (!open || !source?.sourceDataSourceId) return;
-    form.resetFields();
-    setSchemas([]);
-    setTables([]);
-    void fetchSourceDatabases(source.sourceDataSourceId).then((response) => {
-      if (response.code === 0) {
-        setDatabases((response.data || []).map((item) => ({ value: item.fullyQualifiedName || item.name, label: item.name || item.fullyQualifiedName })));
-      }
-    });
-  }, [form, open, source?.sourceDataSourceId]);
-
-  useEffect(() => {
-    if (!databaseFqn || !source?.sourceDataSourceId) {
-      setSchemas([]);
-      return;
-    }
-    void fetchSourceSchemas(source.sourceDataSourceId, databaseFqn).then((response) => {
-      if (response.code === 0) setSchemas((response.data || []).map((item) => ({ value: item.fullyQualifiedName, label: item.name || item.fullyQualifiedName })));
-    });
-  }, [databaseFqn, source?.sourceDataSourceId]);
-
-  useEffect(() => {
-    if (!databaseFqn || !schemaFqn || !source?.sourceDataSourceId) {
-      setTables([]);
-      return;
-    }
-    void fetchSourceTables(source.sourceDataSourceId, databaseFqn, schemaFqn).then((response) => {
-      if (response.code === 0) setTables(response.data?.records || []);
-    });
-  }, [databaseFqn, schemaFqn, source?.sourceDataSourceId]);
-
-  const submit = async (values: { databaseFqn: string; schemaFqn: string; tableId: string }) => {
-    if (!source?.sourceDataSourceId || !source.odsDatabaseBindingId || !table?.targetTableName) return;
-    setLoading(true);
-    try {
-      const response = await bindUnmanagedTable({
-        odsDatabaseBindingId: source.odsDatabaseBindingId,
-        targetTableName: table.targetTableName,
-        sourceDataSourceId: source.sourceDataSourceId,
-        omEntityId: values.tableId,
-      });
-      if (response.code !== 0) throw new Error(responseMessage(response, '未纳管表关联失败'));
-      message.success('未纳管表已建立显式源表关联');
-      onSuccess();
-      onClose();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '未纳管表关联失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Drawer open={open} width={520} title="关联已有表" destroyOnHidden onClose={onClose}>
-      <Alert type="info" showIcon message="此操作只登记已有表的来源" className="lake-detail-alert" />
-      <Descriptions bordered size="small" column={1}>
-        <Descriptions.Item label="Doris 表">{table?.targetTableName || '-'}</Descriptions.Item>
-        <Descriptions.Item label="数据源">{source?.sourceDataSourceName || '-'}</Descriptions.Item>
-      </Descriptions>
-      <Form name="lake-source-table-picker" form={form} layout="vertical" onFinish={submit} className="lake-drawer-form">
-        <Form.Item name="databaseFqn" label="源数据库" rules={[{ required: true, message: '请选择数据库' }]}>
-          <Select showSearch options={databases} placeholder="选择 OpenMetadata 数据库" optionFilterProp="label" />
-        </Form.Item>
-        <Form.Item name="schemaFqn" label="Schema" rules={[{ required: true, message: '请选择 Schema' }]}>
-          <Select showSearch options={schemas} placeholder="选择 Schema" optionFilterProp="label" disabled={!databaseFqn} />
-        </Form.Item>
-        <Form.Item name="tableId" label="源表" rules={[{ required: true, message: '请选择源表' }]}>
-          <Select showSearch options={tables.map((item) => ({ value: item.id, label: `${item.name} · ${item.fullyQualifiedName}` }))} placeholder="选择源表" optionFilterProp="label" disabled={!schemaFqn} />
-        </Form.Item>
-        <div className="lake-drawer-footer">
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" htmlType="submit" loading={loading}>确认关联</Button>
-        </div>
-      </Form>
-    </Drawer>
-  );
-};
 
 const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) => {
   const { unitNameByCode, systemNameByCode } = useMasterDataNames();
@@ -187,11 +86,8 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   const [error, setError] = useState<string>();
   const [creatingDatabase, setCreatingDatabase] = useState(false);
   const [namingOpen, setNamingOpen] = useState(false);
-  const [bindTarget, setBindTarget] = useState<InventoryTable>();
   const [unbindLoadingId, setUnbindLoadingId] = useState<number>();
   const [reconcileLoading, setReconcileLoading] = useState(false);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-  const [diagnosticTab, setDiagnosticTab] = useState('resources');
   const requestId = useRef(0);
 
   const load = useCallback(async () => {
@@ -324,7 +220,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   };
 
   const registeredTables = inventory?.registeredTables || [];
-  const discoveredTables = inventory?.discoveredTables || [];
   const tablePath = (row: InventoryTable) => `${physicalResourcesPath}/table/${row.mappingId}`;
   const tableColumns: TableColumnsType<InventoryTable> = [
     {
@@ -340,7 +235,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
       render: (_, row) => (
         <Space size={4} wrap>
           {row.mappingId ? <Button type="link" onClick={() => history.push(tablePath(row))}>查看详情</Button> : null}
-          {row.managementLevel === 'UNMANAGED' && !row.sourceBound ? <Button type="link" onClick={() => setBindTarget(row)}>关联源表</Button> : null}
           {row.managementLevel === 'UNMANAGED' && row.sourceBound && row.mappingId ? <Button type="link" danger loading={unbindLoadingId === row.mappingId} onClick={() => unbind(row)}>解除关联</Button> : null}
         </Space>
       ),
@@ -369,6 +263,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   }
 
   const sourceLabel = source.sourceDataSourceName || '数据源';
+  const odsName = database ? database.displayName || source.sourceDataSourceName || '入湖库' : '未创建';
   const canRetry = database && ['CREATE_FAILED', 'ERROR', 'MISSING', 'UNKNOWN', 'PENDING_CREATE'].includes(database.resourceStatus || '');
   const canRefresh = databaseId && !['CREATING', 'DELETING', 'DELETED'].includes(database?.resourceStatus || '');
   const ready = database?.resourceStatus === 'READY';
@@ -383,10 +278,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
       breadcrumb={{ items: [{ title: '物理入湖', onClick: () => history.push('/lake/resources') }, { title: sourceLabel }] }}
       extra={[
         backButton,
-        discoveredTables.length ? <Button key="associate" onClick={() => {
-          setDiagnosticTab('resources');
-          setDiagnosticsOpen(true);
-        }}>关联已有表</Button> : null,
         ready ? <Button key="create-table" type="primary" icon={<PlusOutlined />} disabled={!canStart}
           onClick={() => history.push(physicalTableCreatePath(sourceId, database.id))}>新增入湖表</Button>
           : !database || database.resourceStatus === 'DELETED'
@@ -400,7 +291,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
             <Descriptions.Item label="数据源类型">{source.dbType || '未知'}</Descriptions.Item>
             <Descriptions.Item label="单位 / 业务系统">{unitNameByCode(source.unitCode) || '待归属'} / {systemNameByCode(source.systemCode) || '待归属'}</Descriptions.Item>
             <Descriptions.Item label="入湖库状态"><LakeResourceStatusTag status={database?.resourceStatus} /></Descriptions.Item>
-            <Descriptions.Item label="入湖库" span="filled"><Text className="lake-resource-identifier" copyable={database?.databaseName ? { text: database.databaseName } : false}>{database?.databaseName || '未创建'}</Text></Descriptions.Item>
+            <Descriptions.Item label="入湖库" span="filled"><Text className="lake-resource-identifier">{odsName}</Text></Descriptions.Item>
           </Descriptions>
         </Card>
         {canRetry && <Alert type="warning" showIcon message="入湖库尚未就绪"
@@ -411,12 +302,15 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
               dataSource={registeredTables} pagination={false} scroll={{ x: 560 }}
               locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyTables} /> }} />}
         </Card>
-        <Collapse activeKey={diagnosticsOpen ? ['diagnostics'] : []} onChange={(keys) => setDiagnosticsOpen(keys.includes('diagnostics'))}
+        <Collapse
           items={[{ key: 'diagnostics', label: '诊断详情', children: <>
             <Descriptions size="small" column={{ md: 2, xl: 3 }}>
               <Descriptions.Item label="数据源 ID">{source.sourceDataSourceId}</Descriptions.Item>
               <Descriptions.Item label="入湖库绑定 ID">{databaseId || '—'}</Descriptions.Item>
               <Descriptions.Item label="最近检查">{formatTime(lastCheck)}</Descriptions.Item>
+              {database?.databaseName ? <Descriptions.Item label="Doris 实际库名" span="filled">
+                <Text className="lake-resource-identifier" copyable>{database.databaseName}</Text>
+              </Descriptions.Item> : null}
               {canRefresh ? <Descriptions.Item>
                 <Button size="small" icon={<ReloadOutlined />} loading={reconcileLoading} onClick={() => void checkDatabase()}>
                   刷新库状态
@@ -424,17 +318,10 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
               </Descriptions.Item> : null}
               {database?.errorMessage && <Descriptions.Item label="检查结果" span="filled">{database.errorCode} {database.errorMessage}</Descriptions.Item>}
             </Descriptions>
-            <Tabs activeKey={diagnosticTab} onChange={setDiagnosticTab} items={[
+            <Tabs items={[
             {
               key: 'resources', label: '库表登记', children: (
-                <Space direction="vertical" size={18} className="lake-tab-content">
-                  <Card title="已登记表">
-                    <Table rowKey={(row) => String(row.mappingId || row.targetTableName)} columns={tableColumns} dataSource={registeredTables} pagination={false} scroll={{ x: 900 }} locale={{ emptyText: <Empty description="暂无已登记表" /> }} />
-                  </Card>
-                  <Card title="发现的已有表">
-                    <Table rowKey={(row) => String(row.targetTableName)} columns={tableColumns} dataSource={discoveredTables} pagination={false} scroll={{ x: 900 }} locale={{ emptyText: <Empty description="没有发现未登记的已有表" /> }} />
-                  </Card>
-                </Space>
+                <Table rowKey={(row) => String(row.mappingId || row.targetTableName)} columns={tableColumns} dataSource={registeredTables} pagination={false} scroll={{ x: 900 }} locale={{ emptyText: <Empty description="暂无已登记表" /> }} />
               ),
             },
             {
@@ -448,8 +335,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
           ]} />
           </> }]} />
       </div>
-      {namingOpen ? <OdsNameDialog onCancel={() => setNamingOpen(false)} onSubmit={prepareDatabase} /> : null}
-      <BindUnmanagedDrawer open={!!bindTarget} source={source} table={bindTarget} onClose={() => setBindTarget(undefined)} onSuccess={() => void load()} />
+      {namingOpen ? <OdsNameDialog defaultName={source.sourceDataSourceName} onCancel={() => setNamingOpen(false)} onSubmit={prepareDatabase} /> : null}
     </PageContainer>
   );
 };

@@ -15,6 +15,7 @@ public class LakeOdsDatabaseVO {
     private String unitCode;
     private String systemCode;
     private String databaseName;
+    private String displayName;
     private LakeResourceStatus resourceStatus;
     private Integer generation;
     private Integer lockVersion;

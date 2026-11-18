@@ -78,7 +78,7 @@ const PhysicalResourcesPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const { unitNameByCode, systemNameByCode } = useMasterDataNames();
   const [startingId, setStartingId] = useState<number>();
-  const [naming, setNaming] = useState<{ sourceId: number; navigation: number }>();
+  const [naming, setNaming] = useState<{ sourceId: number; navigation: number; defaultName?: string }>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -138,7 +138,11 @@ const PhysicalResourcesPage: React.FC = () => {
       let database = latest.data.odsDatabase;
       if (!database || database.resourceStatus === 'DELETED') {
         if (!latest.data.previousOdsName) {
-          setNaming({ sourceId: record.sourceDataSourceId, navigation });
+          setNaming({
+            sourceId: record.sourceDataSourceId,
+            navigation,
+            defaultName: latest.data.sourceDataSourceName,
+          });
           return;
         }
         // Restore the prior binding using its recorded name.
@@ -184,10 +188,13 @@ const PhysicalResourcesPage: React.FC = () => {
       },
       {
         title: '入湖库',
-        key: 'databaseName',
+        key: 'displayName',
         width: 230,
-        ellipsis: true,
-        render: (_, record) => record.odsDatabase?.databaseName || <Text type="secondary">未创建</Text>,
+        render: (_, record) => record.odsDatabase ? (
+          <Text style={{ overflowWrap: 'anywhere' }}>
+            {record.odsDatabase.displayName || record.sourceDataSourceName || '入湖库'}
+          </Text>
+        ) : <Text type="secondary">未创建</Text>,
       },
       {
         title: '入湖库状态',
@@ -324,6 +331,7 @@ const PhysicalResourcesPage: React.FC = () => {
         <div className="lake-fixed-pagination"><Pagination current={page} pageSize={pageSize} total={total} showSizeChanger showTotal={(count) => `共 ${count} 个数据源`} onChange={(next, size) => { setPage(next); setPageSize(size); }} /></div>
       </div>
       {naming ? <OdsNameDialog
+        defaultName={naming.defaultName}
         onCancel={() => setNaming(undefined)}
         onSubmit={async (name) => {
           const database = await createOdsDatabase(naming.sourceId, name);

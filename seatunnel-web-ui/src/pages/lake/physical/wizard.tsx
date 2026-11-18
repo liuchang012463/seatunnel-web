@@ -345,6 +345,8 @@ const ManagedTableWizard: React.FC = () => {
   if (loadError) return <PageContainer title={false}><Alert type="error" showIcon message={loadError} action={<Button onClick={load}>重新加载</Button>} /></PageContainer>;
   if (!source || !source.odsDatabaseBindingId) return <PageContainer title={false}><Alert type="warning" showIcon message="ODS 库尚未就绪" action={<Button onClick={() => history.push('/lake/resources')}>返回物理入湖</Button>} /></PageContainer>;
 
+  const odsName = source.odsDatabase?.displayName || source.sourceDataSourceName || '入湖库';
+
   return <PageContainer title={false}>
     <div className="lake-wizard-page">
       <Card className="lake-wizard-card">
@@ -352,7 +354,7 @@ const ManagedTableWizard: React.FC = () => {
         <div className="lake-wizard-body">
           <Form name="lake-managed-table" form={form} layout="vertical" preserve>
             {current === 0 && <div className="lake-step-panel">
-              <Text type="secondary">数据源：{source.sourceDataSourceName}　目标库：{source.odsDatabase?.databaseName}</Text>
+              <Text type="secondary">数据源：{source.sourceDataSourceName}　目标库：{odsName}</Text>
               <Space align="start" wrap className="lake-cascade-row">
                 <Form.Item name="databaseFqn" label="来源数据库" rules={[{ required: true, message: '请选择数据库' }]}>
                   <Select showSearch options={databases} placeholder="选择数据库" optionFilterProp="label" style={{ width: 240 }} /></Form.Item>
@@ -408,7 +410,7 @@ const ManagedTableWizard: React.FC = () => {
             <Alert type={preview?.valid ? 'success' : 'error'} showIcon message={preview?.valid ? '检查通过，创建后将进入全量任务配置' : '检查未通过'} description={preview?.errors?.join('；')} />
             <Descriptions bordered column={1} style={{ marginTop: 20 }}>
               <Descriptions.Item label="来源表">{selectedTable?.fullyQualifiedName}</Descriptions.Item>
-              <Descriptions.Item label="目标表">{source.odsDatabase?.databaseName}.{preview?.targetTableName}</Descriptions.Item>
+              <Descriptions.Item label="目标表">{odsName}.{preview?.targetTableName}</Descriptions.Item>
               <Descriptions.Item label="表模型">{TABLE_MODEL_LABELS[preview?.targetContract?.tableModel ?? tableModel]} · {keySummary}</Descriptions.Item>
               <Descriptions.Item label="字段数">{preview?.targetContract?.columns?.length}</Descriptions.Item>
               <Descriptions.Item label="任务写入">全量覆盖：每次先清空目标数据再重导，失败后需重新执行。</Descriptions.Item>

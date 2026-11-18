@@ -18,4 +18,7 @@ public class LakeOdsDatabaseBinding extends LakeResourceEntity {
     private String systemCode;
 
     private String databaseName;
+
+    /** User-visible name supplied when this binding was created. */
+    private String displayName;
 }

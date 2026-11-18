@@ -25,7 +25,7 @@ const source = (id: number, name: string) => ({
   sourceDataSourceId: id,
   sourceDataSourceName: name,
   odsDatabaseBindingId: id * 10,
-  odsDatabase: { id: id * 10, sourceDataSourceId: id, databaseName: `ods_${id}`, resourceStatus: 'READY' },
+  odsDatabase: { id: id * 10, sourceDataSourceId: id, databaseName: `ods_${id}`, displayName: `${name}入湖库`, resourceStatus: 'READY' },
 });
 
 beforeEach(() => {
@@ -47,11 +47,11 @@ test('switching to another source ignores the earlier detail response', async ()
   mockRouteSourceId = '2';
   rerender(React.createElement(Detail));
   await screen.findByText('Vastbase');
-  expect(screen.getByText('ods_2')).toBeTruthy();
+  expect(screen.getByText('Vastbase入湖库')).toBeTruthy();
   await act(async () => finishOldRequest({ code: 0, data: source(1, 'Kingbase') }));
 
   expect(screen.queryByText('Kingbase')).toBeNull();
-  expect(screen.getByText('ods_2')).toBeTruthy();
+  expect(screen.getByText('Vastbase入湖库')).toBeTruthy();
   expect(api.fetchPhysicalInventory).toHaveBeenCalledTimes(1);
   expect(api.fetchPhysicalInventory).toHaveBeenCalledWith(20);
 });
@@ -81,12 +81,14 @@ test('first intake asks for a single ODS name before creating the binding', asyn
   fireEvent.click(await screen.findByRole('button', { name: /开始入湖/ }));
 
   const dialog = within(await screen.findByRole('dialog'));
+  expect(dialog.getByText('设置 ODS 库名称')).toBeTruthy();
   expect(api.createOdsDatabase).not.toHaveBeenCalled();
   expect(dialog.getAllByRole('textbox')).toHaveLength(1);
-  fireEvent.change(dialog.getByRole('textbox'), { target: { value: ' orders ' } });
+  expect((dialog.getByRole('textbox') as HTMLInputElement).value).toBe('订单源');
+  fireEvent.change(dialog.getByRole('textbox'), { target: { value: ' 192.168.100.95_订单 ' } });
   fireEvent.click(dialog.getByRole('button', { name: '开始入湖' }));
 
-  await waitFor(() => expect(api.createOdsDatabase).toHaveBeenCalledWith('1', 'orders'));
+  await waitFor(() => expect(api.createOdsDatabase).toHaveBeenCalledWith('1', '192.168.100.95_订单'));
   expect(history.push).toHaveBeenCalledWith('/lake/resources/table/create?sourceDataSourceId=1&odsDatabaseBindingId=10');
 });
 
@@ -102,18 +104,27 @@ test('starting again uses the previous binding name for restoration', async () =
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-test('a ready warehouse keeps manual refresh inside diagnostics and omits operation history', async () => {
+test('a ready warehouse shows the display name and hides unregistered tables', async () => {
   api.fetchPhysicalSource.mockResolvedValue({
     code: 0, data: { ...source(1, '订单源'), dbType: 'MYSQL' },
   });
   api.fetchPhysicalInventory.mockResolvedValue({
-    code: 0, data: { odsDatabaseBindingId: 10, registeredTables: [] },
+    code: 0, data: {
+      odsDatabaseBindingId: 10,
+      registeredTables: [],
+      discoveredTables: [{ targetTableName: 'outside_existing_table', managementLevel: 'UNMANAGED' }],
+    },
   });
   render(React.createElement(Detail));
   await screen.findByRole('button', { name: /新增入湖表/ });
+  expect(screen.getByText('订单源入湖库')).toBeTruthy();
+  expect(screen.queryByText('ods_1')).toBeNull();
+  expect(screen.queryByRole('button', { name: /关联已有表/ })).toBeNull();
   expect(screen.queryByRole('button', { name: /刷新库状态/ })).toBeNull();
 
   fireEvent.click(screen.getByRole('button', { name: /诊断详情/ }));
   await screen.findByRole('button', { name: /刷新库状态/ });
+  expect(screen.queryByText('outside_existing_table')).toBeNull();
+  expect(screen.queryByText('发现的已有表')).toBeNull();
   expect(screen.queryByRole('tab', { name: '操作记录' })).toBeNull();
 });

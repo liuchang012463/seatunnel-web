@@ -125,10 +125,12 @@ class LakeOdsDatabaseServiceImplTest {
         var result = service.create(7L, request);
 
         assertEquals("ods_unit_system_orders", result.getDatabaseName());
+        assertEquals("orders", result.getDisplayName());
         assertEquals(LakeResourceStatus.READY, result.getResourceStatus());
         assertEquals("unit", stored.get().getUnitCode());
         assertEquals("system", stored.get().getSystemCode());
         assertEquals("ods_unit_system_orders", stored.get().getDatabaseName());
+        assertEquals("orders", stored.get().getDisplayName());
         assertEquals(12, stored.get().getCreateUserId());
         verify(dorisClient).createDatabase("ods_unit_system_orders");
     }
@@ -140,26 +142,41 @@ class LakeOdsDatabaseServiceImplTest {
                 tableMappingDao, jobRelationDao, masterDataResolver, dorisClientProvider,
                 coordinator, currentUserProvider, lakeProperties, warehouseService);
         LakeOdsDatabaseBinding named = binding(31L, LakeResourceStatus.READY, false);
+        named.setDisplayName("订单库");
         LakeOdsDatabaseBinding legacy = binding(32L, LakeResourceStatus.READY, false);
         legacy.setLakeDataSourceId(80L);
         legacy.setDatabaseName("ods_unit_system_ds_7");
         LakeOdsDatabaseBinding unrelated = binding(33L, LakeResourceStatus.READY, false);
         unrelated.setLakeDataSourceId(81L);
         unrelated.setDatabaseName("ods_unit_system_other");
+        LakeOdsDatabaseBinding legacyNamed = binding(34L, LakeResourceStatus.READY, false);
+        legacyNamed.setDatabaseName("ods_unit_system_legacy_custom");
         when(warehouseService.canonicalDataSourceId(80L)).thenReturn(99L);
         when(warehouseService.canonicalDataSourceId(81L)).thenThrow(
                 new LakeServiceException(LakeErrorCode.LAKE_REQUEST_INVALID, "unmapped warehouse"));
         Set<String> databases = Set.of(
-                named.getDatabaseName(), legacy.getDatabaseName(), unrelated.getDatabaseName(), "ordinary");
-        when(bindingDao.queryActiveByDatabaseNames(databases)).thenReturn(List.of(named, legacy, unrelated));
+                named.getDatabaseName(), legacy.getDatabaseName(), unrelated.getDatabaseName(),
+                legacyNamed.getDatabaseName(), "ordinary");
+        when(bindingDao.queryActiveByDatabaseNames(databases)).thenReturn(List.of(named, legacy, unrelated, legacyNamed));
         when(dataSourceDao.queryByIds(Set.of(7L))).thenReturn(
                 List.of(source(7L, "订单数据源", 11L, DbType.MYSQL)));
 
         assertEquals(Map.of(
-                "ods_unit_system_orders", "orders",
+                "ods_unit_system_orders", "订单库",
+                "ods_unit_system_legacy_custom", "legacy_custom",
                 "ods_unit_system_ds_7", "订单数据源"),
                 service.catalogDatabaseLabels(99L, databases));
         verifyNoInteractions(dorisClient);
+    }
+
+    @Test
+    void sourceDetailKeepsTheOriginalDisplayNameForRestoringAGeneratedIdentifier() {
+        LakeOdsDatabaseBinding previous = binding(31L, LakeResourceStatus.DELETED, true);
+        previous.setDatabaseName("ods_unit_system_sales_east_c4a7b47ef6");
+        previous.setDisplayName("Sales.East");
+        when(bindingDao.queryBySourceDataSourceIdIncludingDeleted(7L)).thenReturn(previous);
+
+        assertEquals("Sales.East", service.sourceDetail(7L).getPreviousOdsName());
     }
 
     @Test
