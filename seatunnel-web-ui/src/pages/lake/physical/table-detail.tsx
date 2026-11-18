@@ -31,8 +31,7 @@ import StatusChip from '@/components/StatusChip';
 import { getJobStatusView } from '@/pages/common/utils/jobStatus';
 import { seatunnelJobDefinitionApi } from '../../batch-link-up/api';
 import { seatunnelStremJobDefinitionApi } from '../../stream-link-up/api';
-import { fetchLakeOperations, fetchLifecycleDetail, validateLifecycle } from '@/services/lake';
-import type { LakeResourceOperation } from '@/services/lake';
+import { fetchLifecycleDetail, validateLifecycle } from '@/services/lake';
 import {
   deleteManagedTable,
   fetchManagedTable,
@@ -48,8 +47,6 @@ import type { ApiResponse, InventoryRelation, ManagedTable, PhysicalInventory, T
 import {
   LakeConsistencyTag,
   LakeResourceStatusTag,
-  OperationTimeline,
-  operationToStep,
   relationSchemaMode,
   relationSourceDataSource,
   relationTargetTable,
@@ -198,9 +195,7 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
   const [lifecycleRefreshing, setLifecycleRefreshing] = useState(false);
   const [taskCreating, setTaskCreating] = useState(false);
   const [structureView, setStructureView] = useState<'desired' | 'actual'>('desired');
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [operations, setOperations] = useState<LakeResourceOperation[]>([]);
   const requestId = useRef(0);
 
   const load = useCallback(async () => {
@@ -383,26 +378,6 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
     return () => { active = false; };
   }, [activeRelations]);
 
-  const operationTableId = table?.id;
-  const lifecycleBindingId = lifecycleBinding?.id;
-  const tableUpdatedAt = table?.updateTime;
-  useEffect(() => {
-    if (!diagnosticsOpen || !operationTableId) return;
-    let active = true;
-    // Table operations and retention changes are journaled under different resource IDs.
-    void Promise.allSettled([
-      fetchLakeOperations('ODS_TABLE_MAPPING', operationTableId),
-      lifecycleBindingId ? fetchLakeOperations('TABLE_LIFECYCLE', lifecycleBindingId) : undefined,
-    ]).then((results) => {
-      if (!active) return;
-      const registered = results.flatMap((result) => result.status === 'fulfilled' && result.value?.code === 0
-        ? result.value.data || [] : []);
-      setOperations(registered.sort((left, right) => new Date(right.finishedAt || right.startedAt || 0).getTime()
-        - new Date(left.finishedAt || left.startedAt || 0).getTime()));
-    });
-    return () => { active = false; };
-  }, [diagnosticsOpen, lifecycleBindingId, operationTableId, tableUpdatedAt]);
-
   if (loading) return <PageContainer title={false}><Spin /></PageContainer>;
   if (error || !table) return <PageContainer title={false}><Alert type="error" showIcon message={error || '未找到入湖表'}
     action={<Space><Button onClick={() => history.push(physicalResourcesPath)}>返回物理入湖</Button><Button onClick={() => void load()}>重试</Button></Space>} /></PageContainer>;
@@ -425,16 +400,18 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
   const issues = [
     table.sourceConsistencyStatus === 'DRIFT' && '来源表字段已变化，请核对字段映射。',
     table.sourceConsistencyStatus === 'MISSING' && '找不到来源表，请检查源端元数据。',
-    targetMissing && 'Doris 目标表缺失，请检查表状态。',
+    targetMissing && 'Doris 目标表缺失。',
     table.targetConsistencyStatus === 'DRIFT' && 'Doris 表结构与建表配置有差异，请查看结构对照。',
     ['DRIFT', 'MISSING'].includes(table.taskConsistencyStatus || '') && '引接任务配置有变化，请核对当前任务。',
   ].filter(Boolean);
   const moreItems: MenuProps['items'] = [
-    { key: 'check', label: '检查表状态', disabled: !!table.deleted },
-    ...(canRetry ? [{ key: 'retry', label: '重试建表' }] : []),
     ...(table.managementLevel === 'UNMANAGED' && table.sourceBound ? [{ key: 'unbind', label: '解除来源关联', danger: true }] : []),
     ...(table.managementLevel === 'MANAGED' && !table.deleted ? [{ key: 'delete', label: '删除入湖表', danger: true }] : []),
   ];
+  const refreshAction = !table.deleted && !['CREATING', 'DELETING', 'DELETED'].includes(table.resourceStatus || '') ? (
+    <Button size="small" icon={<ReloadOutlined />} loading={actionLoading === '刷新表状态'}
+      onClick={() => void execute('刷新表状态', reconcileManagedTable)}>刷新表状态</Button>
+  ) : null;
 
   const useActual = structureView === 'actual' || !table.targetContract;
   const structureModel = useActual ? table.actualContract?.tableModel : table.targetContract?.tableModel;
@@ -460,17 +437,15 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
             <Text strong className="lake-table-name">{table.targetTableName || '入湖表'}</Text>
             {targetMissing ? <Tag color="error">目标表缺失</Tag> : <LakeResourceStatusTag status={table.resourceStatus} />}
           </Space>
-          <Dropdown trigger={['click']} menu={{ items: moreItems, onClick: ({ key }) => {
-            if (key === 'check') void execute('检查表状态', reconcileManagedTable);
-            if (key === 'retry') void execute('重试建表', retryManagedTable);
+          {moreItems.length > 0 && <Dropdown trigger={['click']} menu={{ items: moreItems, onClick: ({ key }) => {
             if (key === 'unbind') void unbind();
             if (key === 'delete') setDeleteOpen(true);
-          } }}><Button icon={<MoreOutlined />} loading={!!actionLoading || unbindLoading}>更多操作</Button></Dropdown>
+          } }}><Button icon={<MoreOutlined />} loading={!!actionLoading || unbindLoading}>更多操作</Button></Dropdown>}
         </div>
-        {(!!issues.length || table.errorCode || table.errorMessage) && <Alert type="warning" showIcon message="入湖表需要处理"
-          description={issues.length ? issues.join(' ') : '请检查表状态，详细原因可在诊断详情中查看。'}
+        {(canRetry || !!issues.length || table.errorCode || table.errorMessage) && <Alert type="warning" showIcon message="入湖表需要处理"
+          description={issues.length ? issues.join(' ') : '可在诊断详情中查看原因。'}
           action={canRetry ? <Button size="small" loading={actionLoading === '重试建表'} onClick={() => void execute('重试建表', retryManagedTable)}>重试建表</Button>
-            : <Button size="small" disabled={table.deleted} loading={actionLoading === '检查表状态'} onClick={() => void execute('检查表状态', reconcileManagedTable)}>检查表状态</Button>} />}
+            : refreshAction} />}
         <Card size="small">
           <Descriptions size="small" column={{ md: 2, xl: 2 }}>
             <Descriptions.Item label="数据源">{table.sourceDataSourceId ? <Button type="link" className="lake-table-source-link" onClick={() => history.push(backPath)}>{sourceName || table.sourceDbType || '查看来源数据源'}</Button> : '未关联'}</Descriptions.Item>
@@ -498,10 +473,10 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
               })}
             </Space> : <Text type="secondary">{canConfigure ? '还没有配置引接任务' : '暂无关联的引接任务'}</Text>}
         </Card>
-        <Collapse onChange={(keys) => setDiagnosticsOpen(keys.includes('diagnostics'))} items={[
+        <Collapse items={[
           { key: 'fields', label: '查看字段', children: <Table rowKey={fieldKey}
             dataSource={table.targetContract ? columns : actualColumns} columns={fieldColumns(!table.targetContract, model === 'UNIQUE')}
-            pagination={false} scroll={{ x: 740 }} locale={{ emptyText: <Empty description="暂无表结构，可在更多操作中检查表状态" /> }} /> },
+            pagination={false} scroll={{ x: 740 }} locale={{ emptyText: <Empty description="暂无表结构" /> }} /> },
           { key: 'diagnostics', label: '诊断详情', children: <>
             <Descriptions size="small" column={{ md: 2, xl: 3 }}>
               <Descriptions.Item label="管理方式">{table.managementLevel ? managementLabel[table.managementLevel] : '—'}</Descriptions.Item>
@@ -512,6 +487,7 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
               <Descriptions.Item label="并发版本">{table.lockVersion ?? '—'}</Descriptions.Item>
               {table.omFqn && <Descriptions.Item label="来源标识" span="filled">{table.omFqn}</Descriptions.Item>}
               {(table.errorCode || table.errorMessage) && <Descriptions.Item label="错误信息" span="filled">{table.errorCode} {table.errorMessage}</Descriptions.Item>}
+              {refreshAction ? <Descriptions.Item>{refreshAction}</Descriptions.Item> : null}
             </Descriptions>
             <Tabs items={[
             {
@@ -519,7 +495,7 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
                 <Button size="small" type={!useActual ? 'primary' : 'default'} disabled={!table.targetContract} onClick={() => setStructureView('desired')}>建表配置</Button>
                 <Button size="small" type={useActual ? 'primary' : 'default'} disabled={!table.actualContract} onClick={() => setStructureView('actual')}>实际结构</Button>
               </Space>}>
-                {!table.actualContract ? <Alert type="info" showIcon message="尚未读取 Doris 实际结构" description="可在更多操作中选择“检查表状态”。" />
+                {!table.actualContract ? <Alert type="info" showIcon message="尚未读取 Doris 实际结构" />
                   : table.targetContract && (contractDiff.missing || contractDiff.extra || contractDiff.changed
                     ? <Alert type="warning" showIcon message="字段与建表配置有差异" description={`缺少 ${contractDiff.missing} 列，新增 ${contractDiff.extra} 列，属性变化 ${contractDiff.changed} 列。`} />
                     : <Alert type="success" showIcon message="字段与建表配置一致" />)}
@@ -559,9 +535,6 @@ const ManagedTableDetail: React.FC<{ mappingId: string }> = ({ mappingId }) => {
                 <Descriptions.Item label="湖表结构"><LakeConsistencyTag status={table.targetConsistencyStatus} /></Descriptions.Item>
                 <Descriptions.Item label="引接配置"><LakeConsistencyTag status={table.taskConsistencyStatus} /></Descriptions.Item>
               </Descriptions>,
-            },
-            {
-              key: 'operations', label: '操作记录', children: <OperationTimeline items={operations.map(operationToStep)} emptyText="暂无入湖表操作记录" />,
             },
           ]} />
           </> },

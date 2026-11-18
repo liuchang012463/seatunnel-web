@@ -18,7 +18,6 @@ jest.mock('../useMasterDataNames', () => ({ useMasterDataNames: () => ({ unitNam
 jest.mock('./service', () => ({
   createOdsDatabase: jest.fn(), fetchPhysicalSource: jest.fn(), fetchPhysicalInventory: jest.fn(),
 }));
-jest.mock('@/services/lake', () => ({ fetchLakeOperations: jest.fn() }));
 
 const api = jest.requireMock('./service');
 const { history } = jest.requireMock('@umijs/max');
@@ -101,4 +100,20 @@ test('starting again uses the previous binding name for restoration', async () =
 
   await waitFor(() => expect(api.createOdsDatabase).toHaveBeenCalledWith('1', 'ds_1'));
   expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('a ready warehouse keeps manual refresh inside diagnostics and omits operation history', async () => {
+  api.fetchPhysicalSource.mockResolvedValue({
+    code: 0, data: { ...source(1, '订单源'), dbType: 'MYSQL' },
+  });
+  api.fetchPhysicalInventory.mockResolvedValue({
+    code: 0, data: { odsDatabaseBindingId: 10, registeredTables: [] },
+  });
+  render(React.createElement(Detail));
+  await screen.findByRole('button', { name: /新增入湖表/ });
+  expect(screen.queryByRole('button', { name: /刷新库状态/ })).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: /诊断详情/ }));
+  await screen.findByRole('button', { name: /刷新库状态/ });
+  expect(screen.queryByRole('tab', { name: '操作记录' })).toBeNull();
 });

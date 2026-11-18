@@ -40,7 +40,7 @@ test('a first-time user can keep defaults and source selection, then go directly
   api.fetchSourceTableDetail.mockResolvedValue({ code: 0, data: { columns: [{ name: 'id', dataType: 'BIGINT' }, { name: 'created_at', dataType: 'TIMESTAMP', constraint: 'NOT_NULL' }], tableConstraints: [{ constraintType: 'PRIMARY_KEY', columns: ['id'] }] } });
   await selectSourceTable();
   expect(screen.getByText('按源表主键 id 排序')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: '检查并继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '预览建表' }));
   await waitFor(() => expect(api.previewManagedTable).toHaveBeenCalledWith(expect.objectContaining({
     omEntityId: 't', targetTableName: 'app_sales_orders', tableModel: 'DUPLICATE', keyColumns: ['id'],
     distribution: { type: 'RANDOM', columns: [], buckets: 'AUTO' }, partition: { enabled: false },
@@ -50,7 +50,7 @@ test('a first-time user can keep defaults and source selection, then go directly
   expect(await screen.findByDisplayValue('app_sales_orders')).toBeTruthy();
   expect(api.fetchSourceTableDetail).toHaveBeenCalledTimes(1);
   api.createManagedTable.mockResolvedValue({ code: 0, data: { id: 101, resourceStatus: 'READY' } });
-  fireEvent.click(screen.getByRole('button', { name: '检查并继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '预览建表' }));
   const createButton = await screen.findByRole('button', { name: '创建并配置全量任务' });
   await waitFor(() => expect(createButton.className).not.toContain('ant-btn-loading'));
   fireEvent.click(createButton);
@@ -64,7 +64,7 @@ test('an all-nullable source can be previewed without sort fields and preserves 
   api.fetchSourceTableDetail.mockResolvedValue({ code: 0, data: { columns: [{ name: 'id', dataType: 'INTEGER' }] } });
   await selectSourceTable();
   expect(screen.getByText('无排序字段')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: '检查并继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '预览建表' }));
 
   await waitFor(() => expect(api.previewManagedTable).toHaveBeenCalledWith(expect.objectContaining({
     tableModel: 'DUPLICATE', keyColumns: [],
@@ -84,12 +84,12 @@ test('switching to unique never uses a sort fallback as a merge field without co
 
   const keyOption = await screen.findByRole('checkbox', { name: 'id用于合并' }) as HTMLInputElement;
   expect(keyOption.checked).toBe(false);
-  fireEvent.click(screen.getByRole('button', { name: '检查并继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '预览建表' }));
   await screen.findByText('请选择能唯一识别一条记录的非空字段');
   expect(api.previewManagedTable).not.toHaveBeenCalled();
 
   fireEvent.click(keyOption);
-  fireEvent.click(screen.getByRole('button', { name: '检查并继续' }));
+  fireEvent.click(screen.getByRole('button', { name: '预览建表' }));
   await waitFor(() => expect(api.previewManagedTable).toHaveBeenCalledWith(expect.objectContaining({
     tableModel: 'UNIQUE', keyColumns: ['id'],
     distribution: { type: 'HASH', columns: ['id'], buckets: 'AUTO' },

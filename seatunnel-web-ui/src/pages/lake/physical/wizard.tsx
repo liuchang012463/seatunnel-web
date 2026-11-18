@@ -420,7 +420,7 @@ const ManagedTableWizard: React.FC = () => {
         </div>
         <div className="lake-wizard-footer">
           <Button onClick={() => current ? setCurrent(0) : history.push('/lake/resources')}>{current ? '返回修改' : '取消'}</Button>
-          {current === 0 ? <Button type="primary" loading={previewLoading} disabled={!tableDetail || tableLoading} onClick={runPreview}>检查并继续</Button>
+          {current === 0 ? <Button type="primary" loading={previewLoading} disabled={!tableDetail || tableLoading} onClick={runPreview}>预览建表</Button>
             : <Button type="primary" loading={createLoading} disabled={!preview?.valid || !preview?.planFingerprint || (!!preview?.warnings?.length && !warningsAcknowledged)} onClick={create}>创建并配置全量任务</Button>}
         </div>
       </Card>

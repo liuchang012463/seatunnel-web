@@ -19,7 +19,6 @@ import type {
   LakeReadOnlyQueryResult,
   LakeQueryColumnOption,
   LakeQueryTableIdentity,
-  LakeResourceOperation,
   LakeWarehouseConfig,
   LakeJdbcDriver,
 } from './types';
@@ -350,11 +349,4 @@ export async function fetchCatalogQueryColumns(
 
 export async function cancelCatalogQuery(queryId: string): Promise<LakeApiResponse<boolean>> {
   return HttpUtils.post(`${LOGICAL}/query/cancel/${pathId(queryId)}`);
-}
-
-export async function fetchLakeOperations(
-  resourceType: string,
-  resourceId: string | number,
-): Promise<LakeApiResponse<LakeResourceOperation[]>> {
-  return HttpUtils.get(`${LAKE}/operations/${pathId(resourceType)}/${pathId(resourceId)}`);
 }

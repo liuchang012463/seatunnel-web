@@ -394,19 +394,3 @@ export interface LakeErrorPayload {
   code?: string;
   message?: string;
 }
-
-export type LakeOperationStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'IGNORED';
-
-export interface LakeResourceOperation {
-  id?: number;
-  resourceType?: string;
-  resourceId?: number;
-  generation?: number;
-  operationType?: string;
-  status?: LakeOperationStatus | string;
-  startedAt?: string;
-  finishedAt?: string;
-  errorCode?: string;
-  errorSummary?: string;
-  operatorId?: number;
-}

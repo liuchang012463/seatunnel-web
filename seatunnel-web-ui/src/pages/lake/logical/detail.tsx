@@ -2,12 +2,10 @@ import type {
   LakeApiResponse,
   LakeCatalog,
   LakePhysicalDataSource,
-  LakeResourceOperation,
 } from '@/services/lake';
 import {
   deleteCatalog,
   fetchCatalog,
-  fetchLakeOperations,
   fetchPhysicalSource,
   reconcileCatalog,
   refreshCatalog,
@@ -40,13 +38,11 @@ import {
   Modal,
   Space,
   Spin,
-  Tabs,
   Tag,
   Tooltip,
   Typography,
 } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { OperationTimeline } from '../components/LakeStatus';
 import CatalogScopePicker from './CatalogScopePicker';
 import './index.less';
 import {
@@ -147,7 +143,6 @@ const LogicalCatalogDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string>();
   const [updateOpen, setUpdateOpen] = useState(false);
-  const [operations, setOperations] = useState<LakeResourceOperation[]>([]);
   const load = async () => {
     if (!catalogId) return;
     try {
@@ -161,23 +156,6 @@ const LogicalCatalogDetail: React.FC = () => {
           })
           .catch(() => undefined);
       }
-      if (response.data?.id) {
-        void Promise.all([
-          fetchLakeOperations('EXTERNAL_CATALOG_BINDING', response.data.id),
-          fetchLakeOperations('READONLY_QUERY', response.data.id),
-        ])
-          .then(([bindingOperations, queryOperations]) => {
-            const rows = [
-              ...(bindingOperations.code === 0 ? bindingOperations.data || [] : []),
-              ...(queryOperations.code === 0 ? queryOperations.data || [] : []),
-            ];
-            rows.sort(
-              (left, right) => new Date(right.startedAt || '').getTime() - new Date(left.startedAt || '').getTime(),
-            );
-            setOperations(rows);
-          })
-          .catch(() => undefined);
-      }
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载挂载失败');
     } finally {
@@ -188,7 +166,6 @@ const LogicalCatalogDetail: React.FC = () => {
     setLoading(true);
     setCatalog(undefined);
     setSource(undefined);
-    setOperations([]);
     void load();
   }, [catalogId]);
   const execute = async (name: string, action: (id: string) => Promise<LakeApiResponse<LakeCatalog>>) => {
@@ -245,118 +222,72 @@ const LogicalCatalogDetail: React.FC = () => {
     LAKE_CATALOG_REQUEST_INVALID: '挂载配置不完整，请检查数据源连接与挂载范围。',
     LAKE_OPERATION_STALE: '挂载状态已更新，请重新检查后重试。',
   };
-  const operationNames: Record<string, string> = {
-    CREATE_CATALOG: '创建挂载',
-    UPDATE_CATALOG: '调整挂载范围',
-    VALIDATE_CATALOG: '检查挂载',
-    VALIDATE: '检查挂载',
-    REFRESH_CATALOG: '刷新库表',
-    DROP_CATALOG: '移除挂载',
-    RECONCILE: '同步挂载状态',
-    DELETE: '移除挂载',
-    READONLY_QUERY: '目录查询',
-  };
-  const operationStatuses: Record<string, string> = {
-    PENDING: '等待处理',
-    RUNNING: '处理中',
-    SUCCEEDED: '已完成',
-    FAILED: '未完成',
-    IGNORED: '已跳过',
-  };
-  const tabs = [
-    {
-      key: 'info',
-      label: '挂载信息',
-      children: (
-        <div className="lake-mount-info">
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="数据来源">{sourceName}</Descriptions.Item>
-            <Descriptions.Item label="数据库类型">{adapterLabel(catalog.adapter)}</Descriptions.Item>
-            <Descriptions.Item label="挂载范围" span={2}>
-              {catalogScopeLabel(catalog)}
-            </Descriptions.Item>
-            {catalog.scope === 'TABLE' ? (
-              <Descriptions.Item label="已挂载数据表" span={2}>
-                {catalog.tableInclude?.join('、') || '未选择'}
-              </Descriptions.Item>
-            ) : null}
-            <Descriptions.Item label="查询状态">
-              <Tag color={statusColor(catalog.resourceStatus)}>{catalogStatusLabel(catalog.resourceStatus)}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="配置检查">
-              <Tag color={statusColor(catalog.validationStatus)}>{catalogStatusLabel(catalog.validationStatus)}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="最近检查" span={2}>
-              {catalog.lastObservedAt || '尚未检查'}
-            </Descriptions.Item>
-          </Descriptions>
-          <Typography.Paragraph type="secondary" className="lake-info-note">
-            源端新增或变更库表后，可点击“刷新库表”更新。挂载范围包含整库或整个 Schema 时，新增表会自动纳入。
-          </Typography.Paragraph>
-          <Collapse
-            ghost
-            items={[
-              {
-                key: 'technical',
-                label: '技术信息（排查问题时查看）',
-                children: (
-                  <>
-                    <Descriptions size="small" bordered column={2}>
-                      <Descriptions.Item label="挂载标识">{catalog.targetCatalogName}</Descriptions.Item>
-                      <Descriptions.Item label="数据源编号">{catalog.sourceDataSourceId}</Descriptions.Item>
-                      <Descriptions.Item label="配置版本">{catalog.lockVersion}</Descriptions.Item>
-                      <Descriptions.Item label="最近状态同步">
-                        {catalog.lastReconcileAt || '尚未同步'}
-                      </Descriptions.Item>
-                    </Descriptions>
-                    {catalog.errorCode ? (
-                      <Typography.Paragraph>
-                        错误信息：{catalog.errorCode} · {catalog.errorMessage}
-                      </Typography.Paragraph>
-                    ) : null}
-                    <Collapse
-                      ghost
-                      items={[
-                        {
-                          key: 'snapshot',
-                          label: '查看脱敏配置快照',
-                          children: (
-                            <pre className="lake-snapshot">{JSON.stringify(catalog.actualSnapshot || {}, null, 2)}</pre>
-                          ),
-                        },
-                      ]}
-                    />
-                  </>
-                ),
-              },
-            ]}
-          />
-        </div>
-      ),
-    },
-    {
-      key: 'operations',
-      label: '操作记录',
-      children: (
-        <OperationTimeline
-          items={operations.map((operation) => ({
-            title:
-              (operationNames[operation.operationType || ''] || '挂载操作') +
-              ' · ' +
-              (operationStatuses[operation.status || ''] || '待确认'),
-            description: [
-              operation.finishedAt || operation.startedAt,
-              operation.status === 'FAILED' ? '操作未完成，可重新检查挂载或查看技术信息。' : undefined,
-            ]
-              .filter(Boolean)
-              .join(' · '),
-            status: operation.status === 'FAILED' ? 'error' : operation.status === 'SUCCEEDED' ? 'finish' : 'wait',
-          }))}
-          emptyText="暂无挂载操作记录"
-        />
-      ),
-    },
-  ];
+  const mountInfo = (
+    <div className="lake-mount-info">
+      <Descriptions bordered column={2}>
+        <Descriptions.Item label="数据来源">{sourceName}</Descriptions.Item>
+        <Descriptions.Item label="数据库类型">{adapterLabel(catalog.adapter)}</Descriptions.Item>
+        <Descriptions.Item label="挂载范围" span={2}>
+          {catalogScopeLabel(catalog)}
+        </Descriptions.Item>
+        {catalog.scope === 'TABLE' ? (
+          <Descriptions.Item label="已挂载数据表" span={2}>
+            {catalog.tableInclude?.join('、') || '未选择'}
+          </Descriptions.Item>
+        ) : null}
+        <Descriptions.Item label="查询状态">
+          <Tag color={statusColor(catalog.resourceStatus)}>{catalogStatusLabel(catalog.resourceStatus)}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="配置检查">
+          <Tag color={statusColor(catalog.validationStatus)}>{catalogStatusLabel(catalog.validationStatus)}</Tag>
+        </Descriptions.Item>
+        <Descriptions.Item label="最近检查" span={2}>
+          {catalog.lastObservedAt || '尚未检查'}
+        </Descriptions.Item>
+      </Descriptions>
+      <Typography.Paragraph type="secondary" className="lake-info-note">
+        源端新增或变更库表后，可点击“刷新库表”更新。挂载范围包含整库或整个 Schema 时，新增表会自动纳入。
+      </Typography.Paragraph>
+      <Collapse
+        ghost
+        items={[
+          {
+            key: 'technical',
+            label: '技术信息（排查问题时查看）',
+            children: (
+              <>
+                <Descriptions size="small" bordered column={2}>
+                  <Descriptions.Item label="挂载标识">{catalog.targetCatalogName}</Descriptions.Item>
+                  <Descriptions.Item label="数据源编号">{catalog.sourceDataSourceId}</Descriptions.Item>
+                  <Descriptions.Item label="配置版本">{catalog.lockVersion}</Descriptions.Item>
+                  <Descriptions.Item label="最近状态同步">
+                    {catalog.lastReconcileAt || '尚未同步'}
+                  </Descriptions.Item>
+                </Descriptions>
+                {catalog.errorCode ? (
+                  <Typography.Paragraph>
+                    错误信息：{catalog.errorCode} · {catalog.errorMessage}
+                  </Typography.Paragraph>
+                ) : null}
+                <Collapse
+                  ghost
+                  items={[
+                    {
+                      key: 'snapshot',
+                      label: '查看脱敏配置快照',
+                      children: (
+                        <pre className="lake-snapshot">{JSON.stringify(catalog.actualSnapshot || {}, null, 2)}</pre>
+                      ),
+                    },
+                  ]}
+                />
+              </>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
   return (
     <PageContainer title={false} className="lake-logical-detail">
       <div className="lake-detail-toolbar">
@@ -445,7 +376,7 @@ const LogicalCatalogDetail: React.FC = () => {
           description={errorHints[catalog.errorCode] || '请重新检查挂载，或在挂载信息中查看处理线索。'}
         />
       ) : null}
-      <Tabs defaultActiveKey="info" items={tabs} className="lake-detail-tabs" />
+      {mountInfo}
       <CatalogUpdateDrawer
         key={String(catalog.id) + ':' + catalog.lockVersion}
         catalog={catalog}

@@ -2,8 +2,8 @@ import {
   ArrowLeftOutlined,
   DatabaseOutlined,
   LinkOutlined,
-  MoreOutlined,
   PlusOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -15,7 +15,6 @@ import {
   Collapse,
   Descriptions,
   Drawer,
-  Dropdown,
   Empty,
   Form,
   Modal,
@@ -30,8 +29,6 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchLakeOperations } from '@/services/lake';
-import type { LakeResourceOperation } from '@/services/lake';
 import OdsNameDialog from './OdsNameDialog';
 import {
   bindUnmanagedTable,
@@ -55,8 +52,6 @@ import type {
 } from './types';
 import {
   LakeResourceStatusTag,
-  OperationTimeline,
-  operationToStep,
   relationSchemaMode,
   relationSourceDataSource,
   relationTargetTable,
@@ -197,7 +192,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   const [reconcileLoading, setReconcileLoading] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticTab, setDiagnosticTab] = useState('resources');
-  const [operations, setOperations] = useState<LakeResourceOperation[]>([]);
   const requestId = useRef(0);
 
   const load = useCallback(async () => {
@@ -256,16 +250,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   const database = source?.odsDatabase;
   const databaseId = database?.id;
   const lastCheck = database?.lastReconcileAt;
-  useEffect(() => {
-    if (!diagnosticsOpen || !databaseId) return;
-    let active = true;
-    void fetchLakeOperations('ODS_DATABASE_BINDING', databaseId).then((response) => {
-      if (active && response.code === 0) setOperations(response.data || []);
-    }).catch((reason) => {
-      if (active) console.warn('[lake-physical-detail] 入湖库操作记录读取失败', { databaseId, reason });
-    });
-    return () => { active = false; };
-  }, [databaseId, diagnosticsOpen, lastCheck]);
 
   const prepareDatabase = async (name: string) => {
     const request = requestId.current;
@@ -304,7 +288,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
       const response = retry ? await retryOdsDatabase(id) : await reconcileOdsDatabase(id);
       if (request !== requestId.current) return;
       if (response.code !== 0) throw new Error(responseMessage(response, '入湖库操作失败'));
-      message.success(retry ? '已重新准备入湖库' : '入湖库检查完成');
+      message.success(retry ? '已重新准备入湖库' : '库状态已刷新');
       await load();
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : '入湖库操作失败');
@@ -385,8 +369,8 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
   }
 
   const sourceLabel = source.sourceDataSourceName || '数据源';
-  const operationItems = operations.map(operationToStep);
   const canRetry = database && ['CREATE_FAILED', 'ERROR', 'MISSING', 'UNKNOWN', 'PENDING_CREATE'].includes(database.resourceStatus || '');
+  const canRefresh = databaseId && !['CREATING', 'DELETING', 'DELETED'].includes(database?.resourceStatus || '');
   const ready = database?.resourceStatus === 'READY';
   const canStart = source.sourceEnabled !== false && ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'].includes(source.dbType || '');
   const emptyTables = canStart
@@ -399,16 +383,10 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
       breadcrumb={{ items: [{ title: '物理入湖', onClick: () => history.push('/lake/resources') }, { title: sourceLabel }] }}
       extra={[
         backButton,
-        database && database.resourceStatus !== 'DELETED' ? <Dropdown key="more" trigger={['click']} menu={{
-          items: [
-            { key: 'check', label: '检查入湖库' },
-            ...(discoveredTables.length ? [{ key: 'associate', label: '关联已有表' }] : []),
-          ],
-          onClick: ({ key }) => {
-            if (key === 'check') void checkDatabase();
-            else { setDiagnosticTab('resources'); setDiagnosticsOpen(true); }
-          },
-        }}><Button icon={<MoreOutlined />} loading={reconcileLoading}>更多操作</Button></Dropdown> : null,
+        discoveredTables.length ? <Button key="associate" onClick={() => {
+          setDiagnosticTab('resources');
+          setDiagnosticsOpen(true);
+        }}>关联已有表</Button> : null,
         ready ? <Button key="create-table" type="primary" icon={<PlusOutlined />} disabled={!canStart}
           onClick={() => history.push(physicalTableCreatePath(sourceId, database.id))}>新增入湖表</Button>
           : !database || database.resourceStatus === 'DELETED'
@@ -426,7 +404,7 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
           </Descriptions>
         </Card>
         {canRetry && <Alert type="warning" showIcon message="入湖库尚未就绪"
-          action={<Button size="small" loading={reconcileLoading} onClick={() => void checkDatabase(true)}>重试准备入湖库</Button>} />}
+          action={<Button size="small" loading={reconcileLoading} onClick={() => void checkDatabase(true)}>重试建库</Button>} />}
         <Card title="入湖表" className="lake-resource-tables">
           {inventoryError ? <Alert type="warning" showIcon message={inventoryError} action={<Button onClick={() => void load()}>重新加载</Button>} />
             : <Table rowKey={(row) => String(row.mappingId || row.targetTableName)} columns={overviewColumns}
@@ -439,6 +417,11 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
               <Descriptions.Item label="数据源 ID">{source.sourceDataSourceId}</Descriptions.Item>
               <Descriptions.Item label="入湖库绑定 ID">{databaseId || '—'}</Descriptions.Item>
               <Descriptions.Item label="最近检查">{formatTime(lastCheck)}</Descriptions.Item>
+              {canRefresh ? <Descriptions.Item>
+                <Button size="small" icon={<ReloadOutlined />} loading={reconcileLoading} onClick={() => void checkDatabase()}>
+                  刷新库状态
+                </Button>
+              </Descriptions.Item> : null}
               {database?.errorMessage && <Descriptions.Item label="检查结果" span="filled">{database.errorCode} {database.errorMessage}</Descriptions.Item>}
             </Descriptions>
             <Tabs activeKey={diagnosticTab} onChange={setDiagnosticTab} items={[
@@ -460,11 +443,6 @@ const PhysicalResourceDetail: React.FC<{ sourceId: string }> = ({ sourceId }) =>
                   <Card title="表级任务"><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={inventory?.tableRelations || []} locale={{ emptyText: <Empty description="暂无表级任务关系" /> }} /></Card>
                   <Card title="整库任务"><ProTable search={false} options={false} pagination={false} rowKey={(row) => String(row.relationId)} columns={relationColumns} dataSource={inventory?.namespaceRelations || []} locale={{ emptyText: <Empty description="暂无整库任务关系" /> }} /></Card>
                 </Space>
-              ),
-            },
-            {
-              key: 'operations', label: '操作记录', children: (
-                <OperationTimeline items={operationItems} emptyText="暂无入湖库操作记录" />
               ),
             },
           ]} />

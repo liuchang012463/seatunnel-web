@@ -1,6 +1,5 @@
 import {
   LinkOutlined,
-  MoreOutlined,
   ReloadOutlined,
   RightOutlined,
 } from '@ant-design/icons';
@@ -10,7 +9,6 @@ import { history } from '@umijs/max';
 import {
   Alert,
   Button,
-  Dropdown,
   Empty,
   Input,
   Select,
@@ -26,8 +24,6 @@ import {
   createOdsDatabase,
   fetchPhysicalSource,
   fetchPhysicalSources,
-  reconcileOdsDatabase,
-  retryOdsDatabase,
 } from './service';
 import type { LakePage, LakeResourceStatus, OdsDatabase, PhysicalDataSource } from './types';
 import { useMasterDataNames } from '../useMasterDataNames';
@@ -81,8 +77,6 @@ const resourceTag = (value?: LakeResourceStatus) => (
 const PhysicalResourcesPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const { unitNameByCode, systemNameByCode } = useMasterDataNames();
-  const [operationId, setOperationId] = useState<number>();
-  const [operationLoading, setOperationLoading] = useState(false);
   const [startingId, setStartingId] = useState<number>();
   const [naming, setNaming] = useState<{ sourceId: number; navigation: number }>();
   const [page, setPage] = useState(1);
@@ -108,23 +102,6 @@ const PhysicalResourcesPage: React.FC = () => {
 
   const reload = () => {
     actionRef.current?.reload();
-  };
-
-  const operate = async (type: 'retry' | 'reconcile', database?: OdsDatabase) => {
-    if (!database?.id) return;
-    setOperationId(database.id);
-    setOperationLoading(true);
-    try {
-      const response = type === 'retry' ? await retryOdsDatabase(database.id) : await reconcileOdsDatabase(database.id);
-      if (response.code !== 0) throw new Error(response.message || response.msg || '操作失败');
-      message.success(type === 'retry' ? '重试操作已提交' : '入湖库检查完成');
-      reload();
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : '操作失败');
-    } finally {
-      setOperationLoading(false);
-      setOperationId(undefined);
-    }
   };
 
   const physicalTypes = ['MYSQL', 'POSTGRE_SQL', 'ORACLE', 'JDBC', 'DORIS', 'DAMENG', 'KINGBASE', 'VASTBASE'];
@@ -226,26 +203,27 @@ const PhysicalResourcesPage: React.FC = () => {
         valueType: 'option',
         render: (_, record) => {
           const database = record.odsDatabase;
-          const canRetry = !!database && ['ERROR', 'CREATE_FAILED', 'MISSING', 'UNKNOWN', 'PENDING_CREATE'].includes(database.resourceStatus || '');
-          const canReconcile = !!database && database.resourceStatus !== 'DELETED';
+          const hasDatabase = Boolean(database && database.resourceStatus !== 'DELETED');
+          const ready = database?.resourceStatus === 'READY';
           const supported = physicalTypes.includes(String(record.dbType || ''));
-          const busy = !!database && ['CREATING', 'DELETING'].includes(database.resourceStatus || '');
+          // Existing bindings that need attention recover from their own detail page.
           return <Space className="lake-physical-actions" wrap size={0}>
-            <Tooltip title={record.sourceEnabled === false ? '该连接未开启来源用途，请先到数据源管理中开启' : !supported ? '此数据类型尚不支持可视化创建 ODS 表' : busy ? '资源正在处理，可查看详情' : undefined}>
-              <Button type="link" disabled={!supported || busy || record.sourceEnabled === false} loading={startingId === record.sourceDataSourceId}
-                onClick={() => void startPhysical(record)}>{database?.resourceStatus === 'READY' ? '新增入湖表' : '开始入湖'}</Button>
-            </Tooltip>
-            <Button type="link" onClick={() => openSource(record.sourceDataSourceId)}>查看入湖表</Button>
-            {canRetry && <Button type="link" loading={operationLoading && operationId === database?.id}
-              onClick={() => void operate('retry', database)}>重试</Button>}
-            {canReconcile && <Dropdown trigger={['click']} menu={{ items: [{ key: 'reconcile', label: '检查入湖库' }], onClick: () => void operate('reconcile', database) }}>
-              <Button type="link" aria-label="更多操作" icon={<MoreOutlined />} loading={operationLoading && operationId === database?.id} />
-            </Dropdown>}
+            {(!hasDatabase || ready) && (
+              <Tooltip title={record.sourceEnabled === false ? '该连接未开启来源用途，请先到数据源管理中开启' : !supported ? '此数据类型尚不支持可视化创建 ODS 表' : undefined}>
+                <Button type="link" disabled={!supported || record.sourceEnabled === false} loading={startingId === record.sourceDataSourceId}
+                  onClick={() => void startPhysical(record)}>{ready ? '新增入湖表' : '开始入湖'}</Button>
+              </Tooltip>
+            )}
+            {hasDatabase && (
+              <Button type="link" onClick={() => openSource(record.sourceDataSourceId)}>
+                {ready ? '查看入湖表' : '查看入湖状态'}
+              </Button>
+            )}
           </Space>;
         },
       },
     ],
-    [operationId, operationLoading, startingId, unitNameByCode, systemNameByCode],
+    [startingId, unitNameByCode, systemNameByCode],
   );
 
   return (
