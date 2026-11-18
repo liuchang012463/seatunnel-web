@@ -18,7 +18,7 @@ import {
   Table,
   Tooltip,
 } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
 import {
@@ -446,6 +446,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       setPreviewContent(payload);
       setPreviewOpen(true);
     } catch (error: any) {
+      console.warn('[文件导入] 数据预览失败', { resourceId: resource.id, format });
       message.error(error?.message || '文件预览失败');
     } finally {
       setPreviewLoading(false);
@@ -586,7 +587,8 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
                   : '常用解析参数已采用默认值，可在高级配置中调整。'}
             />
           </div>
-          {!isDatabaseFile && !formatLocked ? (
+          {/* 导入入口预设格式后，仍可预览结构化文件的数据。 */}
+          {!isDatabaseFile ? (
             <Button
               size="small"
               icon={<EyeOutlined />}
