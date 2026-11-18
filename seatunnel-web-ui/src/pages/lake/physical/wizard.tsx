@@ -1,3 +1,4 @@
+import { presentOperationFailure } from '@/utils/operationFailure';
 import { PageContainer } from '@ant-design/pro-components';
 import { history, useLocation } from '@umijs/max';
 import {
@@ -321,7 +322,7 @@ const ManagedTableWizard: React.FC = () => {
           return;
         }
       } catch { /* The original error remains the useful result. */ }
-      message.error(reason instanceof Error ? reason.message : '创建 ODS 表失败');
+      presentOperationFailure('创建 ODS 表失败', reason);
     } finally {
       setCreateLoading(false);
     }

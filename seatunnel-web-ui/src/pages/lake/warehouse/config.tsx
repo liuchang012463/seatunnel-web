@@ -1,3 +1,4 @@
+import { presentOperationFailure } from '@/utils/operationFailure';
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -168,7 +169,7 @@ const DorisConfigPage: React.FC = () => {
       history.push('/lake/warehouse');
     } catch (error) {
       if (error instanceof InitialDorisPasswordError || (error as { errorFields?: unknown })?.errorFields) return;
-      message.error(error instanceof Error ? error.message : '保存数据湖配置失败');
+      presentOperationFailure('保存数据湖配置失败', error);
     } finally {
       setSaving(false);
     }

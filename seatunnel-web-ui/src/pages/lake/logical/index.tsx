@@ -1,3 +1,4 @@
+import { presentOperationFailure } from '@/utils/operationFailure';
 import type {
   LakeApiResponse,
   LakeCatalog,
@@ -203,7 +204,7 @@ const CreateCatalogDrawer: React.FC<{
       onCreated();
       if (response.data?.id) history.push(`/lake/logical-access/${response.data.id}`);
     } catch (error) {
-      message.error(error instanceof Error ? error.message : '创建逻辑挂载失败');
+      presentOperationFailure('创建逻辑挂载失败', error);
     } finally {
       setLoading(false);
     }

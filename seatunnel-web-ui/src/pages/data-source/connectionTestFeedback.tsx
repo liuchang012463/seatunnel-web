@@ -1,3 +1,4 @@
+import { appMessage } from '@/utils/antdFeedback';
 import { Modal } from 'antd';
 import React from 'react';
 import { getDataSourceConnectionTestAdvice } from './connectionError';
@@ -12,30 +13,14 @@ export interface PresentConnectionTestResultOptions {
 }
 
 /**
- * 连接测试结果用居中弹窗呈现：成功明确告知，失败给出原因与排查建议，并可跳转编辑。
+ * 成功短暂提示；失败保留原因、排查建议和编辑入口。
  */
 export function presentConnectionTestResult(options: PresentConnectionTestResultOptions) {
   const name = options.dataSourceName?.trim();
   const nameLabel = name ? `「${name}」` : '当前数据源';
 
   if (options.success) {
-    Modal.success({
-      title: '连接测试通过',
-      centered: true,
-      okText: '知道了',
-      content: (
-        <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-          <p style={{ margin: 0 }}>
-            {nameLabel}连通正常，主机、端口与认证校验已通过。
-          </p>
-          {options.detail ? (
-            <p style={{ margin: '8px 0 0', color: 'var(--st-color-text-muted, #8aa0b8)' }}>
-              {options.detail}
-            </p>
-          ) : null}
-        </div>
-      ),
-    });
+    appMessage.success(`${nameLabel}连接测试通过`, 3);
     return;
   }
 
