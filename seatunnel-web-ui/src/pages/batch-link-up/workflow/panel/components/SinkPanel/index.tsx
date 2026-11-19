@@ -18,9 +18,31 @@ interface Props {
   onClose: () => void;
   onNodeDataChange: (nodeId: string, newData: any) => void;
   sourceDataSourceId?: string;
+  isIncremental?: boolean;
+  sourceDbType?: string;
 }
 
-function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId }: Props) {
+const HTTP_INCREMENTAL_APPEND_TARGETS = new Set([
+  'JDBC',
+  'MYSQL',
+  'ORACLE',
+  'POSTGRE_SQL',
+  'ZEONEDB',
+  'DORIS',
+  'KINGBASE',
+  'DAMENG',
+  'VASTBASE',
+  'H2',
+]);
+
+function SinkPanel({
+  selectedNode,
+  onClose,
+  onNodeDataChange,
+  sourceDataSourceId,
+  isIncremental = false,
+  sourceDbType = '',
+}: Props) {
   const isKafka = String(selectedNode?.data?.dbType || '').toUpperCase() === 'KAFKA';
   const isElasticsearch = String(selectedNode?.data?.dbType || '').toUpperCase() === 'ELASTICSEARCH';
   const {
@@ -71,6 +93,46 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
 
   const isDatabaseScoped = supportsDatabaseScope(dbType);
   const isSchemaScoped = supportsSchemaScope(dbType);
+  const isHttpIncremental = isIncremental && sourceDbType.toUpperCase() === 'HTTP';
+  const allowHttpIncrementalAppend = isHttpIncremental
+    && HTTP_INCREMENTAL_APPEND_TARGETS.has(String(dbType).toUpperCase());
+  const writeModeOptions = [
+    ...(!isIncremental || allowHttpIncrementalAppend
+      ? [{
+          label: (
+            <div className="workflow-panel__segmented-item">
+              <Table2 size={14} />
+              <span>追加写入</span>
+            </div>
+          ),
+          value: 'append',
+        }]
+      : []),
+    ...(!isIncremental
+      ? [{
+          label: (
+            <div className="workflow-panel__segmented-item">
+              <Tooltip title="覆盖写入：会先清空目标表中的已有数据，再执行本次同步。">
+                <div className="workflow-panel__segmented-item">
+                  <Save size={14} />
+                  <span>覆盖写入</span>
+                </div>
+              </Tooltip>
+            </div>
+          ),
+          value: 'overwrite',
+        }]
+      : []),
+    {
+      label: (
+        <div className="workflow-panel__segmented-item">
+          <UploadCloud size={14} />
+          <span>Upsert</span>
+        </div>
+      ),
+      value: 'upsert',
+    },
+  ];
 
   if (isKafka || isElasticsearch) {
     return (
@@ -331,40 +393,14 @@ function SinkPanel({ selectedNode, onClose, onNodeDataChange, sourceDataSourceId
                 block
                 value={writeMode}
                 onChange={(value) => handleWriteModeChange(String(value))}
-                options={[
-                  {
-                    label: (
-                      <div className="workflow-panel__segmented-item">
-                        <Table2 size={14} />
-                        <span>追加写入</span>
-                      </div>
-                    ),
-                    value: 'append',
-                  },
-                  {
-                    label: (
-                      <div className="workflow-panel__segmented-item">
-                        <Tooltip title="覆盖写入：会先清空目标表中的已有数据，再执行本次同步。">
-                          <div className="workflow-panel__segmented-item">
-                            <Save size={14} />
-                            <span>覆盖写入</span>
-                          </div>
-                        </Tooltip>
-                      </div>
-                    ),
-                    value: 'overwrite',
-                  },
-                  {
-                    label: (
-                      <div className="workflow-panel__segmented-item">
-                        <UploadCloud size={14} />
-                        <span>Upsert</span>
-                      </div>
-                    ),
-                    value: 'upsert',
-                  },
-                ]}
+                options={writeModeOptions}
               />
+
+              {allowHttpIncrementalAppend && writeMode === 'append' && (
+                <div className="text-sm leading-5 text-slate-500">
+                  HTTP 增量追加固定使用 APPEND_DATA 并关闭 Upsert，冲突的高级写入模式和主键参数不会生效。失败重试会重放同一窗口，可能写入重复记录；目标端需自行去重。
+                </div>
+              )}
 
               {writeMode === 'upsert' ? (
                 <div className="workflow-panel__field">

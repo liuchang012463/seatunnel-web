@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class JdbcSinkOptionAppenderTest {
 
@@ -33,9 +34,11 @@ class JdbcSinkOptionAppenderTest {
     void appendModeDisablesEngineDefaultUpsertUnlessConfigured() {
         Map<String, Object> result = new HashMap<>();
 
-        appender.append(ConfigFactory.parseString("writeMode = append\nprimaryKey = id"), result);
+        appender.append(ConfigFactory.parseString("writeMode = append"), result);
 
+        assertEquals("APPEND_DATA", result.get("data_save_mode"));
         assertEquals(false, result.get("enable_upsert"));
+        assertFalse(result.containsKey("primary_keys"));
     }
 
     @Test

@@ -198,7 +198,9 @@ function buildInitialGraph(
           table: undefined,
           targetTableName: '',
           sql: '',
-          writeMode: 'append',
+          writeMode: isIncremental && String(sourceDbType).toUpperCase() !== 'HTTP'
+            ? 'upsert'
+            : 'append',
           primaryKey: '',
           batchSize: '',
           pluginInput: sinkId,
@@ -406,6 +408,7 @@ export default function FlowCanvas({
   const canvasNodes = useMemo(() => readOnly
     ? flow.nodes.map((node) => ({ ...node, draggable: false, connectable: false, deletable: false }))
     : flow.nodes, [flow.nodes, readOnly]);
+  const sourceNode = flow.nodes.find((node: any) => node?.data?.nodeType === 'source');
 
   useEffect(() => {
     if (!initializedRef.current) return;
@@ -753,8 +756,9 @@ export default function FlowCanvas({
           isIncremental={isIncremental}
           jobDefinitionId={jobDefinitionId}
           sourceDataSourceId={String(
-            flow.nodes.find((node: any) => node?.data?.nodeType === 'source')?.data?.config?.dataSourceId || ''
+            sourceNode?.data?.config?.dataSourceId || ''
           )}
+          sourceDbType={String(sourceNode?.data?.dbType || sourceNode?.data?.config?.dbType || '')}
         />
       ))}
     </div>

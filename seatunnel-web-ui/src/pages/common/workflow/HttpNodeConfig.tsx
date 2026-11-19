@@ -9,6 +9,7 @@ import {
   Input,
   InputNumber,
   message,
+  Modal,
   Select,
   Switch,
   Tooltip,
@@ -31,6 +32,7 @@ import {
   type HttpContentFieldOption,
   type HttpSchemaFieldCandidate,
 } from './HttpResponseSchemaUtils';
+import { detectHttpTimeFormat } from './HttpTimeFormatUtils';
 
 type Props = {
   streaming?: boolean;
@@ -259,6 +261,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
   const [parsedStatus, setParsedStatus] = useState<number>();
   const [contentFieldOptions, setContentFieldOptions] = useState<HttpContentFieldOption[]>([]);
   const [schemaCandidates, setSchemaCandidates] = useState<HttpSchemaFieldCandidate[]>([]);
+  const [timeFormatSample, setTimeFormatSample] = useState('');
   const parsedRequestRef = useRef<string>();
 
   const requestSignature = JSON.stringify({
@@ -431,6 +434,40 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
     });
   };
 
+  const handleDetectTimeFormat = () => {
+    const detection = detectHttpTimeFormat(timeFormatSample);
+    if (detection.kind === 'unsupported') {
+      const warning = {
+        timezone: '样例包含时区；请先统一时区并去掉时区后缀，再识别本地日期时间格式。',
+        epoch: '样例像 Unix 时间戳；请先转换为日期时间文本，再识别格式。',
+        invalid: '未识别该样例。请粘贴有效的本地日期或日期时间，例如 2024-06-15T09:30:12.123456。',
+      }[detection.reason];
+      message.warning(warning);
+      return;
+    }
+
+    Modal.confirm({
+      title: '确认应用识别到的时间格式？',
+      content: (
+        <div className="space-y-2 text-sm">
+          <div>样例预览：<code>{detection.sample}</code></div>
+          <div>Java 时间格式：<code>{detection.pattern}</code></div>
+          <div>只识别本地日期时间；时区和 Unix 时间戳不会自动转换。</div>
+        </div>
+      ),
+      okText: '应用格式',
+      cancelText: '保留当前格式',
+      onOk: () =>
+        onChange({
+          incrementalConfig: {
+            ...incrementalConfig,
+            enabled: true,
+            timeFormat: detection.pattern,
+          },
+        }),
+    });
+  };
+
   return (
     <div className="workflow-panel__form-grid">
       <Field
@@ -472,25 +509,43 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       </Field>
 
       {isIncremental && (
-        <Field
-          label="增量时间格式"
-          required
-          hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；新建任务会自动填充 from/to 时间窗口参数，也可以按接口文档修改。"
-        >
-          <Input
-            value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
-            placeholder={DEFAULT_HTTP_TIME_FORMAT}
-            onChange={(event) =>
-              onChange({
-                incrementalConfig: {
-                  ...incrementalConfig,
-                  enabled: true,
-                  timeFormat: event.target.value,
-                },
-              })
-            }
-          />
-        </Field>
+        <>
+          <Field
+            label="增量时间格式"
+            required
+            hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；新建任务会自动填充 from/to 时间窗口参数，也可以按接口文档修改。"
+          >
+            <Input
+              value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
+              placeholder={DEFAULT_HTTP_TIME_FORMAT}
+              onChange={(event) =>
+                onChange({
+                  incrementalConfig: {
+                    ...incrementalConfig,
+                    enabled: true,
+                    timeFormat: event.target.value,
+                  },
+                })
+              }
+            />
+          </Field>
+          <Field
+            label="粘贴时间样例"
+            hint="识别本地日期时间及 1–9 位小数秒；时区和 Unix 时间戳不会自动转换。"
+          >
+            <div className="flex gap-2">
+              <Input
+                value={timeFormatSample}
+                placeholder="2024-06-15T09:30:12.123456"
+                onChange={(event) => setTimeFormatSample(event.target.value)}
+                onPressEnter={handleDetectTimeFormat}
+              />
+              <Button onClick={handleDetectTimeFormat} disabled={!timeFormatSample.trim()}>
+                识别格式
+              </Button>
+            </div>
+          </Field>
+        </>
       )}
 
       <Field

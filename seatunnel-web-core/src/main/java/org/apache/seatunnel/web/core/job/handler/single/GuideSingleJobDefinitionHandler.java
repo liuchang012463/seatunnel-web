@@ -14,6 +14,7 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.springframework.stereotype.Component;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -263,7 +264,7 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
 
         Map<String, Object> source = findConfig(workflow, "source");
-        Map<String, Object> sink = findConfig(workflow, "sink");
+        Map<String, Object> sink = findMergedConfig(workflow, "sink");
         if (source.isEmpty() || sink.isEmpty()) {
             throw new IllegalArgumentException("单表增量任务必须包含一个来源和一个目标");
         }
@@ -323,8 +324,13 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
         String writeMode = firstNonBlank(sink.get("writeMode"), sink.get("data_save_mode"));
         String primaryKey = firstNonBlank(sink.get("primaryKey"), sink.get("primary_keys"));
-        if (!"upsert".equalsIgnoreCase(writeMode)
-                || primaryKey.isEmpty()) {
+        boolean httpAppend = httpSource && "append".equalsIgnoreCase(writeMode);
+        if (httpAppend) {
+            String sinkDbType = firstNonBlank(sink.get("dbType"), sink.get("sourceDbType"));
+            if (!JDBC_DB_TYPES.contains(sinkDbType.toUpperCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("HTTP 单表增量追加写入仅支持 JDBC 目标");
+            }
+        } else if (!"upsert".equalsIgnoreCase(writeMode) || primaryKey.isEmpty()) {
             throw new IllegalArgumentException("增量任务目标必须配置 Upsert 写入模式和主键");
         }
     }
@@ -340,8 +346,11 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
                 sourceIncremental.get("timeFormat"),
                 IncrementalConfigResolver.DEFAULT_TIME_FORMAT);
         try {
-            DateTimeFormatter.ofPattern(timeFormat);
-        } catch (IllegalArgumentException error) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(timeFormat);
+            // Runtime windows are LocalDateTime values; validate the pattern
+            // against that exact temporal type so zone/offset tokens fail here.
+            formatter.format(LocalDateTime.of(2000, 1, 2, 3, 4, 5, 123_456_789));
+        } catch (DateTimeException | IllegalArgumentException error) {
             throw new IllegalArgumentException("HTTP 增量时间格式不合法: " + timeFormat, error);
         }
 

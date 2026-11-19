@@ -32,4 +32,19 @@ class IncrementalConfigResolverTest {
                 IncrementalConfigResolver.sourceTimeFormat(workflow));
         assertEquals(IncrementalConfigResolver.DEFAULT_TIME_FORMAT, resolved.getTimeFormat());
     }
+
+    @Test
+    void identifiesAppendOnlyForHttpSources() {
+        Map<String, Object> sourceConfig = Map.of("dbType", "HTTP");
+        Map<String, Object> sinkData = Map.of(
+                "nodeType", "sink",
+                "dbType", "MYSQL",
+                "config", Map.of("writeMode", "append"));
+        Map<String, Object> workflow = Map.of(
+                "nodes", List.of(
+                        Map.of("data", Map.of("nodeType", "source", "config", sourceConfig)),
+                        Map.of("data", sinkData)));
+
+        assertTrue(IncrementalConfigResolver.isHttpAppend(workflow));
+    }
 }

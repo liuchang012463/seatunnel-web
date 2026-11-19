@@ -153,6 +153,39 @@ public final class IncrementalConfigResolver {
         return asMap(workflow.get("source"));
     }
 
+    public static Map<String, Object> findSinkConfig(Map<String, Object> workflow) {
+        if (workflow == null) {
+            return Collections.emptyMap();
+        }
+        Object rawNodes = workflow.get("nodes");
+        if (rawNodes instanceof List) {
+            for (Object rawNode : (List<?>) rawNodes) {
+                if (!(rawNode instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> node = castMap(rawNode);
+                Map<String, Object> data = asMap(node.get("data"));
+                if (!"sink".equalsIgnoreCase(String.valueOf(data.get("nodeType")))) {
+                    continue;
+                }
+                Map<String, Object> config = asMap(data.get("config"));
+                Map<String, Object> merged = new HashMap<>(data);
+                merged.putAll(config);
+                return merged;
+            }
+        }
+        return asMap(workflow.get("sink"));
+    }
+
+    public static boolean isHttpAppend(Map<String, Object> workflow) {
+        if (!isHttpSource(workflow)) {
+            return false;
+        }
+        Map<String, Object> sinkConfig = findSinkConfig(workflow);
+        return "append".equalsIgnoreCase(firstNonBlank(
+                sinkConfig.get("writeMode"), sinkConfig.get("write_mode")));
+    }
+
     public static Map<String, Object> sourceIncrementalConfig(Map<String, Object> workflow) {
         return asMap(findSourceConfig(workflow).get("incrementalConfig"));
     }

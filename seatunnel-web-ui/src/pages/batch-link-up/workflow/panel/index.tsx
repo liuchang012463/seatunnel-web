@@ -27,6 +27,7 @@ interface WorkflowPanelProps {
   isIncremental?: boolean;
   jobDefinitionId?: string | number;
   sourceDataSourceId?: string;
+  sourceDbType?: string;
 }
 
 const WorkflowPanel: FC<WorkflowPanelProps> = ({
@@ -42,6 +43,7 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
   isIncremental = false,
   jobDefinitionId,
   sourceDataSourceId,
+  sourceDbType,
 }) => {
   const nodeType = selectedNode?.data?.nodeType;
 
@@ -67,6 +69,8 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
         onClose={onClose}
         onNodeDataChange={onNodeDataChange}
         sourceDataSourceId={sourceDataSourceId}
+        isIncremental={isIncremental}
+        sourceDbType={sourceDbType}
       />
     );
   }

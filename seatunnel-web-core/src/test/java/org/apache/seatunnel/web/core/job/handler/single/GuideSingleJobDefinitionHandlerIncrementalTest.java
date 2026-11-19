@@ -54,6 +54,83 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
     }
 
     @Test
+    void acceptsHttpIncrementalAppendWithoutPrimaryKey() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) command.getWorkflow().get("nodes");
+        Map<String, Object> sinkData = (Map<String, Object>) nodes.get(1).get("data");
+        Map<String, Object> sinkConfig = (Map<String, Object>) sinkData.get("config");
+        sinkConfig.put("writeMode", "append");
+        sinkConfig.remove("primaryKey");
+
+        assertDoesNotThrow(() -> handler.validate(command));
+    }
+
+    @Test
+    void rejectsHttpAppendToNonJdbcTarget() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) command.getWorkflow().get("nodes");
+        Map<String, Object> sinkData = (Map<String, Object>) nodes.get(1).get("data");
+        Map<String, Object> sinkConfig = (Map<String, Object>) sinkData.get("config");
+        sinkConfig.put("dbType", "KAFKA");
+        sinkConfig.put("writeMode", "append");
+        sinkConfig.remove("primaryKey");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("JDBC 目标"));
+    }
+
+    @Test
+    void rejectsHttpUpsertWithoutPrimaryKey() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) command.getWorkflow().get("nodes");
+        Map<String, Object> sinkData = (Map<String, Object>) nodes.get(1).get("data");
+        Map<String, Object> sinkConfig = (Map<String, Object>) sinkData.get("config");
+        sinkConfig.remove("primaryKey");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("Upsert"));
+    }
+
+    @Test
+    void acceptsHttpTimeFormatWithFractionalSeconds() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        Map<String, Object> sourceConfig = sourceConfig(command);
+        Map<String, Object> incremental = new java.util.HashMap<>(
+                (Map<String, Object>) sourceConfig.get("incrementalConfig"));
+        incremental.put("timeFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS");
+        sourceConfig.put("incrementalConfig", incremental);
+
+        assertDoesNotThrow(() -> handler.validate(command));
+    }
+
+    @Test
+    void rejectsHttpTimeFormatThatNeedsATimeZoneOffset() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
+                "{\"status\":\"active\"}");
+        Map<String, Object> sourceConfig = sourceConfig(command);
+        Map<String, Object> incremental = new java.util.HashMap<>(
+                (Map<String, Object>) sourceConfig.get("incrementalConfig"));
+        incremental.put("timeFormat", "yyyy-MM-dd'T'HH:mm:ssXXX");
+        sourceConfig.put("incrementalConfig", incremental);
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> handler.validate(command)
+        );
+        assertTrue(error.getMessage().contains("时间格式不合法"));
+    }
+
+    @Test
     void rejectsHttpIncrementalWithoutResponseTimeField() {
         BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
                 "{\"status\":\"active\"}");
