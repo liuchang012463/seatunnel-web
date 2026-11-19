@@ -153,6 +153,11 @@ class OpenMetadataServerServiceTest {
         server.createContext("/api/v1/services/ingestionPipelines/status",
                 exchange -> respond(exchange, 200,
                         "{\"code\":200,\"platform\":\"Airflow\",\"version\":\"2.0.4.0\"}"));
+        server.createContext("/api/v1/users/loggedInUser",
+                exchange -> respond(exchange, 200,
+                        "{\"id\":\"00000000-0000-0000-0000-000000000042\",\"name\":\"bot\",\"domains\":[]}"));
+        server.createContext("/api/v1/domains",
+                exchange -> respond(exchange, 200, "{\"data\":[],\"paging\":{\"total\":0}}"));
         server.start();
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/api";
     }
