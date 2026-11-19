@@ -530,7 +530,7 @@ const IngestionSituationPage: React.FC = () => {
     },
   ];
 
-  // 拓扑：仅「采集方式 → 引擎」有汇聚语义可画线；数据源/目录无一一对应，不画跨列假链路
+  // 拓扑：数据源/资源目录汇入引擎为示意流动线；采集方式→引擎为正交总线（有汇聚语义）
   const topologySources = sourceRows.slice(0, 6);
   const sourceYs = layoutColumnYs(topologySources.length);
   const taskYs = layoutColumnYs(visibleMetrics.length, 120, 460);
@@ -925,7 +925,19 @@ const IngestionSituationPage: React.FC = () => {
                 <text x="320" y="33" className="topology-column-label">采集方式</text>
                 <text x="602" y="33" className="topology-column-label">数据引接引擎</text>
                 <text x="812" y="33" className="topology-column-label">资源目录</text>
-                {/* 仅画采集方式汇入引擎：正交总线，避免交叉与假一一对应 */}
+                {/* 数据源 → 引擎：示意汇聚流动线（非一一对应） */}
+                {topologySources.map((source, index) => {
+                  const y = sourceYs[index];
+                  const d = 'M 148 ' + y + ' C 250 ' + y + ', 385 ' + engineY + ', ' + engineInX + ' ' + engineY;
+                  return (
+                    <g className="edge-group online" key={'source-edge-' + source.key}>
+                      <path d={d} className="edge-hit" />
+                      <path d={d} className="edge-line online" markerEnd="url(#arrow-online)" />
+                      <path d={d} className="edge-flow online" />
+                    </g>
+                  );
+                })}
+                {/* 采集方式汇入引擎：正交总线 */}
                 {visibleMetrics.length > 0 && (
                   <g className="edge-group online topology-collect-bus">
                     <path
@@ -987,6 +999,18 @@ const IngestionSituationPage: React.FC = () => {
                     />
                   </g>
                 )}
+                {/* 引擎 → 资源目录：示意汇出流动线 */}
+                {resourceItems.map((resource, index) => {
+                  const y = resourceYs[index];
+                  const d = 'M 684 ' + engineY + ' C 750 ' + engineY + ', 784 ' + y + ', 846 ' + y;
+                  return (
+                    <g className="edge-group online" key={'resource-edge-' + resource.label}>
+                      <path d={d} className="edge-hit" />
+                      <path d={d} className="edge-line online" markerEnd="url(#arrow-online)" />
+                      <path d={d} className="edge-flow online" />
+                    </g>
+                  );
+                })}
                 <circle cx="625" cy="278" r="82" className="agent-halo" />
                 <circle cx="625" cy="278" r="59" className="agent-ring" />
               </svg>
