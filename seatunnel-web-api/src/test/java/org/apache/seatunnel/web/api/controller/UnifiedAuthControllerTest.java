@@ -7,11 +7,14 @@ import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.SessionService;
 import org.apache.seatunnel.web.api.service.impl.UnifiedAuthServiceImpl;
 import org.apache.seatunnel.web.common.constants.Constants;
+import org.apache.seatunnel.web.common.enums.UserType;
 import org.apache.seatunnel.web.dao.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -24,6 +27,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 class UnifiedAuthControllerTest {
 
@@ -102,6 +107,77 @@ class UnifiedAuthControllerTest {
                 contains(Constants.SESSION_ID + "=normal-session-id;"));
         verify(response).addHeader(eq(HttpHeaders.SET_COOKIE), contains("HttpOnly"));
         verify(response).addHeader(eq(HttpHeaders.SET_COOKIE), contains("Secure"));
+    }
+
+    @Test
+    void oidcCallbackRouteBindsNamedQueryParameters() throws Exception {
+        User user = new User();
+        UnifiedAuthServiceImpl.OidcCallbackResult result =
+                new UnifiedAuthServiceImpl.OidcCallbackResult(user, false);
+        UnifiedAuthServiceImpl service = mock(UnifiedAuthServiceImpl.class);
+        when(service.completeLogin("authorization-code", "state-token", "browser-binding")).thenReturn(result);
+        when(service.callbackRedirect(result)).thenReturn(FRONTEND_URL);
+        SessionService sessions = mock(SessionService.class);
+        when(sessions.createSession(user, "127.0.0.1")).thenReturn("normal-session-id");
+        UnifiedAuthController controller = controller(service, sessions);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        var response = mvc.perform(get("/api/v1/unified-auth/oidc/callback/seatunnel")
+                        .param("code", "authorization-code")
+                        .param("state", "state-token")
+                        .cookie(new Cookie("ST_OIDC_BROWSER_BINDING", "browser-binding"))
+                        .secure(true))
+                .andReturn()
+                .getResponse();
+
+        assertEquals(HttpStatus.FOUND.value(), response.getStatus());
+        assertEquals(FRONTEND_URL, response.getHeader(HttpHeaders.LOCATION));
+        verify(service).completeLogin("authorization-code", "state-token", "browser-binding");
+        verify(sessions).createSession(user, "127.0.0.1");
+    }
+
+    @Test
+    void externalTicketRouteBindsNamedQueryParameter() throws Exception {
+        User user = new User();
+        UnifiedAuthServiceImpl.OidcCallbackResult result =
+                new UnifiedAuthServiceImpl.OidcCallbackResult(user, false);
+        UnifiedAuthServiceImpl service = mock(UnifiedAuthServiceImpl.class);
+        when(service.completeExternalTicket("single-use-ticket")).thenReturn(result);
+        when(service.callbackRedirect(result)).thenReturn(FRONTEND_URL);
+        SessionService sessions = mock(SessionService.class);
+        when(sessions.createSession(user, "127.0.0.1")).thenReturn("normal-session-id");
+        UnifiedAuthController controller = controller(service, sessions);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        var response = mvc.perform(get("/api/v1/unified-auth/sso/entry")
+                        .param("ticket", "single-use-ticket")
+                        .secure(true))
+                .andReturn()
+                .getResponse();
+
+        assertEquals(HttpStatus.FOUND.value(), response.getStatus());
+        assertEquals(FRONTEND_URL, response.getHeader(HttpHeaders.LOCATION));
+        verify(service).completeExternalTicket("single-use-ticket");
+        verify(sessions).createSession(user, "127.0.0.1");
+    }
+
+    @Test
+    void unbindRouteBindsNamedIdentityPathVariable() throws Exception {
+        UnifiedAuthServiceImpl service = mock(UnifiedAuthServiceImpl.class);
+        UnifiedAuthController controller = controller(service, mock(SessionService.class));
+        CurrentUserProvider currentUserProvider = mock(CurrentUserProvider.class);
+        User admin = new User();
+        admin.setUserType(UserType.ADMIN_USER);
+        when(currentUserProvider.getCurrentUser()).thenReturn(admin);
+        ReflectionTestUtils.setField(controller, "currentUserProvider", currentUserProvider);
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        var response = mvc.perform(delete("/api/v1/unified-auth/mappings/73"))
+                .andReturn()
+                .getResponse();
+
+        assertEquals(HttpStatus.OK.value(), response.getStatus());
+        verify(service).unbindMapping(73L);
     }
 
     private static UnifiedAuthController controller(

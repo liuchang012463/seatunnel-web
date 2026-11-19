@@ -1,8 +1,9 @@
 import { LockOutlined, ReloadOutlined, SaveOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Alert, Button, Card, Form, Input, message, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Form, Input, message, Row, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
+import './index.less';
 import {
   bindUnifiedAuthMapping,
   getUnifiedAuthConfig,
@@ -179,11 +180,12 @@ const UnifiedUsersPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 0.9fr) minmax(480px, 1.1fr)', gap: 16, alignItems: 'stretch' }}>
+      <Row className="unified-users-page__layout" gutter={16} wrap={false}>
+        <Col className="unified-users-page__column" span={11}>
         <Card
+          className="unified-users-page__card unified-users-page__card--config"
           title={<Space><SafetyCertificateOutlined /><span>OIDC Provider</span></Space>}
           extra={<Button icon={<ReloadOutlined />} onClick={() => void load()} loading={loading}>刷新</Button>}
-          style={{ minHeight: 420 }}
         >
           <Form<FormValues> form={form} layout="vertical" onFinish={save}>
             <Form.Item
@@ -301,11 +303,13 @@ const UnifiedUsersPage: React.FC = () => {
             </Space>
           </Form>
         </Card>
+        </Col>
 
+        <Col className="unified-users-page__column" span={13}>
         <Card
+          className="unified-users-page__card unified-users-page__card--mapping"
           title="外部身份绑定"
           extra={<Typography.Text type="secondary">角色取自绑定的本地用户</Typography.Text>}
-          style={{ minHeight: 420 }}
           loading={loading}
         >
           <Table<UnifiedAuthIdentity>
@@ -355,7 +359,8 @@ const UnifiedUsersPage: React.FC = () => {
             ]}
           />
         </Card>
-      </div>
+        </Col>
+      </Row>
     </PageContainer>
   );
 };

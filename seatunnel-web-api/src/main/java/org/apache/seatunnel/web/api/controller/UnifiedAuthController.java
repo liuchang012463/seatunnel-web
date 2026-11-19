@@ -88,7 +88,7 @@ public class UnifiedAuthController {
     }
 
     @DeleteMapping("/mappings/{identityId}")
-    public Result<Void> unbindMapping(@PathVariable Long identityId) {
+    public Result<Void> unbindMapping(@PathVariable("identityId") Long identityId) {
         requireAdmin();
         unifiedAuthService.unbindMapping(identityId);
         return Result.buildSuc();
@@ -117,9 +117,9 @@ public class UnifiedAuthController {
 
     @GetMapping("/oidc/callback/seatunnel")
     public ResponseEntity<Void> callback(
-            @RequestParam(required = false) String code,
-            @RequestParam(required = false) String state,
-            @RequestParam(required = false) String error,
+            @RequestParam(value = "code", required = false) String code,
+            @RequestParam(value = "state", required = false) String state,
+            @RequestParam(value = "error", required = false) String error,
             HttpServletRequest request,
             HttpServletResponse response) {
         try {
@@ -143,7 +143,7 @@ public class UnifiedAuthController {
     /** Validates a one-use external ticket server-side and sets the normal Web session cookie. */
     @GetMapping("/sso/entry")
     public ResponseEntity<Void> enterExternalTicketSession(
-            @RequestParam(required = false) String ticket,
+            @RequestParam(value = "ticket", required = false) String ticket,
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse) {
         try {

@@ -1,0 +1,37 @@
+.ant-pro-layout .ant-pro-page-container-children-container > .unified-users-page__layout,
+.ant-pro-layout .ant-pro-page-container-children-content > .unified-users-page__layout {
+  // Marking the layout as an Ant Row keeps the global PageContainer child rule
+  // from forcing this two-panel workspace into a vertical column.
+  display: flex !important;
+  flex: 1 1 0% !important;
+  flex-direction: row !important;
+  min-width: 0;
+  min-height: 0;
+}
+
+.unified-users-page__column {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.unified-users-page__card.ant-card {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.unified-users-page__card > .ant-card-head {
+  flex: 0 0 auto;
+}
+
+.unified-users-page__card > .ant-card-body {
+  flex: 1 1 0%;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
