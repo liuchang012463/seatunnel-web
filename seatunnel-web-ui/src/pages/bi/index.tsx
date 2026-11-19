@@ -530,12 +530,11 @@ const IngestionSituationPage: React.FC = () => {
     },
   ];
 
-  // 拓扑：数据源/资源目录汇入引擎为示意流动线；采集方式→引擎为正交总线（有汇聚语义）
+  // 拓扑：数据源/采集方式汇入引擎、引擎汇出资源目录均为示意流动曲线
   const topologySources = sourceRows.slice(0, 6);
   const sourceYs = layoutColumnYs(topologySources.length);
   const taskYs = layoutColumnYs(visibleMetrics.length, 120, 460);
   const resourceYs = layoutColumnYs(resourceItems.length);
-  const collectBusX = 535;
   const engineInX = 555;
   const engineY = 278;
 
@@ -937,68 +936,32 @@ const IngestionSituationPage: React.FC = () => {
                     </g>
                   );
                 })}
-                {/* 采集方式汇入引擎：正交总线 */}
-                {visibleMetrics.length > 0 && (
-                  <g className="edge-group online topology-collect-bus">
-                    <path
-                      d={
-                        'M ' +
-                        collectBusX +
-                        ' ' +
-                        Math.min(taskYs[0], engineY) +
-                        ' L ' +
-                        collectBusX +
-                        ' ' +
-                        Math.max(taskYs[taskYs.length - 1], engineY)
-                      }
-                      className="edge-line online topology-bus-line"
-                    />
-                    <path
-                      d={
-                        'M ' +
-                        collectBusX +
-                        ' ' +
-                        Math.min(taskYs[0], engineY) +
-                        ' L ' +
-                        collectBusX +
-                        ' ' +
-                        Math.max(taskYs[taskYs.length - 1], engineY)
-                      }
-                      className="edge-flow online"
-                    />
-                    {visibleMetrics.map((metric, index) => {
-                      const y = taskYs[index];
-                      const selected = selectedTaskType === metric.key || hoveredTaskType === metric.key;
-                      return (
-                        <g
-                          key={'task-stub-' + metric.key}
-                          className={selected ? 'hovered' : undefined}
-                        >
-                          <path
-                            d={'M 500 ' + y + ' L ' + collectBusX + ' ' + y}
-                            className="edge-line online"
-                            style={{ stroke: 'var(--' + metric.tone + ')' }}
-                            filter={selected ? 'url(#topology-glow)' : undefined}
-                          />
-                          <path
-                            d={'M 500 ' + y + ' L ' + collectBusX + ' ' + y}
-                            className="edge-flow online"
-                            style={{ stroke: 'var(--' + metric.tone + ')' }}
-                          />
-                        </g>
-                      );
-                    })}
-                    <path
-                      d={'M ' + collectBusX + ' ' + engineY + ' L ' + engineInX + ' ' + engineY}
-                      className="edge-line online"
-                      markerEnd="url(#arrow-online)"
-                    />
-                    <path
-                      d={'M ' + collectBusX + ' ' + engineY + ' L ' + engineInX + ' ' + engineY}
-                      className="edge-flow online"
-                    />
-                  </g>
-                )}
+                {/* 采集方式 → 引擎：原曲线汇聚流动线 */}
+                {visibleMetrics.map((metric, index) => {
+                  const y = taskYs[index];
+                  const selected = selectedTaskType === metric.key || hoveredTaskType === metric.key;
+                  const d = 'M 510 ' + y + ' C 544 ' + y + ', 545 ' + engineY + ', 568 ' + engineY;
+                  return (
+                    <g
+                      className={'edge-group online' + (selected ? ' hovered' : '')}
+                      key={'task-edge-' + metric.key}
+                    >
+                      <path d={d} className="edge-hit" />
+                      <path
+                        d={d}
+                        className="edge-line online"
+                        style={{ stroke: 'var(--' + metric.tone + ')' }}
+                        markerEnd="url(#arrow-online)"
+                        filter={selected ? 'url(#topology-glow)' : undefined}
+                      />
+                      <path
+                        d={d}
+                        className="edge-flow online"
+                        style={{ stroke: 'var(--' + metric.tone + ')' }}
+                      />
+                    </g>
+                  );
+                })}
                 {/* 引擎 → 资源目录：示意汇出流动线 */}
                 {resourceItems.map((resource, index) => {
                   const y = resourceYs[index];
