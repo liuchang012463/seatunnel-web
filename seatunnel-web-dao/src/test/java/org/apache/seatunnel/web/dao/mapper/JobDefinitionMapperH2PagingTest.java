@@ -17,12 +17,15 @@ import org.junit.jupiter.api.Test;
 import javax.sql.DataSource;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Executes the paging SQL against a real H2 database. The string-only mapper test cannot catch a
@@ -103,8 +106,11 @@ class JobDefinitionMapperH2PagingTest {
             JobDefinitionMapper mapper = session.getMapper(JobDefinitionMapper.class);
 
             statement(session, "INSERT INTO t_seatunnel_web_job_metrics "
-                    + "(job_instance_id, read_qps, write_qps, read_row_count, write_row_count) "
-                    + "VALUES (12, 1.0, 2.0, 10, 20), (12, 3.0, 4.0, 30, 40), (31, 5.0, 6.0, 50, 60)");
+                    + "(job_instance_id, read_qps, write_qps, read_row_count, write_row_count, "
+                    + "read_bytes, write_bytes, read_bps, write_bps) "
+                    + "VALUES (12, 1.0, 2.0, 10, 20, 5000000, 1000000, 1500000, 250000), "
+                    + "(12, 3.0, 4.0, 30, 40, 7000000, 3000000, 2000000, 750000), "
+                    + "(31, 5.0, 6.0, 50, 60, 1000, 2000, 100, 200)");
 
             List<BatchJobDefinitionVO> page =
                     mapper.selectPageWithLatestInstance(dto, 0, 10);
@@ -118,6 +124,17 @@ class JobDefinitionMapperH2PagingTest {
             // The metrics of both pipelines are summed instead of producing a second row.
             assertEquals(40L, first.getReadRowCount());
             assertEquals(60L, first.getWriteRowCount());
+            assertEquals(12_000_000L, first.getReadBytes());
+            assertEquals(4_000_000L, first.getWriteBytes());
+            assertEquals(0, new BigDecimal("3500000").compareTo(first.getReadBps()));
+            assertEquals(0, new BigDecimal("1000000").compareTo(first.getWriteBps()));
+            assertTrue(first.getMetricsAvailable());
+
+            BatchJobDefinitionVO withoutMetrics = page.stream()
+                    .filter(definition -> definition.getId() == 2L)
+                    .findFirst()
+                    .orElseThrow();
+            assertFalse(withoutMetrics.getMetricsAvailable());
         }
     }
 
@@ -173,6 +190,10 @@ class JobDefinitionMapperH2PagingTest {
                         write_qps DOUBLE,
                         read_row_count BIGINT,
                         write_row_count BIGINT,
+                        read_bytes BIGINT,
+                        write_bytes BIGINT,
+                        read_bps DECIMAL(20, 2),
+                        write_bps DECIMAL(20, 2),
                         record_delay BIGINT)
                     """);
             statement.execute("""

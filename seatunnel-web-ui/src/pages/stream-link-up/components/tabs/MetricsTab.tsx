@@ -8,6 +8,10 @@ import {
   Layers3,
   Table2,
 } from "lucide-react";
+import {
+  getThroughputMegabytesPerSecond,
+  isTerminalThroughputStatus,
+} from "@/pages/common/utils/throughput";
 
 interface MetricsTabProps {
   instanceItem: any;
@@ -43,6 +47,33 @@ const formatDecimal = (value: any) => {
   }
 
   return n.toFixed(2).replace(/\.?0+$/, "");
+};
+
+const parseTimestamp = (value: any) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const normalized = typeof value === "string" ? value.replace(" ", "T") : value;
+  const timestamp = new Date(normalized).getTime();
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+};
+
+const getThroughputMBps = (instanceItem: any, direction: "read" | "write") => {
+  if (instanceItem?.metricsAvailable === false) return undefined;
+
+  const startTime = parseTimestamp(
+    instanceItem?.startTime || instanceItem?.lastStartTime || instanceItem?.submitTime || instanceItem?.lastSubmitTime
+  );
+  const endTime = parseTimestamp(instanceItem?.endTime || instanceItem?.lastEndTime);
+  const status = String(instanceItem?.jobStatus || instanceItem?.lastJobStatus || "").toUpperCase();
+  const runtimeMillis = startTime !== undefined && endTime !== undefined && endTime > startTime
+    ? endTime - startTime
+    : 0;
+
+  return getThroughputMegabytesPerSecond(
+    instanceItem?.[`${direction}Bps`],
+    instanceItem?.[`${direction}Bytes`],
+    runtimeMillis,
+    isTerminalThroughputStatus(status),
+  );
 };
 
 const formatCompactNumber = (value: any) => {
@@ -434,6 +465,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
   const writeQps = toNumber(instanceItem?.writeQps);
   const readRows = toNumber(instanceItem?.readRowCount);
   const writeRows = toNumber(instanceItem?.writeRowCount);
+  const readMBps = getThroughputMBps(instanceItem, "read");
+  const writeMBps = getThroughputMBps(instanceItem, "write");
+  const status = String(instanceItem?.jobStatus || instanceItem?.lastJobStatus || "").toUpperCase();
+  const isTerminal = isTerminalThroughputStatus(status);
 
   useEffect(() => {
     let cancelled = false;
@@ -628,6 +663,36 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
           />
 
           <MetricsFlowChart data={flowMetricPoints} />
+        </section>
+
+        <section>
+          <SectionHeader
+            icon={<Gauge size={16} strokeWidth={1.9} />}
+            title="读写吞吐"
+            description={isTerminal
+              ? "任务结束后按累计字节数和运行时长计算平均速度"
+              : "当前实例的读取与写入字节速率"}
+          />
+
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+              <div className="text-sm font-medium text-slate-600">
+                {isTerminal ? "平均读取 MB/s" : "读取 MB/s"}
+              </div>
+              <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
+                {readMBps === undefined ? "—" : `${readMBps.toFixed(2)} MB/s`}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+              <div className="text-sm font-medium text-slate-600">
+                {isTerminal ? "平均写入 MB/s" : "写入 MB/s"}
+              </div>
+              <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
+                {writeMBps === undefined ? "—" : `${writeMBps.toFixed(2)} MB/s`}
+              </div>
+            </div>
+          </div>
         </section>
 
         <section>

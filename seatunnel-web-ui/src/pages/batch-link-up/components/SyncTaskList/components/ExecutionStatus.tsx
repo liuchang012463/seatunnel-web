@@ -1,5 +1,9 @@
 import React from "react";
 import { useIntl } from "@umijs/max";
+import {
+  getThroughputMegabytesPerSecond,
+  isTerminalThroughputStatus,
+} from "@/pages/common/utils/throughput";
 
 interface ExecutionStatusProps {
   record: any;
@@ -14,20 +18,18 @@ interface ExecutionStatusProps {
 const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const intl = useIntl();
   const isManual = record?.runMode === "MANUAL";
-  const terminal = ["FINISHED", "SUCCESS", "FAILED", "CANCELED", "CANCELLED", "STOPPED", "SAVEPOINT_DONE", "UNKNOWABLE"]
-    .includes(String(record?.jobStatus || record?.lastJobStatus || record?.latestMetrics?.jobStatus || "").toUpperCase());
+  const status = record?.jobStatus || record?.lastJobStatus || record?.latestMetrics?.jobStatus;
+  const terminal = isTerminalThroughputStatus(status);
   const startTime = new Date(String(record?.lastStartTime || record?.startTime || record?.lastSubmitTime || record?.submitTime || "").replace(" ", "T")).getTime();
   const endTime = new Date(String(record?.lastEndTime || record?.endTime || "").replace(" ", "T")).getTime();
   // runMode describes the last execution, not the configured schedule mode.
   const runModeLabel = isManual ? "手动" : record?.runMode === "SCHEDULED" ? "自动" : "—";
+  const runtimeMillis = Number.isFinite(startTime) && Number.isFinite(endTime) && endTime > startTime
+    ? endTime - startTime
+    : 0;
   const toMegabytesPerSecond = (bps: any, bytes: any) => {
-    const totalBytes = bytes === undefined || bytes === null ? Number.NaN : Number(bytes);
-    // Missing Engine byte counters are persisted as zero; keep its rate when no positive total exists.
-    const averageBps = terminal && Number.isFinite(startTime) && Number.isFinite(endTime) && endTime > startTime && Number.isFinite(totalBytes) && totalBytes > 0
-      ? (totalBytes * 1000) / (endTime - startTime)
-      : undefined;
-    const value = averageBps ?? (bps === undefined || bps === null ? undefined : Number(bps));
-    return value === undefined || !Number.isFinite(value) ? "—" : `${(value / 1_000_000).toFixed(2)} MB/s`;
+    const value = getThroughputMegabytesPerSecond(bps, bytes, runtimeMillis, terminal);
+    return value === undefined ? "—" : `${value.toFixed(2)} MB/s`;
   };
   const hasMetrics = record?.metricsAvailable !== false && record?.latestMetrics?.metricsAvailable !== false;
   const readRowCount = hasMetrics ? record?.latestMetrics?.readRowCount ?? record?.readRowCount ?? record?.amount ?? 0 : undefined;

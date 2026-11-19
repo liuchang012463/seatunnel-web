@@ -84,12 +84,22 @@
          WHERE mm.job_instance_id = i.id) AS readRowCount,
         (SELECT SUM(mm.write_row_count) FROM t_seatunnel_web_job_metrics mm
          WHERE mm.job_instance_id = i.id) AS writeRowCount,
+        (SELECT SUM(mm.read_bytes) FROM t_seatunnel_web_job_metrics mm
+         WHERE mm.job_instance_id = i.id) AS readBytes,
+        (SELECT SUM(mm.write_bytes) FROM t_seatunnel_web_job_metrics mm
+         WHERE mm.job_instance_id = i.id) AS writeBytes,
         (SELECT SUM(mm.read_qps) FROM t_seatunnel_web_job_metrics mm
          WHERE mm.job_instance_id = i.id) AS readQps,
         (SELECT SUM(mm.write_qps) FROM t_seatunnel_web_job_metrics mm
          WHERE mm.job_instance_id = i.id) AS writeQps,
+        (SELECT SUM(mm.read_bps) FROM t_seatunnel_web_job_metrics mm
+         WHERE mm.job_instance_id = i.id) AS readBps,
+        (SELECT SUM(mm.write_bps) FROM t_seatunnel_web_job_metrics mm
+         WHERE mm.job_instance_id = i.id) AS writeBps,
         (SELECT MAX(mm.record_delay) FROM t_seatunnel_web_job_metrics mm
          WHERE mm.job_instance_id = i.id) AS recordDelay,
+        EXISTS (SELECT 1 FROM t_seatunnel_web_job_metrics mm
+                WHERE mm.job_instance_id = i.id) AS metricsAvailable,
 
         ds_source.name AS sourceDatasourceName,
         ds_sink.name AS sinkDatasourceName

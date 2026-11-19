@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import org.apache.seatunnel.web.common.enums.*;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Data
@@ -70,9 +71,14 @@ public class BatchJobDefinitionVO {
 
     private Long readRowCount;
     private Long writeRowCount;
+    private Long readBytes;
+    private Long writeBytes;
     private Long readQps;
     private Long writeQps;
+    private BigDecimal readBps;
+    private BigDecimal writeBps;
     private Long recordDelay;
+    private Boolean metricsAvailable;
 
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;

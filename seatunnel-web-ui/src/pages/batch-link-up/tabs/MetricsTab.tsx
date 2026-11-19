@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 import { batchJobInstanceApi } from "../api";
 import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
+import {
+  getThroughputMegabytesPerSecond,
+  isTerminalThroughputStatus,
+} from "@/pages/common/utils/throughput";
 import { parseEngineOperatorMetrics, type EngineOperatorMetric } from "../utils/engineOperatorMetrics";
 
 
@@ -23,8 +27,9 @@ interface MetricsTabProps {
 
 interface MetricCardProps {
   title: string;
-  value: number;
+  value: number | undefined;
   unit: string;
+  decimals?: number;
   hint?: string;
   icon: React.ReactNode;
   accentClassName: string;
@@ -52,6 +57,33 @@ const formatDecimal = (value: any) => {
   }
 
   return n.toFixed(2).replace(/\.?0+$/, "");
+};
+
+const parseTimestamp = (value: any) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const normalized = typeof value === "string" ? value.replace(" ", "T") : value;
+  const timestamp = new Date(normalized).getTime();
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+};
+
+const getThroughputMBps = (instanceItem: any, direction: "read" | "write") => {
+  if (instanceItem?.metricsAvailable === false) return undefined;
+
+  const startTime = parseTimestamp(
+    instanceItem?.startTime || instanceItem?.lastStartTime || instanceItem?.submitTime || instanceItem?.lastSubmitTime
+  );
+  const endTime = parseTimestamp(instanceItem?.endTime || instanceItem?.lastEndTime);
+  const status = String(instanceItem?.jobStatus || instanceItem?.lastJobStatus || "").toUpperCase();
+  const runtimeMillis = startTime !== undefined && endTime !== undefined && endTime > startTime
+    ? endTime - startTime
+    : 0;
+
+  return getThroughputMegabytesPerSecond(
+    instanceItem?.[`${direction}Bps`],
+    instanceItem?.[`${direction}Bytes`],
+    runtimeMillis,
+    isTerminalThroughputStatus(status),
+  );
 };
 
 const getShortTableName = (table?: string) => {
@@ -124,6 +156,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
   unit,
+  decimals = 0,
   hint,
   icon,
   accentClassName,
@@ -138,7 +171,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
           <div className="mt-3 flex items-end gap-1.5">
             <span className="text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
-              <CountUp end={value} duration={1.1} separator="," decimals={0} />
+              {value === undefined ? "—" : <CountUp end={value} duration={1.1} separator="," decimals={decimals} />}
             </span>
             <span className="pb-0.5 text-sm font-medium text-slate-600">
               {unit}
@@ -225,6 +258,17 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
   const writeQps = toNumber(instanceItem?.writeQps);
   const readRows = toNumber(instanceItem?.readRowCount);
   const writeRows = toNumber(instanceItem?.writeRowCount);
+  const readMBps = getThroughputMBps(instanceItem, "read");
+  const writeMBps = getThroughputMBps(instanceItem, "write");
+  const isTerminalRun = isTerminalThroughputStatus(
+    instanceItem?.jobStatus || instanceItem?.lastJobStatus
+  );
+  const readMBpsTitle = isTerminalRun
+    ? t("pages.job.detail.metrics.averageReadThroughput", "平均读取 MB/s")
+    : t("pages.job.detail.metrics.readThroughput", "读取 MB/s");
+  const writeMBpsTitle = isTerminalRun
+    ? t("pages.job.detail.metrics.averageWriteThroughput", "平均写入 MB/s")
+    : t("pages.job.detail.metrics.writeThroughput", "写入 MB/s");
   const readQpsTitle = isTerminal
     ? t("pages.job.detail.metrics.averageReadQps", "平均读取 QPS")
     : t("pages.job.detail.metrics.readQps", "读取 QPS");
@@ -555,10 +599,10 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
           <SectionHeader
             icon={<Gauge size={16} strokeWidth={1.9} />}
             title={t("pages.job.detail.metrics.throughput", "吞吐速率")}
-            description={isTerminal
+            description={isTerminalRun
               ? t(
                   "pages.job.detail.metrics.completedThroughputDesc",
-                  "任务结束后按累计处理行数和运行时长计算的平均速度"
+                  "任务结束后按累计处理行数、字节数和运行时长计算平均速度"
                 )
               : t(
                   "pages.job.detail.metrics.throughputDesc",
@@ -579,6 +623,24 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
               title={writeQpsTitle}
               value={writeQps}
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
+              icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
+              accentClassName="border-emerald-100 bg-emerald-50 text-emerald-600"
+            />
+
+            <MetricCard
+              title={readMBpsTitle}
+              value={readMBps}
+              decimals={2}
+              unit="MB/s"
+              icon={<ArrowDownToLine size={17} strokeWidth={1.9} />}
+              accentClassName="border-blue-100 bg-blue-50 text-blue-600"
+            />
+
+            <MetricCard
+              title={writeMBpsTitle}
+              value={writeMBps}
+              decimals={2}
+              unit="MB/s"
               icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
               accentClassName="border-emerald-100 bg-emerald-50 text-emerald-600"
             />
