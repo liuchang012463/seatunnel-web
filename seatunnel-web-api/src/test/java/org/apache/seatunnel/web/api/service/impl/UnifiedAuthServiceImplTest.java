@@ -1,16 +1,25 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.sun.net.httpserver.HttpServer;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.sun.net.httpserver.HttpServer;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.apache.seatunnel.web.common.enums.Flag;
+import org.apache.seatunnel.web.common.enums.UserType;
 import org.apache.seatunnel.web.dao.entity.UnifiedAuthConfig;
 import org.apache.seatunnel.web.dao.entity.UnifiedAuthIdentity;
 import org.apache.seatunnel.web.dao.entity.User;
 import org.apache.seatunnel.web.dao.mapper.UnifiedAuthConfigMapper;
 import org.apache.seatunnel.web.dao.mapper.UnifiedAuthIdentityMapper;
+import org.apache.seatunnel.web.dao.mapper.UserMapper;
 import org.apache.seatunnel.web.spi.bean.dto.UnifiedAuthConfigDTO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthConfigVO;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Constructor;
@@ -23,14 +32,17 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +52,12 @@ class UnifiedAuthServiceImplTest {
     private static final String CALLBACK_URL =
             "https://web.example.com/api/v1/unified-auth/oidc/callback/seatunnel";
     private static final String FRONTEND_URL = "/bi";
+
+    @BeforeAll
+    static void initializeIdentityTableMetadata() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), UnifiedAuthIdentity.class);
+    }
 
     @Test
     void configRejectsRedirectUriOutsideTheTrustedCallback() {
@@ -61,6 +79,64 @@ class UnifiedAuthServiceImplTest {
         assertEquals(FRONTEND_URL + "?oidc=pending",
                 service.callbackRedirect(new UnifiedAuthServiceImpl.OidcCallbackResult(null, true)));
         assertEquals(FRONTEND_URL + "?oidc=failed", service.callbackFailureRedirect());
+    }
+
+    @Test
+    void unbindMappingExplicitlyClearsNullableUserIdWithCompareAndSet() {
+        UnifiedAuthServiceImpl service = service();
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UnifiedAuthIdentity identity = identity(73L, 9308000);
+        when(identityMapper.selectById(73L)).thenReturn(identity);
+        when(identityMapper.update(isNull(), any(Wrapper.class))).thenReturn(1);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+
+        service.unbindMapping(73L);
+
+        ArgumentCaptor<Wrapper> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(identityMapper).update(isNull(), wrapperCaptor.capture());
+        LambdaUpdateWrapper<?> updateWrapper = (LambdaUpdateWrapper<?>) wrapperCaptor.getValue();
+        var userIdSet = Pattern.compile("user_id\\s*=\\s*#\\{ew\\.paramNameValuePairs\\.(\\w+)}",
+                Pattern.CASE_INSENSITIVE).matcher(updateWrapper.getSqlSet());
+        assertTrue(userIdSet.find(), updateWrapper.getSqlSet());
+        assertNull(updateWrapper.getParamNameValuePairs().get(userIdSet.group(1)));
+        assertTrue(updateWrapper.getSqlSegment().contains("id ="));
+        assertTrue(updateWrapper.getSqlSegment().contains("user_id ="));
+        assertTrue(updateWrapper.getParamNameValuePairs().containsValue(73L));
+        assertTrue(updateWrapper.getParamNameValuePairs().containsValue(9308000));
+    }
+
+    @Test
+    void staleBindingCleanupUsesLatestBindingWhenCompareAndSetLosesRace() throws Exception {
+        UnifiedAuthServiceImpl service = service();
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        UnifiedAuthIdentity staleIdentity = identity(73L, 9308000);
+        UnifiedAuthIdentity latestIdentity = identity(73L, 9308001);
+        User latestUser = new User();
+        latestUser.setId(9308001);
+        latestUser.setUserType(UserType.GENERAL_USER);
+        latestUser.setState(Flag.YES.ordinal());
+        when(identityMapper.selectOne(any(Wrapper.class))).thenReturn(staleIdentity);
+        when(identityMapper.update(isNull(), any(Wrapper.class))).thenReturn(0);
+        when(identityMapper.selectById(73L)).thenReturn(latestIdentity);
+        when(userMapper.selectById(9308000)).thenReturn(null);
+        when(userMapper.selectById(9308001)).thenReturn(latestUser);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        UnifiedAuthConfig config = new UnifiedAuthConfig();
+        config.setAutoProvisionGeneralUser(false);
+
+        Method resolve = UnifiedAuthServiceImpl.class.getDeclaredMethod("resolveUserForIdentity",
+                UnifiedAuthConfig.class, String.class, String.class, String.class, String.class, String.class);
+        resolve.setAccessible(true);
+        UnifiedAuthServiceImpl.OidcCallbackResult result =
+                (UnifiedAuthServiceImpl.OidcCallbackResult) resolve.invoke(
+                        service, config, "OIDC", "https://identity.example.com", "subject-73", null, null);
+
+        assertFalse(result.pending());
+        assertSame(latestUser, result.user());
+        verify(userMapper).selectById(9308000);
+        verify(userMapper).selectById(9308001);
     }
 
     @Test
@@ -330,6 +406,17 @@ class UnifiedAuthServiceImplTest {
         config.setTicketResultEmailPointer("/email");
         config.setTicketResultDisplayNamePointer("/name");
         return config;
+    }
+
+    private static UnifiedAuthIdentity identity(Long id, Integer userId) {
+        UnifiedAuthIdentity identity = new UnifiedAuthIdentity();
+        identity.setId(id);
+        identity.setIdentityKey("oidc-key-" + id);
+        identity.setIdentitySource("OIDC");
+        identity.setIssuer("https://identity.example.com");
+        identity.setSubject("subject-" + id);
+        identity.setUserId(userId);
+        return identity;
     }
 
     private static UnifiedAuthServiceImpl serviceWithConfig(UnifiedAuthConfig config) {

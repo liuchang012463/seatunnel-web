@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonPointer;
@@ -379,11 +380,28 @@ public class UnifiedAuthServiceImpl {
             String email,
             String displayName) {
         UnifiedAuthIdentity identity = findOrCreateIdentity(identitySource, issuer, subject, email, displayName);
-        User user = identity.getUserId() == null ? null : userMapper.selectById(identity.getUserId());
-        if (identity.getUserId() != null && user == null) {
-            identity.setUserId(null);
-            identity.setUpdateTime(new Date());
-            identityMapper.updateById(identity);
+        User user = null;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Integer localUserId = identity.getUserId();
+            if (localUserId == null) {
+                break;
+            }
+            user = userMapper.selectById(localUserId);
+            if (user != null) {
+                break;
+            }
+            if (clearUserBinding(identity)) {
+                break;
+            }
+            UnifiedAuthIdentity latestIdentity = identityMapper.selectById(identity.getId());
+            if (latestIdentity == null) {
+                identity.setUserId(null);
+                break;
+            }
+            log.info("Unified-user identity binding changed during stale-user cleanup: identityId={}, "
+                            + "previousLocalUserId={}, latestLocalUserId={}",
+                    identity.getId(), localUserId, latestIdentity.getUserId());
+            identity = latestIdentity;
         }
         if (user == null && Boolean.TRUE.equals(config.getAutoProvisionGeneralUser())) {
             user = provisionGeneralUser(identity);
@@ -453,10 +471,34 @@ public class UnifiedAuthServiceImpl {
         if (identity == null) {
             throw invalid("外部身份映射不存在");
         }
-        identity.setUserId(null);
-        identity.setUpdateTime(new Date());
-        identityMapper.updateById(identity);
+        Integer previousUserId = identity.getUserId();
+        if (previousUserId != null && !clearUserBinding(identity)) {
+            log.info("Unified-user identity binding changed before unbind; preserving latest binding: "
+                            + "identityId={}, previousLocalUserId={}",
+                    identityId, previousUserId);
+            return;
+        }
         log.info("Unified-user identity unbound: identityId={}", identityId);
+    }
+
+    private boolean clearUserBinding(UnifiedAuthIdentity identity) {
+        Integer previousUserId = identity.getUserId();
+        if (previousUserId == null) {
+            return true;
+        }
+        Date updateTime = new Date();
+        // MyBatis-Plus updateById ignores null fields, so clear the nullable binding explicitly.
+        int updated = identityMapper.update(null, new LambdaUpdateWrapper<UnifiedAuthIdentity>()
+                .set(UnifiedAuthIdentity::getUserId, null)
+                .set(UnifiedAuthIdentity::getUpdateTime, updateTime)
+                .eq(UnifiedAuthIdentity::getId, identity.getId())
+                .eq(UnifiedAuthIdentity::getUserId, previousUserId));
+        if (updated == 0) {
+            return false;
+        }
+        identity.setUserId(null);
+        identity.setUpdateTime(updateTime);
+        return true;
     }
 
     public String callbackRedirect(OidcCallbackResult result) {
