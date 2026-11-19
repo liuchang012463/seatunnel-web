@@ -246,6 +246,18 @@ describe('data source service', () => {
     expect(HttpUtils.get).toHaveBeenNthCalledWith(
       2,
       '/api/v1/data-source-topology/children?nodeType=DATA_SOURCE&nodeId=42',
+      undefined,
+    );
+
+    // The lineage panel uses a longer timeout and handles catalog errors locally.
+    const options = { timeout: 60_000, skipErrorHandler: true };
+    await expect(fetchDataSourceTopologyChildren('DATA_SOURCE', '42', options)).resolves.toBe(
+      response,
+    );
+    expect(HttpUtils.get).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/data-source-topology/children?nodeType=DATA_SOURCE&nodeId=42',
+      options,
     );
   });
 
