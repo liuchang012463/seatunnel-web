@@ -132,7 +132,7 @@ const errorHandler = (error: any): Response | undefined => {
 function createClient() {
   return extend({
     errorHandler,
-    credentials: "omit",
+    credentials: "same-origin",
     timeout: 15000,
   });
 }
@@ -146,7 +146,7 @@ request.interceptors.request.use((url: string, options: any) => {
     url,
     options: {
       ...options,
-      credentials: "omit",
+      credentials: "same-origin",
       headers,
     },
   };
