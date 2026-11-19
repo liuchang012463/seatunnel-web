@@ -142,6 +142,11 @@ public class MetadataStatusSynchronizer {
             latest.setVersion(version + 1L);
             latest.initUpdate();
             if (metadataBindingDao.updateIfVersion(latest, version)) {
+                if (profileChanged) {
+                    log.info("Metadata profiler status refreshed: dataSourceId={}, runId={}, previousStatus={}, status={}, errorCode={}",
+                            latest.getDataSourceId(), runId(latestRun(profileRuns)),
+                            profileStatusBefore, latest.getProfileStatus(), latest.getProfileLastError());
+                }
                 if (scanChanged || profileChanged) {
                     // A finished run changes the catalog; idle refreshes that
                     // observe no state change must not drop warm caches.
@@ -393,28 +398,32 @@ public class MetadataStatusSynchronizer {
             Date now) {
         MetadataRunStatus currentStatus = binding.getProfileStatus();
         Date reservationTime = binding.getProfileLastRunTime();
-        boolean activeReservation = MetadataPipelineOperationService.isRunning(currentStatus)
-                || (currentStatus == MetadataRunStatus.UNKNOWN && reservationTime != null);
-        if (!activeReservation || reservationTime == null) {
-            // Scheduled and externally triggered runs have no local reservation. Reconcile
-            // their latest result when newer, while preserving local trigger failures and
-            // the combined result of the same profiler/sample reservation.
-            OpenMetadataPipelineRun latestProfilerRun = latestRun(profilerRuns);
-            if (isNewerThanLocalRun(latestProfilerRun, currentStatus, reservationTime)) {
-                applyRun(binding, false, latestProfilerRun, now);
-                log.info("Metadata profiler run status refreshed: dataSourceId={}, runId={}, status={}",
-                        binding.getDataSourceId(), latestProfilerRun.runId(), binding.getProfileStatus());
-            } else if (currentStatus == MetadataRunStatus.NEVER) {
-                if (hasLocalFailureEvidence(binding, false)) {
-                    binding.setProfileStatus(MetadataRunStatus.FAILED);
-                }
+        boolean activeReservation = reservationTime != null
+                && (MetadataPipelineOperationService.isRunning(currentStatus)
+                        || currentStatus == MetadataRunStatus.UNKNOWN);
+        OpenMetadataPipelineRun latestProfilerRun = latestRun(profilerRuns);
+        if ((!activeReservation && isNewerThanLocalRun(latestProfilerRun, currentStatus, reservationTime))
+                || hasStaleProfilerReservation(binding, latestProfilerRun, activeReservation)) {
+            // A standalone profiler run supersedes the previous paired exploration.
+            // Clear that reservation before persisting QUEUED/RUNNING for the next poll.
+            binding.setProfileRunReservationToken(null);
+            binding.setProfileProfilerRunIdBaseline(null);
+            binding.setProfileSampleRunIdBaseline(null);
+            binding.setProfileRunBaselineCaptured(null);
+            binding.setProfileRunBaselineCapturedAt(null);
+            binding.setProfileLastError(null);
+            applyRun(binding, false, latestProfilerRun, now);
+            return;
+        }
+        if (!activeReservation) {
+            if (currentStatus == MetadataRunStatus.NEVER && hasLocalFailureEvidence(binding, false)) {
+                binding.setProfileStatus(MetadataRunStatus.FAILED);
             }
             return;
         }
 
-        // Rows created before sampling was added have a null baseline flag. Keep
-        // their profiler-only completion behavior while new reservations wait
-        // until both pre-trigger run IDs have been stored.
+        // Standalone runs and reservations created before sampling use only the profiler.
+        // New paired reservations wait until both pre-trigger run IDs have been stored.
         if (binding.getProfileRunBaselineCaptured() == null) {
             applyLegacyProfilerRun(binding, profilerRuns, reservationTime, now);
             return;
@@ -553,13 +562,8 @@ public class MetadataStatusSynchronizer {
         MetadataRunStatus status = profiler == null
                 ? null
                 : OpenMetadataRunStatusMapper.fromPipelineState(profiler.pipelineState());
-        if (status == MetadataRunStatus.FAILED) {
-            binding.setProfileStatus(MetadataRunStatus.FAILED);
-            binding.setProfileLastError(MetadataErrorCode.PIPELINE_EXECUTION_ERROR.name());
-        } else if (status == MetadataRunStatus.SUCCESS) {
-            binding.setProfileStatus(MetadataRunStatus.SUCCESS);
-            binding.setProfileLastSuccessTime(runSuccessTime(profiler));
-            binding.setProfileLastError(null);
+        if (status == MetadataRunStatus.FAILED || status == MetadataRunStatus.SUCCESS) {
+            applyRun(binding, false, profiler, now);
         } else if (MetadataPipelineOperationService.isRunning(status)) {
             binding.setProfileStatus(MetadataRunStatus.RUNNING);
         } else if (profiler == null
@@ -586,6 +590,26 @@ public class MetadataStatusSynchronizer {
     private static Date runTime(OpenMetadataPipelineRun run) {
         return MetadataPipelineOperationService.fromOmTimestamp(
                 run.startDate() == null ? run.timestamp() : run.startDate());
+    }
+
+    private boolean hasStaleProfilerReservation(
+            MetadataSourceBinding binding, OpenMetadataPipelineRun profiler, boolean activeReservation) {
+        boolean triggerFailed = binding.getProfileStatus() == MetadataRunStatus.FAILED
+                && MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name().equals(binding.getProfileLastError());
+        Date lastRunTime = binding.getProfileLastRunTime();
+        Date baselineCapturedAt = binding.getProfileRunBaselineCapturedAt();
+        if ((!activeReservation && !triggerFailed)
+                || lastRunTime == null || baselineCapturedAt == null || profiler == null) {
+            return false;
+        }
+        // Older refreshes advanced the cached run time without retiring the old reservation.
+        // Recover only when the cached run started well beyond that reservation's trigger window
+        // and OpenMetadata still reports that run or a newer one.
+        long triggerWindowMs = (properties.getExplorationPreparationTimeoutSeconds()
+                + properties.getTriggerGraceSeconds()) * 1000L;
+        return lastRunTime.getTime() - baselineCapturedAt.getTime() > triggerWindowMs
+                && runTime(profiler) != null
+                && !isOlderThanLocalRun(profiler, binding.getProfileStatus(), lastRunTime);
     }
 
     private static boolean isNewerThanLocalRun(

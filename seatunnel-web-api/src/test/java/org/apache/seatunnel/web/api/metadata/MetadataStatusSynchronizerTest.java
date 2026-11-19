@@ -519,6 +519,98 @@ class MetadataStatusSynchronizerTest {
     }
 
     @Test
+    void scheduledProfilerFinishesIndependentlyAfterAnEarlierPairedExploration() {
+        Date earlierRun = new Date(1_700_000_000_000L);
+        long profilerStart = earlierRun.getTime() + 86_400_000L;
+        long profilerEnd = profilerStart + 65_000L;
+        MetadataSourceBinding live = queuedExploration(0L, earlierRun);
+        live.setProfileStatus(MetadataRunStatus.SUCCESS);
+        live.setProfileRunReservationToken("old-reservation");
+        live.setProfileProfilerRunIdBaseline("old-profiler");
+        live.setProfileSampleRunIdBaseline("old-sample");
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(bindingDao.updateIfVersion(any(MetadataSourceBinding.class), any(Long.class))).thenReturn(true);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(
+                        List.of(new OpenMetadataPipelineRun(
+                                "scheduled-profiler", "running", profilerStart, profilerStart, null, 0)),
+                        List.of(new OpenMetadataPipelineRun(
+                                "scheduled-profiler", "success", profilerStart, profilerStart, profilerEnd, 0)));
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scheduled-sample", "success", profilerStart - 3_600_000L,
+                        profilerStart - 3_600_000L, profilerStart - 3_590_000L, 0)));
+
+        MetadataStatusSynchronizer synchronizer = synchronizer();
+        synchronizer.refreshOne(live, new Date(profilerStart + 5_000L));
+        assertEquals(MetadataRunStatus.RUNNING, live.getProfileStatus());
+
+        synchronizer.refreshOne(live, new Date(profilerEnd + 120_000L));
+        assertEquals(MetadataRunStatus.SUCCESS, live.getProfileStatus());
+        assertEquals(new Date(profilerEnd), live.getProfileLastSuccessTime());
+        assertEquals(MetadataRunStatus.SUCCESS, live.getSampleStatus());
+        assertNull(live.getProfileLastError());
+        assertNull(live.getProfileRunReservationToken());
+        assertNull(live.getProfileRunBaselineCaptured());
+    }
+
+    @Test
+    void repairsFalseTriggerFailureForTheSameScheduledProfilerRun() {
+        long profilerStart = 1_700_086_400_000L;
+        long profilerEnd = profilerStart + 65_000L;
+        MetadataSourceBinding live = queuedExploration(0L, new Date(profilerStart - 86_400_000L));
+        live.setProfileStatus(MetadataRunStatus.FAILED);
+        live.setProfileLastError(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name());
+        live.setProfileLastRunTime(new Date(profilerStart + 1_000L));
+        live.setProfileRunReservationToken("old-reservation");
+        live.setProfileProfilerRunIdBaseline("old-profiler");
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "scheduled-profiler", "success", profilerStart, profilerStart, profilerEnd, 0)));
+
+        synchronizer().refreshOne(live, new Date(profilerEnd + 120_000L));
+
+        assertEquals(MetadataRunStatus.SUCCESS, live.getProfileStatus());
+        assertEquals(new Date(profilerStart), live.getProfileLastRunTime());
+        assertEquals(new Date(profilerEnd), live.getProfileLastSuccessTime());
+        assertNull(live.getProfileLastError());
+        assertNull(live.getProfileRunReservationToken());
+        assertNull(live.getProfileRunBaselineCapturedAt());
+    }
+
+    @Test
+    void preservesPairedTriggerFailureWhenProfilerAlreadySucceeded() {
+        long reservationTime = 1_700_000_000_000L;
+        long profilerStart = reservationTime + 2_000L;
+        long profilerEnd = profilerStart + 65_000L;
+        MetadataSourceBinding live = queuedExploration(0L, new Date(reservationTime));
+        live.setProfileStatus(MetadataRunStatus.FAILED);
+        live.setProfileLastError(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name());
+        live.setProfileRunReservationToken("current-reservation");
+        when(bindingDao.queryById(1L)).thenReturn(live);
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_metadata", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_auto_classification", 1))
+                .thenReturn(List.of());
+        when(openMetadataClient.listIngestionPipelineRuns("st_ds_42.st_ds_42_profiler", 1))
+                .thenReturn(List.of(new OpenMetadataPipelineRun(
+                        "paired-profiler", "success", profilerStart, profilerStart, profilerEnd, 0)));
+
+        synchronizer().refreshOne(live, new Date(profilerEnd + 120_000L));
+
+        assertEquals(MetadataRunStatus.FAILED, live.getProfileStatus());
+        assertEquals(MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR.name(), live.getProfileLastError());
+        assertEquals("current-reservation", live.getProfileRunReservationToken());
+    }
+
+    @Test
     void preservesALocalExplorationFailureWhenOpenMetadataOnlyReturnsAnOlderRun() {
         Date reservationTime = new Date(1_700_001_000_000L);
         MetadataSourceBinding candidate = binding(0L);

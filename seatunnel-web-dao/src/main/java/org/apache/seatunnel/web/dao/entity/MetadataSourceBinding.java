@@ -93,6 +93,8 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private Date profileLastSuccessTime;
 
+    /** A successful profiler run clears the previous error in the same update. */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String profileLastError;
 
     /**
@@ -108,14 +110,20 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private String sampleLastError;
 
+    /** The reservation and its baselines are cleared when a standalone run supersedes it. */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String profileRunReservationToken;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String profileProfilerRunIdBaseline;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String profileSampleRunIdBaseline;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Boolean profileRunBaselineCaptured;
 
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Date profileRunBaselineCapturedAt;
 
     private Integer retryCount;
@@ -128,6 +136,8 @@ public class MetadataSourceBinding extends BaseEntity {
 
     private Date lastStatusRefreshTime;
 
+    /** A successful poll clears the previous refresh error. */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String statusRefreshError;
 
     private Long version;

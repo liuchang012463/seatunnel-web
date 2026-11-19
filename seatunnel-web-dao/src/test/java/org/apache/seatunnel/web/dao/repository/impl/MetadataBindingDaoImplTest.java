@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
 import java.util.Date;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,6 +53,26 @@ class MetadataBindingDaoImplTest {
         assertTrue(update.getParamNameValuePairs().containsValue("reservation-token"));
         assertTrue(update.getParamNameValuePairs().containsValue(false));
         assertTrue(update.getParamNameValuePairs().containsValue(null));
+    }
+
+    @Test
+    void statusUpdateWritesNullsForClearedProfilerReservationAndErrors() {
+        MybatisConfiguration configuration = new MybatisConfiguration();
+        configuration.addMapper(MetadataSourceBindingMapper.class);
+        MetadataSourceBinding binding = new MetadataSourceBinding();
+        binding.setId(42L);
+        var update = new LambdaUpdateWrapper<MetadataSourceBinding>().eq(MetadataSourceBinding::getId, 42L);
+
+        String sql = configuration.getMappedStatement(MetadataSourceBindingMapper.class.getName() + ".update")
+                .getBoundSql(Map.of("et", binding, "ew", update)).getSql();
+
+        assertTrue(sql.contains("profile_run_reservation_token=?"));
+        assertTrue(sql.contains("profile_profiler_run_id_baseline=?"));
+        assertTrue(sql.contains("profile_sample_run_id_baseline=?"));
+        assertTrue(sql.contains("profile_run_baseline_captured=?"));
+        assertTrue(sql.contains("profile_run_baseline_captured_at=?"));
+        assertTrue(sql.contains("profile_last_error=?"));
+        assertTrue(sql.contains("status_refresh_error=?"));
     }
 
     @Test
