@@ -4,7 +4,9 @@ import jakarta.annotation.Resource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.seatunnel.web.api.metadata.DataSourceTopologyService;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
+import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceTopologyNodeVO;
 import org.apache.seatunnel.web.spi.enums.DataSourceTopologyNodeType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,8 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
-/** Lazy Unit -> BusinessSystem -> DataSource -> OpenMetadata topology APIs. */
+/** Read-only data source directory and lineage topology. */
 @RestController
 @RequestMapping("/api/v1/data-source-topology")
 @Tag(name = "DATA_SOURCE_TOPOLOGY_TAG")
@@ -22,6 +25,24 @@ public class DataSourceTopologyController {
 
     @Resource
     private DataSourceTopologyService dataSourceTopologyService;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
+    @GetMapping("/lineage")
+    @Operation(summary = "getDataSourceLineage", description = "Read the cross-data-source lineage graph")
+    public Result<DataSourceLineageVO> lineage() {
+        currentUserProvider.requireCurrentUser();
+        return Result.buildSuc(dataSourceTopologyService.lineage());
+    }
+
+    @GetMapping("/lineage/table")
+    @Operation(summary = "getDataSourceTableLineage", description = "Read direct upstream and downstream table lineage")
+    public Result<DataSourceLineageVO.TableLineage> tableLineage(
+            @RequestParam("dataSourceId") Long dataSourceId, @RequestParam("tableId") UUID tableId) {
+        currentUserProvider.requireCurrentUser();
+        return Result.buildSuc(dataSourceTopologyService.tableLineage(dataSourceId, tableId));
+    }
 
     @GetMapping("/tree")
     @Operation(summary = "getDataSourceTopologyTree", description = "Read the shallow local topology tree")

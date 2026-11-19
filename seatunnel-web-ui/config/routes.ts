@@ -39,7 +39,7 @@ const businessRoutes = [
   ['/sync/cloud-edge-tasks', './FeaturePlaceholderPage'],
   ['/sync/edge-access-tasks', './FeaturePlaceholderPage'],
   ['/sync/links', './FeaturePlaceholderPage'],
-  ['/sync/topology', './FeaturePlaceholderPage'],
+  ['/sync/topology', './data-topology'],
   ['/bi', './bi'],
   ['/metrics', './metrics'],
   ['/alarm', './alarm'],

@@ -3,10 +3,13 @@ package org.apache.seatunnel.web.api.metadata.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.MetadataServiceCategory;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.EntityLineage;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /** OpenMetadata Server boundary. This interface deliberately exposes no Airflow API. */
 public interface OpenMetadataClient {
@@ -15,6 +18,12 @@ public interface OpenMetadataClient {
 
     /** Reads Server and managed-ingestion health through OpenMetadata 2.0.4. */
     OpenMetadataHealth health();
+
+    /** Reads the service edges already aggregated by OpenMetadata. */
+    List<EsLineageData> getServiceLineage();
+
+    /** Reads one hop in each direction for a table, or returns null if it no longer exists. */
+    EntityLineage getTableLineage(UUID tableId);
 
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
 

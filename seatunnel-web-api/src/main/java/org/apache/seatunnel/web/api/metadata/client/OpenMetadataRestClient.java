@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.metadata.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +12,7 @@ import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
+import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SearchIndexField;
@@ -56,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1003,6 +1007,49 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 : value instanceof org.openmetadata.schema.type.ColumnDataType columnDataType
                         ? columnDataType.value()
                         : value.toString();
+    }
+
+    @Override
+    public List<EsLineageData> getServiceLineage() {
+        JsonNode response = sdkRequest("GET", "/v1/lineage/getPlatformLineage?view=service", null, false);
+        // The platform graph indexes each edge under its target's upstream edges.
+        JsonNode edges = response.path("upstreamEdges");
+        if (!edges.isObject()) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata service lineage response is invalid");
+        }
+        List<EsLineageData> result = new ArrayList<>();
+        try {
+            for (JsonNode edge : edges) {
+                result.add(OBJECT_MAPPER.treeToValue(edge, EsLineageData.class));
+            }
+            return result;
+        } catch (JsonProcessingException error) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata service lineage response is invalid", error);
+        }
+    }
+
+    @Override
+    public EntityLineage getTableLineage(UUID tableId) {
+        validateBaseUrl();
+        try {
+            String response = sdk().lineage().getEntityLineage("table", tableId.toString(), "1", "1");
+            EntityLineage lineage = OBJECT_MAPPER.readValue(response, EntityLineage.class);
+            if (lineage == null || lineage.getEntity() == null) {
+                throw new MetadataIntegrationException(
+                        MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage response is invalid");
+            }
+            return lineage;
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage lookup failed", error);
+        } catch (JsonProcessingException | IllegalArgumentException error) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage response is invalid", error);
+        }
     }
 
     @Override

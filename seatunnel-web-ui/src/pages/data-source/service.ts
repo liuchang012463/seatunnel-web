@@ -431,9 +431,10 @@ export async function fetchDataSourceTopologyTree(
 export async function fetchDataSourceTopologyChildren(
   nodeType: DataSourceTopologyNodeType,
   nodeId: string,
+  options?: RequestOptions,
 ): Promise<CommonApiResponse<DataSourceTopologyNode[]>> {
   const query = new URLSearchParams({ nodeType, nodeId });
-  return HttpUtils.get(`${DATA_SOURCE_TOPOLOGY_API_PREFIX}/children?${query.toString()}`);
+  return HttpUtils.get(`${DATA_SOURCE_TOPOLOGY_API_PREFIX}/children?${query.toString()}`, options);
 }
 
 export async function testDataSourceConnectionWithParams(

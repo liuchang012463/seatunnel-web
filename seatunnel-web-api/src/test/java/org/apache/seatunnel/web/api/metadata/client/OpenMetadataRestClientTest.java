@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,6 +37,45 @@ class OpenMetadataRestClientTest {
         if (server != null) {
             server.stop(0);
         }
+    }
+
+    @Test
+    void readsServiceAndTableLineageThroughTheFixedSdk() throws Exception {
+        UUID tableId = UUID.randomUUID();
+        UUID upstreamId = UUID.randomUUID();
+        AtomicReference<String> serviceQuery = new AtomicReference<>();
+        AtomicReference<String> tableQuery = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/lineage/getPlatformLineage", exchange -> {
+            serviceQuery.set(exchange.getRequestURI().getQuery());
+            respond(exchange, 200, """
+                    {"nodes":{},"upstreamEdges":{"edge":{
+                      "fromEntity":{"fullyQualifiedName":"st_ds_42"},
+                      "toEntity":{"fullyQualifiedName":"st_ds_43"},
+                      "assetEdges":2
+                    }},"downstreamEdges":{}}
+                    """);
+        });
+        server.createContext("/api/v1/lineage/table/" + tableId, exchange -> {
+            tableQuery.set(exchange.getRequestURI().getQuery());
+            respond(exchange, 200, """
+                    {"entity":{"id":"%s","fullyQualifiedName":"st_ds_43.db.public.orders","type":"table"},
+                     "upstreamEdges":[{"fromEntity":"%s","toEntity":"%s"}],"downstreamEdges":[],"nodes":[]}
+                    """.formatted(tableId, upstreamId, tableId));
+        });
+        server.start();
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        var serviceEdge = client.getServiceLineage().getFirst();
+        var tableLineage = client.getTableLineage(tableId);
+
+        assertEquals("view=service", serviceQuery.get());
+        assertEquals("st_ds_42", serviceEdge.getFromEntity().getFullyQualifiedName());
+        assertEquals(2, serviceEdge.getAssetEdges());
+        assertTrue(tableQuery.get().contains("upstreamDepth=1"));
+        assertTrue(tableQuery.get().contains("downstreamDepth=1"));
+        assertEquals(upstreamId, tableLineage.getUpstreamEdges().getFirst().getFromEntity());
     }
 
     @Test
