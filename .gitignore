@@ -50,6 +50,12 @@ node_modules/
 /deploy/docker/dist/
 playwright-report/
 test-results/
+/.umi-test/
+
+# One-off frontend files
+/.tmp-fix-bi-less.cjs
+/seatunnel-web-ui/.tmp-test-tailwind.css
+/seatunnel-web-ui/tmp-patch-modal.js
 
 # Local environment files
 .env
