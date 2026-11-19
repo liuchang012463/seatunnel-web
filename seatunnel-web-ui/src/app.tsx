@@ -4,7 +4,7 @@ import ThemeConfigProvider from '@/components/ThemeConfigProvider';
 import '@ant-design/v5-patch-for-react-19';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Link, type RequestConfig, type RunTimeLayoutConfig } from '@umijs/max';
-import { Spin, Tooltip } from 'antd';
+import { Alert, Spin, Tooltip } from 'antd';
 import { isValidElement, Suspense } from 'react';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
@@ -45,6 +45,8 @@ export function render(oldRender: () => void) {
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
   currentUser?: API.CurrentUser;
+  oidcEnabled?: boolean;
+  oidcNotice?: string;
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
 }> {
@@ -59,7 +61,33 @@ export async function getInitialState(): Promise<{
     }
     return undefined;
   };
+  let oidcNotice: string | undefined;
+  if (typeof window !== 'undefined') {
+    const currentUrl = new URL(window.location.href);
+    const oidcResult = currentUrl.searchParams.get('oidc');
+    if (oidcResult) {
+      currentUrl.searchParams.delete('oidc');
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+      );
+      oidcNotice = oidcResult === 'pending'
+        ? '身份已验证，等待管理员绑定本地用户后即可登录。'
+        : '统一用户登录失败，请联系管理员或使用本地账号恢复访问。';
+    }
+  }
   const currentUser = await fetchUserInfo();
+  let oidcEnabled = false;
+  try {
+    const provider = await HttpUtils.get<{ enabled?: boolean }>(
+      '/api/v1/unified-auth/oidc/provider',
+      { skipErrorHandler: true },
+    );
+    oidcEnabled = Boolean(provider.data?.enabled);
+  } catch (_error) {
+    // Keep local authentication available when the optional provider cannot be read.
+  }
   // 浅色 v2 尚未完成前，桌面验收固定在深色值班台主题。
   const navTheme = 'realDark' as const;
   setNavTheme(navTheme);
@@ -68,6 +96,8 @@ export async function getInitialState(): Promise<{
   return {
     fetchUserInfo,
     currentUser,
+    oidcEnabled,
+    oidcNotice,
     settings: {
       ...getThemeSettings(navTheme),
     } as Partial<LayoutSettings>,
@@ -80,7 +110,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
   applyLayoutVisibility(hideLayout);
 
   return {
-    menuDataRender: () => menuData,
+    menuDataRender: () => initialState?.currentUser?.access === 'admin'
+      ? menuData
+      : menuData.map((entry) => entry.path === '/menu/operations'
+        ? { ...entry, children: entry.children?.filter((child) => child.path !== '/operations/unified-users') }
+        : entry),
     onPageChange: (location) => {
       if (typeof document !== 'undefined') {
         document.title = resolveDocumentTitle(location?.pathname || '');
@@ -151,7 +185,15 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       </div>
     ),
     // 主题切换在浅色 token 完整迁移前隐藏，避免同一产品出现两套几何语言。
-    actionsRender: () => [<Knowledge key="knowledge" />],
+    actionsRender: () => !initialState?.currentUser?.userid
+      ? [
+          <Link key="local-login" to="/login">本地账号登录</Link>,
+          ...(initialState?.oidcEnabled
+            ? [<a key="unified-user-login" href="/api/v1/unified-auth/oidc/start">统一用户登录</a>]
+            : []),
+          <Knowledge key="knowledge" />,
+        ]
+      : [<Knowledge key="knowledge" />],
     // 业务水印默认关闭；审计/导出场景另行显式开启。
     waterMarkProps: undefined,
     // Footer 为空组件，关闭以免 ProLayout 预留底部空白导致内容区撑不满视口
@@ -170,7 +212,17 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
           </div>
         }
       >
-        {children}
+        <>
+          {initialState?.oidcNotice ? (
+            <Alert
+              type={initialState.oidcNotice.includes('等待管理员') ? 'info' : 'warning'}
+              showIcon
+              message={initialState.oidcNotice}
+              style={{ marginBottom: 16 }}
+            />
+          ) : null}
+          {children}
+        </>
       </Suspense>
     ),
     ...initialState?.settings,

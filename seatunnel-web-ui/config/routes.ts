@@ -29,6 +29,7 @@ const businessRoutes = [
   ['/data-exploration/results', './data-exploration/results'],
   ['/client', './client'],
   ['/operations/metadata-engine', './operations/metadata-engine'],
+  ['/operations/unified-users', './operations/unified-users'],
   ['/resources/data-discovery', './data-exploration/overview'],
   ['/sync/batch-link-up', './batch-link-up'],
   ['/sync/file-ingest', './file-ingest'],
@@ -125,6 +126,12 @@ const hiddenLayoutRoutes = [
 ];
 
 export default [
+  {
+    path: '/login',
+    layout: false,
+    component: './login',
+    hideInMenu: true,
+  },
   {
     path: '/',
     redirect: '/bi',

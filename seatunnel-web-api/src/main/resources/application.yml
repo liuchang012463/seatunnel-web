@@ -10,6 +10,10 @@ security:
     type: PASSWORD
   dev-user-id: ${SEATUNNEL_WEB_DEV_USER_ID:1}
 
+unified-auth:
+  callback-url: ${UNIFIED_AUTH_CALLBACK_URL:}
+  frontend-path: ${UNIFIED_AUTH_FRONTEND_PATH:/bi}
+
 springdoc:
   api-docs:
     enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
