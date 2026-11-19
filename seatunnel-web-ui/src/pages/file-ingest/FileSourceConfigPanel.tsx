@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import FileEncodingSelect from './FileEncodingSelect';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
 import {
@@ -221,6 +222,7 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
   const [previewContent, setPreviewContent] = useState<unknown>();
   const [recognizing, setRecognizing] = useState(false);
   const recognizeSeqRef = useRef(0);
+  const recognizedFieldsRef = useRef<Record<string, string>>();
 
   const fields = useMemo(() => getSchemaFields(sourceConfig?.schema), [sourceConfig?.schema]);
   const previewRows = useMemo(() => {
@@ -251,7 +253,15 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     ? isExcelHeaderEnabled(sourceConfig?.skipHeaderRowNumber)
     : sourceConfig?.csvUseHeaderLine !== false && sourceConfig?.skipHeader !== false;
 
-  const updateSchema = (nextFields: Record<string, string>) => {
+  const updateSchema = (nextFields: Record<string, string>, recognized = false) => {
+    if (recognized) {
+      recognizedFieldsRef.current = nextFields;
+    } else {
+      // 手动编辑优先，避免仍在执行的识别覆盖用户输入。
+      recognizeSeqRef.current += 1;
+      recognizedFieldsRef.current = undefined;
+      setRecognizing(false);
+    }
     const schema = { fields: nextFields };
     onChange({
       schema,
@@ -351,15 +361,38 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         message.warning('未能从文件识别出字段，请手动添加');
         return;
       }
-      updateSchema(nextFields);
+      updateSchema(nextFields, true);
     } catch (error: any) {
       if (seq === recognizeSeqRef.current) {
+        console.warn('[文件导入] 字段识别失败', {
+          resourceId: targetResource.id,
+          format: nextFormat,
+          encoding: config.encoding,
+        });
         message.error(error?.message || '字段识别失败，请手动配置');
       }
     } finally {
       if (seq === recognizeSeqRef.current) {
         setRecognizing(false);
       }
+    }
+  };
+
+  const changeEncoding = (encoding: string) => {
+    onChange({ encoding });
+    // 只刷新空 Schema 或本次配置中识别且未编辑过的字段。
+    const canRefreshFields = !Object.keys(fields).length
+      || sourceConfig.schema?.fields === recognizedFieldsRef.current;
+    if (resource?.id && canRefreshFields) {
+      void recognizeFields({ ...sourceConfig, encoding });
+      return;
+    }
+
+    // 切换编码后，旧请求识别出的字段名可能包含乱码。
+    recognizeSeqRef.current += 1;
+    setRecognizing(false);
+    if (resource?.id) {
+      message.info('已保留现有字段。如需按新编码重新识别，请点击「识别字段」。');
     }
   };
 
@@ -446,7 +479,11 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       setPreviewContent(payload);
       setPreviewOpen(true);
     } catch (error: any) {
-      console.warn('[文件导入] 数据预览失败', { resourceId: resource.id, format });
+      console.warn('[文件导入] 数据预览失败', {
+        resourceId: resource.id,
+        format,
+        encoding: sourceConfig?.encoding,
+      });
       message.error(error?.message || '文件预览失败');
     } finally {
       setPreviewLoading(false);
@@ -459,14 +496,6 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
       label: <span className="text-sm font-medium text-slate-800">高级配置</span>,
       children: (
         <div className="grid grid-cols-1 gap-3">
-          <label className="text-sm text-slate-600">
-            <span className="mb-1 block">编码</span>
-            <Input
-              value={sourceConfig?.encoding || 'UTF-8'}
-              onChange={(event) => onChange({ encoding: event.target.value })}
-              placeholder="UTF-8"
-            />
-          </label>
           {format === 'csv' ? (
             <>
               <label className="text-sm text-slate-600">
@@ -607,6 +636,14 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
               <span className="mb-1 block">格式</span>
               <Select className="w-full" value={format} options={FORMAT_OPTIONS} onChange={changeFormat} />
             </label>
+          ) : null}
+
+          {!isDatabaseFile ? (
+            <FileEncodingSelect
+              value={sourceConfig?.encoding}
+              onChange={changeEncoding}
+              workbook={format === 'excel'}
+            />
           ) : null}
 
           {isDatabaseFile ? (

@@ -84,10 +84,11 @@ class S3FileHoconBuilderTest {
     @Test
     void mapsStructuredFileFormatsAndOptions() {
         for (String format : List.of("csv", "excel", "json", "text")) {
+            String encoding = "excel".equals(format) ? "UTF-8" : "GB2312";
             Map<String, Object> node = new java.util.HashMap<>(Map.of(
                     "path", "/uploads/file",
                     "fileFormatType", format,
-                    "encoding", "UTF-8",
+                    "encoding", encoding,
                     "fieldDelimiter", ",",
                     "rowDelimiter", "\\n",
                     "schema", Map.of("fields", Map.of("id", "long"))));
@@ -108,7 +109,7 @@ class S3FileHoconBuilderTest {
                     node));
 
             assertEquals(format, result.getString("file_format_type"));
-            assertEquals("UTF-8", result.getString("encoding"));
+            assertEquals(encoding, result.getString("encoding"));
             assertEquals("Sheet1", result.getString("sheet_name"));
             assertEquals("long", result.getString("schema.fields.id"));
             if ("csv".equals(format)) {

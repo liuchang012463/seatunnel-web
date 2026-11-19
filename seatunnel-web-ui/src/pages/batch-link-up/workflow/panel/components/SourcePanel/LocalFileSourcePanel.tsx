@@ -2,6 +2,7 @@ import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import { Button, Input, InputNumber, Select, Switch, message } from 'antd';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FC } from 'react';
 import { fileUploadApi } from '@/pages/batch-link-up/api';
+import FileEncodingSelect from '@/pages/file-ingest/FileEncodingSelect';
 import {
   defaultExcelHeaderSkipOnSelection,
   isExcelHeaderEnabled,
@@ -254,6 +255,11 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
             onChange={handleFormatChange}
             className="w-full"
           />
+          <FileEncodingSelect
+            value={config.encoding}
+            onChange={(encoding) => setConfigValue('encoding', encoding)}
+            workbook={format === 'excel'}
+          />
         </div>
 
         <div className="workflow-panel__divider" />
@@ -304,7 +310,6 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
                 <Switch checked={!!config.csvUseHeaderLine} onChange={(checked) => setConfigValue('csvUseHeaderLine', checked)} />
               </div>
               <InputNumber className="w-full" addonBefore="跳过行数" min={0} value={config.skipHeaderRowNumber ?? 0} onChange={(value) => setConfigValue('skipHeaderRowNumber', value ?? 0)} />
-              <Input addonBefore="编码" value={config.encoding ?? 'UTF-8'} onChange={(event) => setConfigValue('encoding', event.target.value)} />
               <Input addonBefore="引号" maxLength={1} value={config.quoteChar ?? '"'} onChange={(event) => setConfigValue('quoteChar', event.target.value)} />
               <Input addonBefore="转义" maxLength={1} value={config.escapeChar ?? ''} onChange={(event) => setConfigValue('escapeChar', event.target.value)} />
             </div>
@@ -336,7 +341,6 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
             <div className="workflow-panel__divider" />
             <div className="workflow-panel__group space-y-3">
               <div className="workflow-panel__group-kicker">JSON 参数</div>
-              <Input addonBefore="编码" value={config.encoding ?? 'UTF-8'} onChange={(event) => setConfigValue('encoding', event.target.value)} />
               <div className="text-sm leading-5 text-slate-500">请上传每行一个 JSON 对象的 NDJSON 文件；JSON 需要配置字段 Schema。</div>
             </div>
           </>
@@ -350,7 +354,6 @@ const LocalFileSourcePanel: FC<LocalFileSourcePanelProps> = ({
               <Input addonBefore="字段分隔符" value={config.fieldDelimiter ?? '\\001'} onChange={(event) => setConfigValue('fieldDelimiter', event.target.value)} />
               <Input addonBefore="行分隔符" value={config.rowDelimiter ?? '\\n'} onChange={(event) => setConfigValue('rowDelimiter', event.target.value)} />
               <InputNumber className="w-full" addonBefore="跳过行数" min={0} value={config.skipHeaderRowNumber ?? 0} onChange={(value) => setConfigValue('skipHeaderRowNumber', value ?? 0)} />
-              <Input addonBefore="编码" value={config.encoding ?? 'UTF-8'} onChange={(event) => setConfigValue('encoding', event.target.value)} />
               <Input addonBefore="空值标记" value={config.nullFormat ?? ''} onChange={(event) => setConfigValue('nullFormat', event.target.value)} />
             </div>
           </>

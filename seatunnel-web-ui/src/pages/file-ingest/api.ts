@@ -107,7 +107,9 @@ export const buildFileResourcePreviewOptions = (
 ): FileResourcePreviewOptions => ({
   limit: 20,
   fileFormatType: fileFormatType as FileResourcePreviewOptions['fileFormatType'],
-  encoding: sourceConfig?.encoding || undefined,
+  encoding: ['csv', 'text', 'json'].includes(fileFormatType)
+    ? sourceConfig?.encoding || undefined
+    : undefined,
   fieldDelimiter:
     fileFormatType === 'csv' ? sourceConfig?.fieldDelimiter || undefined : undefined,
   sheetName: fileFormatType === 'excel' ? sourceConfig?.sheetName || undefined : undefined,
