@@ -1,8 +1,11 @@
 package org.apache.seatunnel.plugin.datasource.kafka.client;
 
+import com.sun.net.httpserver.HttpServer;
 import org.apache.seatunnel.plugin.datasource.kafka.param.KafkaConnectionParam;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
@@ -41,6 +44,34 @@ class KafkaAdminClientFacadeTest {
 
         IllegalStateException error = assertThrows(IllegalStateException.class, () -> facade.listTopics(param()));
         assertFalse(error.getMessage().contains("secret-password"));
+    }
+
+    @Test
+    void verifiesConfiguredRegistryAlongsideTheBroker() throws Exception {
+        KafkaAdminClientFacade facade = new KafkaAdminClientFacade(
+                ignored -> operations(Set.of(), null));
+        KafkaConnectionParam param = param();
+        HttpServer registry = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        registry.createContext("/registry/subjects", exchange -> {
+            byte[] response = "[]".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            try (var output = exchange.getResponseBody()) {
+                output.write(response);
+            }
+        });
+        registry.start();
+        try {
+            String url = "http://127.0.0.1:" + registry.getAddress().getPort();
+            param.setSchemaRegistryUrl(url + "/registry/");
+            assertTrue(facade.checkDataSourceConnectivity(param));
+
+            param.setSchemaRegistryUrl(url + "/wrong");
+            IllegalStateException failure = assertThrows(IllegalStateException.class,
+                    () -> facade.checkDataSourceConnectivity(param));
+            assertTrue(failure.getMessage().contains("HTTP 404"));
+        } finally {
+            registry.stop(0);
+        }
     }
 
     private KafkaConnectionParam param() {

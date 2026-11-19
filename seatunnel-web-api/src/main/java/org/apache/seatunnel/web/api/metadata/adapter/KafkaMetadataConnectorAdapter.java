@@ -77,7 +77,7 @@ public class KafkaMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCo
 
         String schemaRegistryUrl = connectionText(source, "schemaRegistryUrl");
         if (!isBlank(schemaRegistryUrl)) {
-            config.put("schemaRegistryURL", schemaRegistryUrl);
+            config.put("schemaRegistryURL", schemaRegistryUrl.trim());
         }
 
         String securityProtocol = connectionText(source, "securityProtocol");
