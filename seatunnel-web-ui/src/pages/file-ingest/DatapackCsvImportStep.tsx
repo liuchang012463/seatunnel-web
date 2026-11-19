@@ -1,173 +1,187 @@
 import { FileOutlined } from '@ant-design/icons';
-import { App, Alert, Button, Input, Select, Typography } from 'antd';
-import { useState } from 'react';
-import { offlineImportTaskApi } from './import/api';
+import { App, Button, Input, Select } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import TableTransferPanel from '@/pages/batch-link-up/config/multi/components/TableTransferPanel';
+import type { DatapackSelection } from './config/datapack';
+import { offlineImportTaskApi, type OfflineDatapackCsvInspect, type OfflineDatapackCsvSelection } from './import/api';
 import FileResourcePicker from './FileResourcePicker';
 import type { FileResource } from './types';
 import './index.less';
 
 interface DatapackCsvImportStepProps {
-  onImported: (selection: {
-    fileResource: FileResource;
-    schema: Record<string, string>;
-    nullValue: string;
-  }) => void;
+  multiple?: boolean;
+  initialPackage?: FileResource;
+  preferredFileNames?: string[];
+  confirmText?: string;
+  onImported: (selection: DatapackSelection) => void;
   onBack: () => void;
 }
 
-const DatapackCsvImportStep: React.FC<DatapackCsvImportStepProps> = ({ onImported, onBack }) => {
+const DatapackCsvImportStep: React.FC<DatapackCsvImportStepProps> = ({
+  multiple = false,
+  initialPackage,
+  preferredFileNames = [],
+  confirmText = '提取并继续',
+  onImported,
+  onBack,
+}) => {
   const { message } = App.useApp();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [packageResource, setPackageResource] = useState<FileResource>();
+  const [packageResource, setPackageResource] = useState(initialPackage);
   const [password, setPassword] = useState('');
-  const [inspection, setInspection] = useState<{ packageFingerprint: string; fileNames: string[] }>();
-  const [selectedFileName, setSelectedFileName] = useState<string>();
-  const [inspecting, setInspecting] = useState(false);
-  const [extracting, setExtracting] = useState(false);
+  const [inspection, setInspection] = useState<OfflineDatapackCsvInspect>();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [action, setAction] = useState<'inspect' | 'extract'>();
+  const activeRequest = useRef<AbortController>();
+  useEffect(() => () => activeRequest.current?.abort(), []);
 
   const inspectPackage = async () => {
-    if (!packageResource?.id || !password) return;
-    setInspecting(true);
+    if (!packageResource?.id || !password || activeRequest.current) return;
+    const request = new AbortController();
+    activeRequest.current = request;
+    setAction('inspect');
     setInspection(undefined);
-    setSelectedFileName(undefined);
+    setSelected([]);
     try {
-      const response = await offlineImportTaskApi.inspectDatapackCsv(packageResource.id, password);
+      const response = await offlineImportTaskApi.inspectDatapackCsv(
+        packageResource.id, password, { signal: request.signal },
+      );
+      if (request.signal.aborted) return;
       if (response?.code !== 0 || !response?.data) {
         throw new Error(response?.message || response?.msg || '数据包校验失败');
       }
-      const fileNames = Array.isArray(response.data.fileNames)
-        ? response.data.fileNames.filter((name) => String(name).toLowerCase().endsWith('.csv'))
-        : [];
-      if (!fileNames.length) throw new Error('数据包清单中没有 CSV 文件');
-      setInspection({ packageFingerprint: response.data.packageFingerprint, fileNames });
-      console.info('[数据包 CSV] 清单校验完成', { csvCount: fileNames.length });
+      const { packageFingerprint, fileNames } = response.data;
+      if (!fileNames?.length) throw new Error('数据包清单中没有 CSV 文件');
+      setInspection({ packageFingerprint, fileNames });
+      const preferred = preferredFileNames.filter((name) => fileNames.includes(name));
+      setSelected(multiple ? preferred : preferred.slice(0, 1));
+      console.info('[数据包导入] 已校验 CSV 清单', { fileCount: fileNames.length });
     } catch (error: any) {
-      message.error(error?.message || error?.msg || '数据包校验失败');
+      if (!request.signal.aborted) message.error(error?.message || '数据包校验失败');
     } finally {
-      setInspecting(false);
+      activeRequest.current = undefined;
+      if (!request.signal.aborted) setAction(undefined);
     }
   };
 
   const extractSelectedCsv = async () => {
-    if (!packageResource?.id || !password || !inspection || !selectedFileName) return;
-    setExtracting(true);
+    if (!packageResource?.id || !password || !inspection || !selected.length || activeRequest.current) return;
+    const request = new AbortController();
+    activeRequest.current = request;
+    setAction('extract');
     try {
-      const response = await offlineImportTaskApi.selectDatapackCsv({
+      const payload = {
         fileResourceId: packageResource.id,
         password,
         packageFingerprint: inspection.packageFingerprint,
-        fileName: selectedFileName,
-      });
-      if (response?.code !== 0 || !response?.data?.fileResource) {
+      };
+      const options = { signal: request.signal };
+      const response = multiple
+        ? await offlineImportTaskApi.selectDatapackCsvBatch({ ...payload, fileNames: selected }, options)
+        : await offlineImportTaskApi.selectDatapackCsv({ ...payload, fileName: selected[0] }, options);
+      if (request.signal.aborted) return;
+      const data = Array.isArray(response?.data) ? response.data : [response?.data];
+      if (response?.code !== 0 || data.length !== selected.length || !data.every((item) => item?.fileResource?.id)) {
         throw new Error(response?.message || response?.msg || '提取 CSV 失败');
       }
-      const rawResource = response.data.fileResource as any;
-      const fileResource: FileResource = {
-        ...rawResource,
-        id: String(rawResource.id),
-        name: String(rawResource.name || selectedFileName.split('/').at(-1) || selectedFileName),
-        path: rawResource.path || rawResource.logicalPath || rawResource.objectKey,
-        objectKey: rawResource.objectKey || rawResource.path || rawResource.logicalPath,
-        kind: 'FILE',
-      };
+      const files = (data as OfflineDatapackCsvSelection[]).map((item, index) => {
+        const fileName = item.fileName || selected[index];
+        const resource = item.fileResource;
+        return {
+          ...item,
+          fileName,
+          fileResource: {
+            ...resource,
+            id: String(resource.id),
+            name: resource.name || fileName.split('/').at(-1) || fileName,
+            kind: 'FILE' as const,
+          },
+        };
+      });
       setPassword('');
       onImported({
-        fileResource,
-        schema: response.data.schema || {},
-        nullValue: response.data.nullValue || '',
+        packageResourceId: String(packageResource.id),
+        packageName: packageResource.name,
+        packageFingerprint: inspection.packageFingerprint,
+        files,
       });
     } catch (error: any) {
-      message.error(error?.message || error?.msg || '提取 CSV 失败');
+      if (!request.signal.aborted) message.error(error?.message || '提取 CSV 失败');
     } finally {
-      setExtracting(false);
+      activeRequest.current = undefined;
+      if (!request.signal.aborted) setAction(undefined);
     }
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-6 py-8">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <Typography.Title level={3} className="!mb-2">离线数据包导入</Typography.Title>
-          <Typography.Text type="secondary">校验数据包后选择一个 CSV 文件，继续配置常规文件导入任务。</Typography.Text>
+    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 p-3">
+        <FileOutlined />
+        <div className="min-w-0 flex-1 truncate text-sm">
+          {packageResource?.name || '尚未选择 .datapack 文件'}
         </div>
-        <Button onClick={onBack}>返回任务列表</Button>
+        <Button disabled={!!action} onClick={() => setPickerOpen(true)}>
+          {packageResource ? '选择其他数据包' : '选择数据包'}
+        </Button>
       </div>
-
-      <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <div className="mb-2 text-sm font-semibold text-slate-900">加密数据包</div>
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3">
-            <FileOutlined className={packageResource ? 'text-emerald-500' : 'text-slate-400'} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-slate-800">
-                {packageResource?.name || '尚未选择 .datapack 文件'}
-              </div>
-              {packageResource?.path ? <div className="truncate text-xs text-slate-500">{packageResource.path}</div> : null}
-            </div>
-            <Button type="primary" ghost onClick={() => setPickerOpen(true)}>
-              {packageResource ? '更换数据包' : '选择数据包'}
-            </Button>
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-semibold text-slate-900" htmlFor="datapack-password">
-            数据包密码
-          </label>
-          <Input.Password
-            id="datapack-password"
-            value={password}
-            autoComplete="new-password"
-            placeholder="请输入数据包密码"
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setInspection(undefined);
-              setSelectedFileName(undefined);
-            }}
-            onPressEnter={() => void inspectPackage()}
+      <div>
+        <label className="mb-2 block text-sm" htmlFor="datapack-password">数据包密码</label>
+        <Input.Password
+          id="datapack-password"
+          value={password}
+          autoComplete="new-password"
+          placeholder="请输入数据包密码"
+          disabled={!!action}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setInspection(undefined);
+            setSelected([]);
+          }}
+          onPressEnter={() => void inspectPackage()}
+        />
+      </div>
+      <Button
+        loading={action === 'inspect'}
+        disabled={!packageResource?.id || !password || action === 'extract'}
+        onClick={() => void inspectPackage()}
+      >
+        校验并读取 CSV 清单
+      </Button>
+      {inspection && (multiple ? (
+        <TableTransferPanel
+          files
+          matchMode="1"
+          loading={action === 'extract'}
+          data={inspection.fileNames.map((fileName) => ({ key: fileName, rawTitle: fileName, title: '' }))}
+          targetKeys={selected}
+          onChange={setSelected}
+        />
+      ) : (
+        <label className="block">
+          <span className="mb-2 block text-sm">选择 CSV 文件</span>
+          <Select
+            aria-label="选择 CSV 文件"
+            className="w-full"
+            placeholder="请选择一个 CSV 文件"
+            value={selected[0]}
+            options={inspection.fileNames.map((fileName) => ({ label: fileName, value: fileName }))}
+            disabled={!!action}
+            showSearch
+            onChange={(fileName) => setSelected([fileName])}
           />
-        </div>
-
+        </label>
+      ))}
+      <div className="flex justify-end gap-2">
+        <Button onClick={onBack}>取消</Button>
         <Button
           type="primary"
-          loading={inspecting}
-          disabled={!packageResource?.id || !password}
-          onClick={() => void inspectPackage()}
+          loading={action === 'extract'}
+          disabled={!inspection || !selected.length || action === 'inspect'}
+          onClick={() => void extractSelectedCsv()}
         >
-          校验并读取 CSV 清单
+          {confirmText}
         </Button>
-
-        {inspection ? (
-          <div className="datapack-csv-selection space-y-3 rounded-xl border p-4">
-            <div className="text-sm font-semibold text-slate-900">选择 CSV 文件</div>
-            <Select
-              className="w-full"
-              placeholder="请选择一个 CSV 文件"
-              value={selectedFileName}
-              options={inspection.fileNames.map((fileName) => ({ label: fileName, value: fileName }))}
-              onChange={setSelectedFileName}
-            />
-            <div className="flex justify-end">
-              <Button
-                type="primary"
-                loading={extracting}
-                disabled={!selectedFileName}
-                onClick={() => void extractSelectedCsv()}
-              >
-                提取 CSV 并进入任务配置
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Alert
-            type="info"
-            showIcon
-            message="CSV 内容仅在你选择具体文件后提取"
-            description="校验阶段只读取数据包清单和文件结构，不会向文件资源库写入 CSV。"
-          />
-        )}
-      </section>
-
+      </div>
       <FileResourcePicker
         open={pickerOpen}
         allowedFormats={['datapack']}
@@ -178,11 +192,11 @@ const DatapackCsvImportStep: React.FC<DatapackCsvImportStepProps> = ({ onImporte
           setPackageResource(resource);
           setPassword('');
           setInspection(undefined);
-          setSelectedFileName(undefined);
+          setSelected([]);
           setPickerOpen(false);
         }}
       />
-    </main>
+    </section>
   );
 };
 

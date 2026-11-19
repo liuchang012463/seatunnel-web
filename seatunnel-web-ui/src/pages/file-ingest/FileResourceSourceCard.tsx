@@ -18,6 +18,8 @@ interface FileResourceSourceCardProps {
   title?: string;
   description?: string;
   binary?: boolean;
+  resourceAction?: { label: string; onClick: () => void };
+  resourceCaption?: string;
 }
 
 const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
@@ -28,6 +30,8 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
   title = '湖文件来源',
   description = '从湖文件区读取对象，执行节点直接访问对象存储。',
   binary = false,
+  resourceAction,
+  resourceCaption,
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isResourceSource = String(sourceConfig?.sourceMode || '').toUpperCase() === 'FILE_RESOURCE';
@@ -143,15 +147,15 @@ const FileResourceSourceCard: React.FC<FileResourceSourceCardProps> = ({
               <div className="truncate text-sm font-medium text-slate-800">
                 {resource?.name || resource?.path || '尚未选择湖文件'}
               </div>
-              {resource ? (
+              {resourceCaption || resource ? (
                 <div className="truncate text-sm text-slate-500">
-                  {resource.path || resource.objectKey}
+                  {resourceCaption || resource?.path || resource?.objectKey}
                 </div>
               ) : null}
             </div>
           </div>
-          <Button type="primary" ghost onClick={() => setPickerOpen(true)}>
-            {resource ? '更换资源' : '选择资源'}
+          <Button type="primary" ghost onClick={resourceAction?.onClick || (() => setPickerOpen(true))}>
+            {resourceAction?.label || (resource ? '更换资源' : '选择资源')}
           </Button>
         </div>
       )}

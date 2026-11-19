@@ -43,6 +43,7 @@ public class S3FileHoconBuilder implements DataSourceHoconBuilder {
         put(result, node, "timeFormat", "time_format");
         put(result, node, "skipHeaderRowNumber", "skip_header_row_number");
         put(result, node, "schema", "schema");
+        put(result, node, "plugin_output", "plugin_output");
         put(result, node, "sheetName", "sheet_name");
         put(result, node, "excelEngine", "excel_engine");
         put(result, node, "csvUseHeaderLine", "csv_use_header_line");

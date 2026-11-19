@@ -245,7 +245,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
         }
 
         try {
-            return HoconSensitiveMaskUtil.maskSensitiveInfo(buildHoconConfigInternal(command));
+            return buildHoconConfigInternal(command);
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
@@ -806,7 +806,7 @@ public class BatchJobDefinitionServiceImpl extends BaseServiceImpl implements Ba
     private String buildHoconConfigInternal(JobDefinitionSaveCommand command) {
         validateFileUpload(command);
         JobDefinitionModeHandler handler = getAndValidateHandler(command);
-        String hocon = handler.buildHoconConfig(command);
+        String hocon = handler.buildPreviewConfig(command, HoconSensitiveMaskUtil::maskSensitiveInfo);
 
         if (StringUtils.isBlank(hocon)) {
             throw new ServiceException(

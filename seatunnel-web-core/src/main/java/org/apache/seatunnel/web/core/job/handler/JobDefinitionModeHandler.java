@@ -4,6 +4,8 @@ import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 
+import java.util.function.UnaryOperator;
+
 public interface JobDefinitionModeHandler {
 
     /**
@@ -36,4 +38,8 @@ public interface JobDefinitionModeHandler {
      * Build the SeaTunnel HOCON configuration.
      */
     String buildHoconConfig(JobDefinitionSaveCommand command);
+
+    default String buildPreviewConfig(JobDefinitionSaveCommand command, UnaryOperator<String> mask) {
+        return mask.apply(buildHoconConfig(command));
+    }
 }

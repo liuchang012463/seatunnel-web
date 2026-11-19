@@ -136,6 +136,25 @@ class DatapackPackageInspectorTest {
     }
 
     @Test
+    void batchSelectsOnlyRequestedMembersInRequestOrder() throws Exception {
+        List<String> names = List.of("teams.csv", "assets.csv", "aux.csv");
+        List<String> rows = List.of("id,name\r\n1,team\r\n", "id,name\r\n2,asset\r\n", "id,name\r\n3,aux\r\n");
+        byte[] encrypted = encrypt(zip(csvManifest(names, 1), names, rows), "secret".toCharArray());
+        String fingerprint = inspector.fingerprint(encrypted);
+        List<DatapackPackageInspector.CsvSelection> selected = inspector.extractCsvs(
+                encrypted, "secret".toCharArray(), fingerprint, List.of("assets.csv", "teams.csv"));
+
+        assertEquals(List.of("assets.csv", "teams.csv"),
+                selected.stream().map(DatapackPackageInspector.CsvSelection::fileName).toList());
+        assertArrayEquals(rows.get(1).getBytes(StandardCharsets.UTF_8), selected.get(0).content());
+        assertArrayEquals(rows.get(0).getBytes(StandardCharsets.UTF_8), selected.get(1).content());
+        assertThrows(IllegalArgumentException.class, () -> inspector.extractCsvs(
+                encrypted, "secret".toCharArray(), fingerprint, List.of("teams.csv", "missing.csv")));
+        assertThrows(IllegalArgumentException.class, () -> inspector.extractCsvs(
+                encrypted, "secret".toCharArray(), fingerprint, List.of("teams.csv", "teams.csv")));
+    }
+
+    @Test
     void mapsDecimalColumnsToSeaTunnelPrecisionAndScale() throws Exception {
         List<String> names = List.of("decimal.csv");
         byte[] encrypted = encrypt(zip(

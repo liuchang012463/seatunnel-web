@@ -29,6 +29,7 @@ import {
   ScheduleConfig,
 } from "./components/ScheduleConfigContent/types";
 import { useFlowChecks } from "./hooks/useFlowChecks";
+import { datapackMappingIssue } from "@/pages/file-ingest/config/datapack";
 import "./index.less";
 import CodeBlockWithCopy from "./operator/CodeBlockWithCopy";
 
@@ -398,6 +399,11 @@ export default function Workflow({
   }[editorSyncState];
 
   const validateChecklistBeforeAction = () => {
+    const mappingIssue = datapackMappingIssue(workflowGraph);
+    if (mappingIssue) {
+      message.warning(mappingIssue);
+      return false;
+    }
     const total =
       (checkStat as any)?.total ??
       (checkStat as any)?.count ??

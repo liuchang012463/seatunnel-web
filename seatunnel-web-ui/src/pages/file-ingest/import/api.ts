@@ -40,6 +40,7 @@ export interface OfflineDatapackCsvInspect {
 }
 
 export interface OfflineDatapackCsvSelection {
+  fileName: string;
   fileResource: FileResource;
   schema: Record<string, string>;
   nullValue: string;
@@ -185,6 +186,16 @@ export const offlineImportTaskApi = {
     fileName: string;
   }, options?: RequestOptions) =>
     HttpUtils.post<OfflineDatapackCsvSelection>(`${OFFLINE_IMPORT_API_PREFIX}/datapack/csv/select`, payload, options),
+
+  selectDatapackCsvBatch: (payload: {
+    fileResourceId: string | number;
+    password: string;
+    packageFingerprint: string;
+    fileNames: string[];
+  }, options?: RequestOptions) =>
+    HttpUtils.post<OfflineDatapackCsvSelection[]>(
+      `${OFFLINE_IMPORT_API_PREFIX}/datapack/csv/select-batch`, payload, options,
+    ),
 
   online: (id: string | number) =>
     HttpUtils.put(`${OFFLINE_IMPORT_API_PREFIX}/${encodeURIComponent(String(id))}/online`),

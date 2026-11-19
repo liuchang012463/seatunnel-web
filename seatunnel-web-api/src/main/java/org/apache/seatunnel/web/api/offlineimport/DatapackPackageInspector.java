@@ -24,6 +24,7 @@ import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -80,7 +81,7 @@ public class DatapackPackageInspector {
     public CsvArchiveInspection inspectCsvArchive(byte[] encrypted, char[] password) {
         byte[] plaintext = decryptCsvPayload(encrypted, password);
         try {
-            CsvArchive archive = readCsvArchive(plaintext, null);
+            CsvArchive archive = readCsvArchive(plaintext, Set.of(), new LinkedHashMap<>());
             return new CsvArchiveInspection(
                     fingerprint(encrypted), archive.tables().stream().map(CsvTable::fileName).toList());
         } finally {
@@ -91,6 +92,20 @@ public class DatapackPackageInspector {
     /** Revalidates the complete package and returns only the selected CSV bytes and its source schema. */
     public CsvSelection extractCsv(
             byte[] encrypted, char[] password, String expectedFingerprint, String selectedFileName) {
+        return extractCsvs(encrypted, password, expectedFingerprint,
+                Collections.singletonList(selectedFileName)).getFirst();
+    }
+
+    /** Authenticate and scan the archive once, keeping only the requested members in selection order. */
+    public List<CsvSelection> extractCsvs(
+            byte[] encrypted, char[] password, String expectedFingerprint, List<String> fileNames) {
+        if (fileNames == null || fileNames.isEmpty() || fileNames.size() > MAX_ZIP_ENTRIES) {
+            throw invalid("请选择有效的 CSV 文件");
+        }
+        Set<String> names = new LinkedHashSet<>(fileNames);
+        if (names.contains(null) || names.size() != fileNames.size()) {
+            throw invalid("所选 CSV 文件无效或重复");
+        }
         String currentFingerprint = fingerprint(encrypted);
         if (expectedFingerprint == null || !MessageDigest.isEqual(
                 currentFingerprint.getBytes(StandardCharsets.US_ASCII),
@@ -98,21 +113,29 @@ public class DatapackPackageInspector {
             throw invalid("数据包内容已变化，请重新校验");
         }
         byte[] plaintext = decryptCsvPayload(encrypted, password);
+        Map<String, byte[]> selectedCsvs = new LinkedHashMap<>();
+        boolean selected = false;
         try {
-            CsvArchive archive = readCsvArchive(plaintext, selectedFileName);
-            CsvTable selected = archive.tables().stream()
-                    .filter(table -> table.fileName().equals(selectedFileName))
-                    .findFirst()
-                    .orElseThrow(() -> invalid("所选 CSV 不属于当前数据包"));
-            byte[] csv = archive.selectedCsv();
-            if (csv == null) {
-                throw invalid("数据包缺少所选 CSV 文件");
+            CsvArchive archive = readCsvArchive(plaintext, names, selectedCsvs);
+            Map<String, CsvTable> tables = new LinkedHashMap<>();
+            archive.tables().forEach(table -> tables.put(table.fileName(), table));
+            List<CsvSelection> result = new ArrayList<>(names.size());
+            for (String name : names) {
+                CsvTable table = tables.get(name);
+                if (table == null || !selectedCsvs.containsKey(name)) {
+                    throw invalid("所选 CSV 不属于当前数据包");
+                }
+                Map<String, String> fields = new LinkedHashMap<>();
+                table.columns().forEach(column -> fields.put(column.name(), column.seatunnelType()));
+                result.add(new CsvSelection(name, selectedCsvs.get(name), fields, archive.nullValue()));
             }
-            Map<String, String> fields = new LinkedHashMap<>();
-            selected.columns().forEach(column -> fields.put(column.name(), column.seatunnelType()));
-            return new CsvSelection(selected.fileName(), csv, fields, archive.nullValue());
+            selected = true;
+            return result;
         } finally {
             Arrays.fill(plaintext, (byte) 0);
+            if (!selected) {
+                selectedCsvs.values().forEach(csv -> Arrays.fill(csv, (byte) 0));
+            }
         }
     }
 
@@ -244,12 +267,12 @@ public class DatapackPackageInspector {
         return new Inspection(fingerprint, packageId, packageType, records.size(), forms, records);
     }
 
-    private CsvArchive readCsvArchive(byte[] plaintext, String selectedFileName) {
+    private CsvArchive readCsvArchive(
+            byte[] plaintext, Set<String> selectedFileNames, Map<String, byte[]> selectedCsvs) {
         Set<String> entryNames = new HashSet<>();
         Set<String> fileNames = new LinkedHashSet<>();
         Set<String> directoryNames = new LinkedHashSet<>();
         byte[] manifestBytes = null;
-        byte[] selectedCsv = null;
         long expandedBytes = 0;
         int entryCount = 0;
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(plaintext), StandardCharsets.UTF_8)) {
@@ -270,7 +293,8 @@ public class DatapackPackageInspector {
                     fileNames.add(name);
                 }
 
-                ByteArrayOutputStream captured = name.equals("manifest.json") || name.equals(selectedFileName)
+                boolean selected = selectedFileNames.contains(name);
+                ByteArrayOutputStream captured = name.equals("manifest.json") || selected
                         ? new ByteArrayOutputStream() : null;
                 long entryBytes = 0;
                 int read;
@@ -293,8 +317,8 @@ public class DatapackPackageInspector {
                 zip.closeEntry();
                 if (name.equals("manifest.json")) {
                     manifestBytes = captured.toByteArray();
-                } else if (name.equals(selectedFileName)) {
-                    selectedCsv = captured.toByteArray();
+                } else if (selected) {
+                    selectedCsvs.put(name, captured.toByteArray());
                 }
             }
         } catch (IllegalArgumentException exception) {
@@ -308,12 +332,7 @@ public class DatapackPackageInspector {
         }
         try {
             JsonNode manifest = objectMapper.readTree(manifestBytes);
-            CsvArchive archive = validateCsvManifest(manifest, fileNames, directoryNames, selectedCsv);
-            if (selectedFileName != null && archive.tables().stream()
-                    .noneMatch(table -> table.fileName().equals(selectedFileName))) {
-                throw invalid("所选 CSV 不属于当前数据包");
-            }
-            return archive;
+            return validateCsvManifest(manifest, fileNames, directoryNames);
         } catch (IllegalArgumentException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -324,7 +343,7 @@ public class DatapackPackageInspector {
     }
 
     private CsvArchive validateCsvManifest(
-            JsonNode manifest, Set<String> zipFiles, Set<String> zipDirectories, byte[] selectedCsv) {
+            JsonNode manifest, Set<String> zipFiles, Set<String> zipDirectories) {
         if (manifest == null || !manifest.isObject()
                 || !"1".equals(textual(manifest.get("protocolVersion"), 16))) {
             throw invalid("不支持的数据包协议版本或清单格式");
@@ -410,7 +429,7 @@ public class DatapackPackageInspector {
                 throw invalid("数据包包含未在清单中的目录");
             }
         }
-        return new CsvArchive(List.copyOf(tables), nullValue, selectedCsv);
+        return new CsvArchive(List.copyOf(tables), nullValue);
     }
 
     private static void validateZipMemberName(String name, boolean directory) {
@@ -521,7 +540,7 @@ public class DatapackPackageInspector {
     public record CsvSelection(String fileName, byte[] content, Map<String, String> schema, String nullValue) {
     }
 
-    private record CsvArchive(List<CsvTable> tables, String nullValue, byte[] selectedCsv) {
+    private record CsvArchive(List<CsvTable> tables, String nullValue) {
     }
 
     private record CsvTable(String fileName, long rowCount, List<CsvColumn> columns) {

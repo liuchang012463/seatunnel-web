@@ -10,6 +10,7 @@ import {
 import IconRightArrow from '@/pages/batch-link-up/IconRightArrow';
 import BottomActionBar from '@/pages/batch-link-up/detail/components/BottomActionBar';
 import PageHeader from '@/pages/batch-link-up/detail/components/PageHeader';
+import ModeCard from '@/pages/batch-link-up/detail/components/ModeCard';
 import { STEP_THEME } from '@/pages/batch-link-up/detail/constants';
 import CommonClientLinkSection, {
   type ConnectivityStatus,
@@ -439,6 +440,27 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                         </Form.Item>
                       </div>
                     </div>
+                    {params.datapackCsvImport && (
+                      <div>
+                        <div className="mb-3 text-sm font-medium">配置模式</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <ModeCard
+                            value="GUIDE_SINGLE"
+                            current={params.datapackMode === 'multi' ? 'GUIDE_MULTI' : 'GUIDE_SINGLE'}
+                            title="单表导入"
+                            desc="选择一个 CSV 并配置目标表，保存后可更换数据包。"
+                            onSelect={() => setParams((previous: any) => ({ ...previous, datapackMode: 'single' }))}
+                          />
+                          <ModeCard
+                            value="GUIDE_MULTI"
+                            current={params.datapackMode === 'multi' ? 'GUIDE_MULTI' : 'GUIDE_SINGLE'}
+                            title="多表导入"
+                            desc="勾选包内 CSV 并逐个指定目标表，一次提交为一个任务。"
+                            onSelect={() => setParams((previous: any) => ({ ...previous, datapackMode: 'multi' }))}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

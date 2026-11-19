@@ -38,6 +38,7 @@ import org.apache.seatunnel.web.dao.repository.OfflineImportTaskDao;
 import org.apache.seatunnel.web.dao.repository.OfflineImportTaskRunDao;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportOptions;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackTaskConfig;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvBatchSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
@@ -75,6 +76,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -579,14 +581,26 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
 
     @Override
     public OfflineDatapackCsvSelectVO selectDatapackCsv(OfflineDatapackCsvSelectDTO request) {
+        if (request == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包 CSV 选择参数无效");
+        }
+        return selectDatapackCsvs(request.getFileResourceId(), request.getPassword(),
+                request.getPackageFingerprint(), Collections.singletonList(request.getFileName())).getFirst();
+    }
+
+    @Override
+    public List<OfflineDatapackCsvSelectVO> selectDatapackCsvBatch(OfflineDatapackCsvBatchSelectDTO request) {
+        return selectDatapackCsvs(request.getFileResourceId(), request.getPassword(),
+                request.getPackageFingerprint(), request.getFileNames());
+    }
+
+    private List<OfflineDatapackCsvSelectVO> selectDatapackCsvs(
+            Long fileResourceId, char[] password, String fingerprint, List<String> fileNames) {
         byte[] encrypted = null;
-        byte[] csv = null;
+        List<DatapackPackageInspector.CsvSelection> selections = List.of();
         boolean memoryBudgetAcquired = false;
         try {
-            if (request == null) {
-                throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包 CSV 选择参数无效");
-            }
-            FileResource resource = requireOwnedDatapack(request.getFileResourceId());
+            FileResource resource = requireOwnedDatapack(fileResourceId);
             long size = resource.getSize() == null ? 0L : resource.getSize();
             if (size <= 0 || size > offlineImportProperties.getDatapackCsvMaxFileBytes()) {
                 throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "数据包为空或超过大小上限");
@@ -597,45 +611,43 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
             }
             memoryBudgetAcquired = true;
             encrypted = readDatapackResource(resource, offlineImportProperties.getDatapackCsvMaxFileBytes());
-            DatapackPackageInspector.CsvSelection selection = datapackPackageInspector.extractCsv(
-                    encrypted,
-                    request.getPassword(),
-                    request.getPackageFingerprint(),
-                    request.getFileName());
-            csv = selection.content();
+            selections = datapackPackageInspector.extractCsvs(encrypted, password, fingerprint, fileNames);
 
-            // A unique first-level directory keeps extracted resources from sharing a parent path.
+            // One upload lets the resource service clean up a partially failed batch.
             String uniquePath = "/offline-datapack-" + UUID.randomUUID();
             List<FileResourceVO> resources = fileResourceService.upload(
                     uniquePath,
-                    new MultipartFile[] {new DatapackCsvMultipartFile(selection.fileName(), csv)},
-                    new String[] {selection.fileName()});
-            if (resources == null || resources.isEmpty()) {
+                    selections.stream().map(csv -> new DatapackCsvMultipartFile(csv.fileName(), csv.content()))
+                            .toArray(MultipartFile[]::new),
+                    selections.stream().map(DatapackPackageInspector.CsvSelection::fileName).toArray(String[]::new));
+            if (resources == null || resources.size() != selections.size()) {
                 throw new IllegalStateException("文件资源服务未登记所选 CSV");
             }
 
-            OfflineDatapackCsvSelectVO result = new OfflineDatapackCsvSelectVO();
-            result.setFileResource(resources.get(0));
-            result.setSchema(selection.schema());
-            result.setNullValue(selection.nullValue());
-            log.info("Materialized selected datapack CSV packageResourceId={}, ownerId={}, fileName={},"
-                            + " fileResourceId={}, size={}",
-                    request.getFileResourceId(), currentUserProvider.getCurrentUserId(), selection.fileName(),
-                    resources.get(0).getId(), csv.length);
-            return result;
+            List<OfflineDatapackCsvSelectVO> results = new ArrayList<>(selections.size());
+            for (int index = 0; index < selections.size(); index++) {
+                DatapackPackageInspector.CsvSelection selection = selections.get(index);
+                OfflineDatapackCsvSelectVO result = new OfflineDatapackCsvSelectVO();
+                result.setFileName(selection.fileName());
+                result.setFileResource(resources.get(index));
+                result.setSchema(selection.schema());
+                result.setNullValue(selection.nullValue());
+                results.add(result);
+            }
+            log.info("Materialized datapack CSV resources packageResourceId={}, ownerId={}, fileCount={}",
+                    fileResourceId, currentUserProvider.getCurrentUserId(), results.size());
+            return results;
         } finally {
             if (memoryBudgetAcquired) {
                 DATAPACK_MEMORY_BUDGET.release();
             }
-            if (request != null && request.getPassword() != null) {
-                Arrays.fill(request.getPassword(), '\0');
+            if (password != null) {
+                Arrays.fill(password, '\0');
             }
             if (encrypted != null) {
                 Arrays.fill(encrypted, (byte) 0);
             }
-            if (csv != null) {
-                Arrays.fill(csv, (byte) 0);
-            }
+            selections.forEach(csv -> Arrays.fill(csv.content(), (byte) 0));
         }
     }
 

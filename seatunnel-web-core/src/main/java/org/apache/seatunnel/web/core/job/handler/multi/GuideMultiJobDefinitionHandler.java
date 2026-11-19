@@ -1,20 +1,34 @@
 package org.apache.seatunnel.web.core.job.handler.multi;
 
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.common.enums.JobDefinitionMode;
 import org.apache.seatunnel.web.common.modal.JobDefinitionAnalysisResult;
 import org.apache.seatunnel.web.common.utils.JSONUtils;
 import org.apache.seatunnel.web.core.job.handler.JobDefinitionModeHandler;
+import org.apache.seatunnel.web.core.job.handler.single.GuideSingleHoconBuildService;
+import org.apache.seatunnel.web.core.job.handler.single.GuideSingleWorkflowAnalyzer;
+import org.apache.seatunnel.web.spi.bean.dto.command.BatchJobSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.GuideMultiJobContentCommand;
 import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.apache.seatunnel.web.spi.bean.dto.config.GuideMultiJobContent;
 import org.springframework.stereotype.Component;
 
+import java.util.function.UnaryOperator;
+
 @Component
+@Slf4j
 public class GuideMultiJobDefinitionHandler implements JobDefinitionModeHandler {
 
     private final GuideMultiJobValidator validator;
     private final GuideMultiJobAnalyzer analyzer;
     private final GuideMultiHoconBuildService hoconBuildService;
+
+    @Resource
+    private GuideSingleHoconBuildService workflowBuildService;
+
+    @Resource
+    private GuideSingleWorkflowAnalyzer workflowAnalyzer;
 
     public GuideMultiJobDefinitionHandler(
             GuideMultiJobValidator validator,
@@ -33,12 +47,22 @@ public class GuideMultiJobDefinitionHandler implements JobDefinitionModeHandler 
     @Override
     public void validate(JobDefinitionSaveCommand command) {
         GuideMultiJobContent content = cast(command).getContent();
+        if (isDatapack(content)) {
+            if (!(command instanceof BatchJobSaveCommand)) {
+                throw new IllegalArgumentException("离线数据包只支持批任务");
+            }
+            DatapackMultiWorkflow.assemble(content);
+            return;
+        }
         validator.validate(content);
     }
 
     @Override
     public JobDefinitionAnalysisResult analyze(JobDefinitionSaveCommand command) {
         GuideMultiJobContent content = cast(command).getContent();
+        if (isDatapack(content)) {
+            return workflowAnalyzer.analyze(DatapackMultiWorkflow.assemble(content));
+        }
         return analyzer.analyze(content);
     }
 
@@ -51,7 +75,30 @@ public class GuideMultiJobDefinitionHandler implements JobDefinitionModeHandler 
     @Override
     public String buildHoconConfig(JobDefinitionSaveCommand command) {
         GuideMultiJobContent content = cast(command).getContent();
+        if (isDatapack(content)) {
+            return buildDatapackConfig(command, content, UnaryOperator.identity());
+        }
         return hoconBuildService.build(content, command);
+    }
+
+    @Override
+    public String buildPreviewConfig(JobDefinitionSaveCommand command, UnaryOperator<String> mask) {
+        GuideMultiJobContent content = cast(command).getContent();
+        return isDatapack(content) ? buildDatapackConfig(command, content, mask)
+                : JobDefinitionModeHandler.super.buildPreviewConfig(command, mask);
+    }
+
+    private String buildDatapackConfig(
+            JobDefinitionSaveCommand command, GuideMultiJobContent content, UnaryOperator<String> formatBlock) {
+        var workflow = DatapackMultiWorkflow.assemble(content);
+        log.info("Build datapack batch job, definitionId={}, packageResourceId={}, csvCount={}",
+                command.getId(), content.getDatapack().getPackageResourceId(),
+                content.getDatapack().getMappings().size());
+        return workflowBuildService.build(workflow, command, true, formatBlock);
+    }
+
+    private boolean isDatapack(GuideMultiJobContent content) {
+        return content != null && content.getDatapack() != null;
     }
 
     private GuideMultiJobContentCommand cast(JobDefinitionSaveCommand command) {

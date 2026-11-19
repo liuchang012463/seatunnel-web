@@ -16,6 +16,7 @@ import org.apache.seatunnel.web.spi.bean.dto.command.JobDefinitionSaveCommand;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 @Service
 public class GuideSingleHoconBuildService {
@@ -27,6 +28,11 @@ public class GuideSingleHoconBuildService {
     private JobRuntimeContextFactory runtimeContextFactory;
 
     public String build(Map<String, Object> workflow, JobDefinitionSaveCommand command) {
+        return build(workflow, command, false, UnaryOperator.identity());
+    }
+
+    public String build(Map<String, Object> workflow, JobDefinitionSaveCommand command,
+                        boolean explicitRouting, UnaryOperator<String> formatBlock) {
         if (command == null) {
             throw new IllegalArgumentException("command can not be null");
         }
@@ -50,6 +56,10 @@ public class GuideSingleHoconBuildService {
 
         JobRuntimeContext runtimeContext = runtimeContextFactory.create(command);
 
+        if (explicitRouting) {
+            return hoconConfigBuilder.build(dagGraph, runtimeContext.getEnv(), runtimeContext.getSchedule(),
+                    LakeJobBindingResolver.resolve(command), runtimeContext.getEngineVersion(), true, formatBlock);
+        }
         return hoconConfigBuilder.build(
                 dagGraph,
                 runtimeContext.getEnv(),

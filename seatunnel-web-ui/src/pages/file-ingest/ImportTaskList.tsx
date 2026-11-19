@@ -377,7 +377,10 @@ const ImportTaskList: React.FC<{
             status={record.taskKind === 'OFFLINE_IMPORT'
               ? OFFLINE_STATUS_TO_JOB_STATUS[record.status] || record.status
               : record.lastJobStatus}
-            errorMessage={record.taskKind === 'OFFLINE_IMPORT' ? undefined : record.lastErrorMessage}
+            errorMessage={record.taskKind === 'OFFLINE_IMPORT' ? undefined
+              : record.mode === 'GUIDE_MULTI' && record.lastJobStatus === 'FAILED'
+                ? [record.lastErrorMessage, '部分目标表可能已写入数据，重跑前请核对。'].filter(Boolean).join(' ')
+                : record.lastErrorMessage}
           />
         </div>
       ),

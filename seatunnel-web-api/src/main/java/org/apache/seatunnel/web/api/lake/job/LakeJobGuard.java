@@ -543,7 +543,8 @@ public class LakeJobGuard {
     private StructuredDetails structuredDetails(JobDefinitionSaveCommand command) {
         if (command instanceof GuideMultiJobContentCommand multiCommand) {
             GuideMultiJobContent content = multiCommand.getContent();
-            if (content == null || content.getSource() == null || content.getTarget() == null) {
+            if (content == null || content.getTarget() == null
+                    || (content.getSource() == null && content.getDatapack() == null)) {
                 throw invalid();
             }
             GuideMultiJobContent.WorkflowSourceConfig source = content.getSource();
@@ -558,7 +559,7 @@ public class LakeJobGuard {
             put(sink, "database", target.getDatabase());
             put(sink, "odsDatabaseBindingId", target.getOdsDatabaseBindingId());
             return new StructuredDetails(
-                    parseLong(source.getDatasourceId()),
+                    source == null ? null : parseLong(source.getDatasourceId()),
                     parseLong(target.getDatasourceId()),
                     isDorisTarget(target.getDbType(), target.getPluginName(), target.getConnectorType()),
                     false,

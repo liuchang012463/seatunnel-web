@@ -8,6 +8,8 @@ import java.util.Map;
 @Data
 public class OfflineDatapackCsvSelectVO {
 
+    private String fileName;
+
     private FileResourceVO fileResource;
 
     private Map<String, String> schema;

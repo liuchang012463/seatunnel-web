@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.spi.bean.dto.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -23,6 +24,10 @@ public class GuideMultiJobContent {
      * 对齐前端 content.tableMatch
      */
     private TableMatchConfig tableMatch;
+
+    /** Package imports reuse the batch multi-table lifecycle with file resources as their source. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private DatapackMultiImportConfig datapack;
 
     @Data
     public static class WorkflowSourceConfig {

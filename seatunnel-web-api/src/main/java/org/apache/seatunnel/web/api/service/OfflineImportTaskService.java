@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.service;
 
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvBatchSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvSelectDTO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvInspectVO;
 import org.apache.seatunnel.web.spi.bean.vo.OfflineDatapackCsvSelectVO;
@@ -40,4 +41,6 @@ public interface OfflineImportTaskService {
     OfflineDatapackCsvInspectVO inspectDatapackCsv(Long fileResourceId, char[] password);
 
     OfflineDatapackCsvSelectVO selectDatapackCsv(OfflineDatapackCsvSelectDTO request);
+
+    List<OfflineDatapackCsvSelectVO> selectDatapackCsvBatch(OfflineDatapackCsvBatchSelectDTO request);
 }

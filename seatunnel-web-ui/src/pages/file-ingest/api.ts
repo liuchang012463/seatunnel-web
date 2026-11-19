@@ -83,7 +83,7 @@ const taskPage = (
 /** Keep the physical batch-definition API while exposing the new business type. */
 export const fileIngestTaskApi = {
   page: (params: any = {}, options?: RequestOptions) =>
-    taskPage('FILE_INGEST', 'GUIDE_SINGLE', params, options),
+    seatunnelJobDefinitionApi.page({ ...params, taskType: 'FILE_INGEST' }, options),
   getUniqueId: seatunnelJobDefinitionApi.getUniqueId,
   selectEditDetail: seatunnelJobDefinitionApi.selectEditDetail,
   delete: seatunnelJobDefinitionApi.delete,

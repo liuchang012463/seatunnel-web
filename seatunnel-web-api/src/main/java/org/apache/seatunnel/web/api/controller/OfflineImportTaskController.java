@@ -9,6 +9,7 @@ import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskCreateDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportTaskQueryDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackInspectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvInspectDTO;
+import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvBatchSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineDatapackCsvSelectDTO;
 import org.apache.seatunnel.web.spi.bean.dto.OfflineImportExecuteDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
@@ -110,6 +111,13 @@ public class OfflineImportTaskController {
     public Result<OfflineDatapackCsvSelectVO> selectDatapackCsv(
             @Valid @RequestBody OfflineDatapackCsvSelectDTO dto) {
         return Result.buildSuc(offlineImportTaskService.selectDatapackCsv(dto));
+    }
+
+    @PostMapping("/datapack/csv/select-batch")
+    @Operation(summary = "selectOfflineDatapackCsvBatch", description = "校验同一个数据包并批量提取所选 CSV")
+    public Result<List<OfflineDatapackCsvSelectVO>> selectDatapackCsvBatch(
+            @Valid @RequestBody OfflineDatapackCsvBatchSelectDTO dto) {
+        return Result.buildSuc(offlineImportTaskService.selectDatapackCsvBatch(dto));
     }
 
     @PostMapping("/{id}/execute")

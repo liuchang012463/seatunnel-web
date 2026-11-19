@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Workflow from '@/pages/batch-link-up/workflow';
 import DatapackCsvImportStep from '../../DatapackCsvImportStep';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../../types';
-import type { FileResource } from '../../types';
+import DatapackMultiConfig from '../DatapackMultiConfig';
+import { datapackSourceConfig } from '../datapack';
 import { fileIngestTaskApi } from '../../api';
 import {
   defaultScheduleConfig,
@@ -179,52 +180,17 @@ const FileIngestConfigPage: React.FC = () => {
     );
   }
 
+  if (params.content?.datapack || params.datapackMode === 'multi') {
+    return <DatapackMultiConfig key={id} params={params} goBack={goBack} />;
+  }
+
   if (params.datapackCsvImport === true) {
     return (
-      <div className="min-h-screen bg-[#ffffff]">
+      <div className="mx-auto w-full max-w-[1080px] p-6">
         <DatapackCsvImportStep
           onBack={goBack}
-          onImported={({ fileResource, schema, nullValue }: {
-            fileResource: FileResource;
-            schema: Record<string, string>;
-            nullValue: string;
-          }) => {
-            const fields = schema || {};
-            const outputSchema = Object.entries(fields).map(([name, type]) => ({
-              originFieldName: name,
-              fieldName: name,
-              name,
-              type,
-              nullable: true,
-            }));
-            const sourceConfig = {
-              sourceMode: 'FILE_RESOURCE',
-              dbType: 'MINIO',
-              connectorType: 'S3File',
-              pluginName: 'S3File',
-              readMode: 'file',
-              syncType: 'FULL',
-              fileFormatType: 'csv',
-              formatLocked: true,
-              fileResourceId: fileResource.id,
-              fileResource,
-              path: fileResource.path || fileResource.objectKey,
-              objectKey: fileResource.objectKey || fileResource.path,
-              encoding: 'UTF-8',
-              fieldDelimiter: ',',
-              csvUseHeaderLine: true,
-              skipHeader: true,
-              skipHeaderRowNumber: 0,
-              quoteChar: '"',
-              // RFC4180 encodes a quote inside a quoted field by doubling it.
-              nullFormat: nullValue,
-              schema: { fields },
-              outputSchema,
-              schemaStatus: outputSchema.length ? 'success' : 'idle',
-              schemaError: '',
-            };
-            // SeaTunnel 3.0.0's CSV deserializer auto-detects local timestamps with up to 9 fractional digits.
-            // Leave the S3File datetime option unset: its explicit format whitelist does not include this pattern.
+          onImported={(selection) => {
+            const { outputSchema, schemaStatus, schemaError, ...sourceConfig } = datapackSourceConfig(selection);
             setParams((previous: any) => {
               const workflow = patchSourceConfig(previous, sourceConfig);
               return {
@@ -238,12 +204,7 @@ const FileIngestConfigPage: React.FC = () => {
                         ...node,
                         data: {
                           ...node.data,
-                          meta: {
-                            ...(node.data.meta || {}),
-                            outputSchema,
-                            schemaStatus: outputSchema.length ? 'success' : 'idle',
-                            schemaError: '',
-                          },
+                          meta: { ...node.data.meta, outputSchema, schemaStatus, schemaError },
                         },
                       }
                     : node),

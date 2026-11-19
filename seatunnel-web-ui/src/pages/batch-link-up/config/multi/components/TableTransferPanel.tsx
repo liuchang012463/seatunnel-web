@@ -8,6 +8,7 @@ interface Props {
   data: TableItem[];
   targetKeys: string[];
   matchMode: string;
+  files?: boolean;
   onChange: (keys: string[]) => void;
 }
 
@@ -16,6 +17,7 @@ const TableTransferPanel: React.FC<Props> = ({
   data,
   targetKeys,
   matchMode,
+  files = false,
   onChange,
 }) => {
   const renderFooter: TransferProps["footer"] = (_, info) => {
@@ -25,14 +27,14 @@ const TableTransferPanel: React.FC<Props> = ({
     if (info?.direction === "left") {
       return (
         <div className="px-3 py-2 text-sm text-slate-500">
-          共 {totalTables} 张表
+          共 {totalTables} {files ? "个文件" : "张表"}
         </div>
       );
     }
 
     return (
       <div className="px-3 py-2 text-sm">
-        <span className="text-slate-500">已选 {selectedTables} 张表</span>
+        <span className="text-slate-500">已选 {selectedTables} {files ? "个文件" : "张表"}</span>
       </div>
     );
   };
@@ -40,7 +42,7 @@ const TableTransferPanel: React.FC<Props> = ({
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium text-slate-800">选择同步表</div>
+        <div className="text-sm font-medium text-slate-800">{files ? "选择 CSV 文件" : "选择同步表"}</div>
         <div className="text-sm text-slate-400">
           {matchMode === "4" ? "整库模式下自动全选" : "支持手动筛选与勾选"}
         </div>
@@ -80,11 +82,11 @@ const TableTransferPanel: React.FC<Props> = ({
             filterOption={(inputValue, item) =>
               item.rawTitle.toLowerCase().includes(inputValue.toLowerCase())
             }
-            titles={["源表列表", "已选表"]}
+            titles={files ? ["包内 CSV", "已选 CSV"] : ["源表列表", "已选表"]}
             locale={{
               itemUnit: "项",
               itemsUnit: "项",
-              searchPlaceholder: "搜索表名",
+              searchPlaceholder: files ? "搜索文件名" : "搜索表名",
               notFoundContent: "暂无数据",
             }}
           />

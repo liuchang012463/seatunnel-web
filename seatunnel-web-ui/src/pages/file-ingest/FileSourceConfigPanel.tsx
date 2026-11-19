@@ -20,6 +20,7 @@ import {
 } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import FileEncodingSelect from './FileEncodingSelect';
+import DatapackCsvImportStep from './DatapackCsvImportStep';
 import FileResourceSourceCard from './FileResourceSourceCard';
 import { buildFileResourcePreviewOptions, fileResourceApi } from './api';
 import {
@@ -27,6 +28,7 @@ import {
   isExcelHeaderEnabled,
 } from './config/fileHeaderDefaults';
 import { isDatabaseFileFormat, resolveFormatFromFileName } from './config/fileFormat';
+import { changedDatapackFields, datapackSourceConfig, isDatapackSource } from './config/datapack';
 import { inferTypeFromSamples } from './config/fileTypeInference';
 import type { FileFormat, FileResource } from './types';
 import {
@@ -462,6 +464,9 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
     }
   };
 
+  const [replaceDatapack, setReplaceDatapack] = useState(false);
+  const datapack = isDatapackSource(sourceConfig);
+
   const handlePreview = async () => {
     if (!resource?.id) {
       message.warning('请先选择文件资源');
@@ -590,12 +595,47 @@ const FileSourceConfigPanel: React.FC<FileSourceConfigPanelProps> = ({
         allowedFormats={formatLocked ? [format] : PICKER_ALLOWED_FORMATS}
         selectionMode="file"
         title="文件资源来源"
+        resourceCaption={sourceConfig.datapack?.packageName}
+        resourceAction={datapack ? { label: '更换数据包', onClick: () => setReplaceDatapack(true) } : undefined}
         description={isDatabaseFile
           ? `选择或上传 MinIO 文件区中的 ${databaseTypeLabel} 数据库文件。`
           : formatLocked
             ? `入口已确定为 ${formatLabel}，请选择匹配格式的文件。`
             : '选择或上传文件后，格式与字段将自动识别。'}
       />
+
+      {sourceConfig.datapackReviewFields?.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          message="数据包字段结构已变化"
+          description={sourceConfig.datapackReviewFields.join('、')}
+          action={<Button onClick={() => onChange({ datapackReviewFields: [] })}>确认字段结构</Button>}
+        />
+      )}
+
+      {replaceDatapack && (
+        <Modal open title="更换数据包" footer={null} width={720} onCancel={() => setReplaceDatapack(false)}>
+          <DatapackCsvImportStep
+            preferredFileNames={[sourceConfig.datapack?.fileName || resource?.name].filter(Boolean)}
+            confirmText="确认更换"
+            onBack={() => setReplaceDatapack(false)}
+            onImported={(selection) => {
+              const next = datapackSourceConfig(selection);
+              // Apply the manifest schema as one patch, without triggering generic CSV inference.
+              recognizeSeqRef.current += 1;
+              setRecognizing(false);
+              const changedFields = changedDatapackFields(sourceConfig.schema, next.schema);
+              onChange({
+                ...next,
+                datapackReviewFields: [...new Set([...(sourceConfig.datapackReviewFields || []), ...changedFields])],
+              });
+              setReplaceDatapack(false);
+              message.success('数据包已更换，请保存配置');
+            }}
+          />
+        </Modal>
+      )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
