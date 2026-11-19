@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.containsString;
 class SeaTunnelRestClientUploadTest {
 
     @Test
-    void uploadsUtf8ConfigWithMoreThanOneHundredTablesAndEngineThreeSavepointId() {
+    void uploadsCompleteUtf8ConfigWith450TablesAndEngineThreeSavepointId() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.createServer(restTemplate);
         SeaTunnelClientResolver resolver = mock(SeaTunnelClientResolver.class);
@@ -33,7 +33,7 @@ class SeaTunnelRestClientUploadTest {
         SeaTunnelRestClient client = new SeaTunnelRestClient(restTemplate, resolver);
 
         StringBuilder config = new StringBuilder("source {\n  table_path = [\n");
-        for (int i = 1; i <= 101; i++) {
+        for (int i = 1; i <= 450; i++) {
             config.append("    \"业务库.订单表_").append(i).append("\",\n");
         }
         config.append("  ]\n}\n");
@@ -41,7 +41,7 @@ class SeaTunnelRestClientUploadTest {
                         + "&isStartWithSavePoint=true&restoreMode=SAVEPOINT&restoreSourceJobId=601"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(content().string(containsString("业务库.订单表_101")))
+                .andExpect(content().string(containsString(config.toString())))
                 .andRespond(withSuccess("{\"jobId\":\"601\"}", MediaType.APPLICATION_JSON));
 
         Map<?, ?> response = client.submitJobUpload(

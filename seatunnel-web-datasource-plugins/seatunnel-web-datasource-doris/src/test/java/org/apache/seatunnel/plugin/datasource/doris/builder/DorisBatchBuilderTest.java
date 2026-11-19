@@ -6,6 +6,7 @@ import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +41,56 @@ class DorisBatchBuilderTest {
 
         assertEquals("target_db", config.getString("database"));
         assertEquals("${table_name}", config.getString("table"));
+    }
+
+    @Test
+    void wholeDatabaseCreateTemplateAcceptsTablesWithDifferentKeyMetadata() {
+        Config config = builder.buildSinkHocon(context("""
+                multiTable = true
+                matchMode = "4"
+                schema_save_mode = CREATE_SCHEMA_WHEN_NOT_EXIST
+                dorisReplicaCount = 3
+                """));
+
+        String template = config.getString("save_mode_create_template");
+        assertEquals("${table_name}", config.getString("table"));
+        assertTrue(template.contains("${rowtype_fields}"));
+        assertFalse(template.contains("${rowtype_primary_key}"));
+        assertFalse(template.contains("${rowtype_unique_key}"));
+        assertFalse(template.contains("${rowtype_duplicate_key}"));
+        assertTrue(template.contains("DISTRIBUTED BY RANDOM BUCKETS AUTO"));
+        assertTrue(template.contains("\"enable_duplicate_without_keys_by_default\" = \"true\""));
+        assertTrue(template.contains("replication_allocation\" = \"tag.location.default: 3"));
+    }
+
+    @Test
+    void wholeDatabaseSinkHonorsExplicitCreateTemplateAndSaveMode() {
+        Config custom = builder.buildSinkHocon(context("""
+                multiTable = true
+                matchMode = "4"
+                save_mode_create_template = "custom DDL"
+                """));
+        assertEquals("custom DDL", custom.getString("save_mode_create_template"));
+
+        Config existingOnly = builder.buildSinkHocon(context("""
+                multiTable = true
+                matchMode = "4"
+                schema_save_mode = ERROR_WHEN_SCHEMA_NOT_EXIST
+                """));
+        assertFalse(existingOnly.hasPath("save_mode_create_template"));
+    }
+
+    @Test
+    void wholeDatabaseWithOneQualifiedTableStillUsesSourceTableName() {
+        Config config = builder.buildSinkHocon(context("""
+                matchMode = "4"
+                multiTable = false
+                table_list = ["audit.orders"]
+                targetTableName = "audit.orders"
+                """));
+
+        assertEquals("${table_name}", config.getString("table"));
+        assertTrue(config.getString("save_mode_create_template").contains("DISTRIBUTED BY RANDOM"));
     }
 
     @Test

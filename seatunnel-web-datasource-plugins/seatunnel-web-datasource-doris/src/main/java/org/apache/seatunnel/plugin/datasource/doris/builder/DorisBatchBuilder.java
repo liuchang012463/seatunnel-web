@@ -3,6 +3,7 @@ package org.apache.seatunnel.plugin.datasource.doris.builder;
 import com.google.auto.service.AutoService;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
@@ -30,9 +31,11 @@ import java.util.Map;
  * <p>此构建器输出的 HOCON 包含 fenodes 字段，用于 Doris 连接器的 StreamLoad 数据读写。</p>
  */
 @AutoService(DataSourceHoconBuilder.class)
+@Slf4j
 public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataSourceHoconBuilder {
 
     private static final String FENODES = "fenodes";
+    private static final String MATCH_MODE_WHOLE_DATABASE = "4";
 
     @Override
     public String pluginName() {
@@ -70,19 +73,21 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
     public Config buildSinkHocon(HoconBuildContext context) {
         Config conn = context.getConnectionConfig();
         Config config = context.getNodeConfig();
+        boolean wholeDatabase = MATCH_MODE_WHOLE_DATABASE.equals(
+                JdbcConfigReaders.getString(config, "matchMode", ""));
 
         Map<String, Object> map = new HashMap<>(16);
 
         // Doris sink 使用 fenodes (FE HTTP端口) 通过 StreamLoad 写入数据
         putDorisConnConfig(conn, map);
 
-        if (isMultiTableMode(config)) {
+        if (wholeDatabase || isMultiTableMode(config)) {
             putMultiTableSinkConfig(config, conn, map);
         } else {
             putTableConfig(config, conn, map);
         }
 
-        putDorisSinkConfig(config, map, context);
+        putDorisSinkConfig(config, map, wholeDatabase);
 
         return ConfigFactory.parseMap(map);
     }
@@ -381,7 +386,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
      * 构建 Doris sink 特有配置。
      * 前端通用表单可能不传 sink.label-prefix / doris.config，后端自动填充默认值。
      */
-    private void putDorisSinkConfig(Config config, Map<String, Object> map, HoconBuildContext context) {
+    private void putDorisSinkConfig(Config config, Map<String, Object> map, boolean wholeDatabase) {
         // sink.enable-2pc — 输出布尔值。开启 2pc 时 label-prefix 必须是任务级
         // 稳定值：故障恢复期需要按前缀追踪预提交事务，不接受每次构建重新生成。
         Boolean enable2pc = JdbcConfigReaders.getBoolean(config, "sink.enable-2pc", false);
@@ -440,7 +445,7 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
         map.put("doris.config", dorisConfig);
 
         // save_mode_create_template — 条件守卫：仅在需要建表时注入模板
-        // 模板优先级：用户显式填写 > 按主键选择的默认模板 > 不输出
+        // 显式模板和显式主键优先。整库默认模板需要适用于同一节点下的所有源表。
         if ("CREATE_SCHEMA_WHEN_NOT_EXIST".equals(schemaSaveMode)
                 || "RECREATE_SCHEMA".equals(schemaSaveMode)) {
             String template = JdbcConfigReaders.getString(config, "save_mode_create_template", "");
@@ -449,14 +454,32 @@ public class DorisBatchBuilder extends AbstractJdbcHoconBuilder implements DataS
                 if (replicaCount == null || replicaCount <= 0) {
                     throw new IllegalArgumentException("dorisReplicaCount must be greater than zero");
                 }
-                template = hasConfiguredPrimaryKeys(config)
-                        ? defaultCreateTableTemplate(replicaCount)
-                        : duplicateKeyCreateTableTemplate(replicaCount);
+                if (hasConfiguredPrimaryKeys(config)) {
+                    template = defaultCreateTableTemplate(replicaCount);
+                } else if (wholeDatabase) {
+                    template = keylessCreateTableTemplate(replicaCount);
+                    log.debug("Using keyless Doris whole-database create template, database={}", map.get("database"));
+                } else {
+                    template = duplicateKeyCreateTableTemplate(replicaCount);
+                }
             }
             if (template != null && !template.isEmpty()) {
                 map.put("save_mode_create_template", template);
             }
         }
+    }
+
+    /** 整库任务共用一个模板。省略 KEY 子句和键占位符，兼容所有源表的键元数据。 */
+    private String keylessCreateTableTemplate(int replicaCount) {
+        return "CREATE TABLE IF NOT EXISTS `${database}`.`${table}` (\n"
+                + "    ${rowtype_fields}\n"
+                + ") ENGINE=OLAP\n"
+                + "    COMMENT '${comment}'\n"
+                + "    DISTRIBUTED BY RANDOM BUCKETS AUTO\n"
+                + "    PROPERTIES (\n"
+                + "        \"enable_duplicate_without_keys_by_default\" = \"true\",\n"
+                + "        \"replication_allocation\" = \"tag.location.default: " + replicaCount + "\"\n"
+                + "    )";
     }
 
     /**
