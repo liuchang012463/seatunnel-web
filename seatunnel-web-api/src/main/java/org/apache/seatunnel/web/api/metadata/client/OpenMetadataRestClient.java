@@ -315,26 +315,55 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public List<String> getBotDomainFqns() {
         validateBaseUrl();
+        long started = System.currentTimeMillis();
+        String path = "/v1/users/loggedInUser?fields=domains";
+        log.debug("OpenMetadata SDK request start: method=GET, path={}, baseUrl={}",
+                path, sanitizeBaseUrl(current().getBaseUrl()));
+        User bot;
         try {
-            UUID userId = sdk().getUserId();
-            if (userId == null) {
-                return List.of();
-            }
-            User bot = sdk().users().get(userId.toString(), "domains");
-            if (bot == null) {
-                return List.of();
-            }
-            Set<String> domains = new LinkedHashSet<>();
-            for (EntityReference reference : safeList(bot.getDomains())) {
-                if (reference != null && !blank(reference.getFullyQualifiedName())) {
-                    domains.add(reference.getFullyQualifiedName());
-                }
-            }
-            return List.copyOf(domains);
+            // UserService in SDK 2.0.4 has no logged-in-user method. Use its
+            // typed network client so the authenticated identity and schema
+            // come from the server's /v1 resource.
+            bot = sdk().getHttpClient().execute(HttpMethod.GET, path, null, User.class);
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
                     "OpenMetadata Bot Domain scope could not be read", error);
+        } catch (RuntimeException error) {
+            log.warn("OpenMetadata Bot Domain response could not be decoded: baseUrl={}, type={}, message={}, elapsedMs={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    error.getClass().getSimpleName(),
+                    error.getMessage(),
+                    System.currentTimeMillis() - started);
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata Bot Domain scope could not be read", error);
         }
+        if (bot == null || bot.getId() == null || bot.getDomains() == null) {
+            log.warn("OpenMetadata Bot Domain response is incomplete: baseUrl={}, hasUser={}, hasId={}, hasDomains={}, elapsedMs={}",
+                    sanitizeBaseUrl(current().getBaseUrl()),
+                    bot != null,
+                    bot != null && bot.getId() != null,
+                    bot != null && bot.getDomains() != null,
+                    System.currentTimeMillis() - started);
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata Bot Domain scope could not be read");
+        }
+        Set<String> domains = new LinkedHashSet<>();
+        for (EntityReference reference : bot.getDomains()) {
+            if (reference == null || blank(reference.getFullyQualifiedName())) {
+                log.warn("OpenMetadata Bot Domain response contains an incomplete reference: baseUrl={}, elapsedMs={}",
+                        sanitizeBaseUrl(current().getBaseUrl()),
+                        System.currentTimeMillis() - started);
+                throw new MetadataIntegrationException(
+                        MetadataErrorCode.OM_CONNECTION_ERROR,
+                        "OpenMetadata Bot Domain scope could not be read");
+            }
+            domains.add(reference.getFullyQualifiedName());
+        }
+        log.debug("OpenMetadata Bot Domain lookup succeeded: baseUrl={}, domainCount={}, elapsedMs={}",
+                sanitizeBaseUrl(current().getBaseUrl()), domains.size(), System.currentTimeMillis() - started);
+        return List.copyOf(domains);
     }
 
     @Override

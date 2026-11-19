@@ -178,6 +178,49 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
+    void readsBotDomainsFromTheAuthenticatedLoggedInUserAndRejectsIncompleteResponses() throws Exception {
+        AtomicReference<String> requestTarget = new AtomicReference<>();
+        AtomicReference<String> authorization = new AtomicReference<>();
+        AtomicReference<Integer> responseStatus = new AtomicReference<>(200);
+        AtomicReference<String> responseBody = new AtomicReference<>("""
+                {"id":"00000000-0000-0000-0000-000000000042","name":"bot",
+                 "domains":[{"id":"00000000-0000-0000-0000-000000000043","type":"domain",
+                 "name":"production","fullyQualifiedName":"Production"}]}
+                """);
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/users/loggedInUser", exchange -> {
+            requestTarget.set(exchange.getRequestURI().toString());
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            respond(exchange, responseStatus.get(), responseBody.get());
+        });
+        server.start();
+        OpenMetadataRestClient client = new OpenMetadataRestClient(
+                properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
+
+        assertEquals(List.of("Production"), client.getBotDomainFqns());
+        assertQuery("/api/v1/users/loggedInUser", requestTarget.get(), "fields=domains");
+        assertEquals("Bearer test-jwt", authorization.get());
+
+        responseBody.set("""
+                {"id":"00000000-0000-0000-0000-000000000042","name":"bot","domains":[]}
+                """);
+        assertEquals(List.of(), client.getBotDomainFqns());
+
+        responseBody.set("{\"name\":\"bot\",\"domains\":[]}");
+        assertThrows(MetadataIntegrationException.class, client::getBotDomainFqns);
+
+        responseBody.set("{\"id\":\"00000000-0000-0000-0000-000000000042\"}");
+        assertThrows(MetadataIntegrationException.class, client::getBotDomainFqns);
+
+        responseStatus.set(404);
+        responseBody.set("{\"message\":\"not found\"}");
+        MetadataIntegrationException requestFailure = assertThrows(
+                MetadataIntegrationException.class, client::getBotDomainFqns);
+        assertEquals(MetadataErrorCode.OM_CONNECTION_ERROR, requestFailure.getErrorCode());
+        assertEquals(404, requestFailure.getHttpStatusCode());
+    }
+
+    @Test
     void uses11210TriggerKillAndPipelineStatusPathsWithoutAirflowCalls() throws Exception {
         AtomicReference<String> triggerBody = new AtomicReference<>();
         AtomicReference<String> killBody = new AtomicReference<>();
