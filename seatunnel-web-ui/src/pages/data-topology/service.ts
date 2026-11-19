@@ -1,38 +1,51 @@
 import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
+import type { TaskKind } from '@/pages/common/workflow/TaskDefinitionView';
 
-export interface DataSourceNode {
+export interface LineageSource {
   id: string;
   name: string;
-  dbType?: string;
-  tableCatalogAvailable: boolean;
+  dbType?: string | null;
+}
+
+export interface LineageAsset {
+  id: string;
+  dataSourceId: string;
+  type: string;
+  name: string;
+  database?: string | null;
+  schema?: string | null;
+  fullyQualifiedName: string;
+}
+
+export interface LineageTask {
+  id: string;
+  kind: TaskKind;
+  name?: string | null;
+  deleted: boolean;
 }
 
 export interface LineageLink {
   sourceId: string;
   targetId: string;
-  assetCount?: number | null;
+  task?: LineageTask | null;
 }
 
 export interface Topology {
-  nodes: DataSourceNode[];
+  sources: LineageSource[];
+  assets: LineageAsset[];
   edges: LineageLink[];
   readAt?: string | null;
 }
 
-export interface LineageAsset {
-  id: string;
-  name?: string;
-  fullyQualifiedName: string;
-  dataSourceName: string;
-}
-
-export interface TableLineage {
-  upstream: LineageAsset[];
-  downstream: LineageAsset[];
+export interface FieldLink {
+  sourceId: string;
+  targetId: string;
+  fromColumn: string;
+  toColumn: string;
 }
 
 const LINEAGE_URL = '/api/v1/data-source-topology/lineage';
-export const topologyRequestOptions: RequestOptions = { timeout: 60_000, skipErrorHandler: true };
+const topologyRequestOptions: RequestOptions = { timeout: 60_000, skipErrorHandler: true };
 
 async function readLineage<T>(url: string): Promise<T> {
   const response = await HttpUtils.get<T>(url, topologyRequestOptions);
@@ -42,11 +55,15 @@ async function readLineage<T>(url: string): Promise<T> {
   return response.data;
 }
 
-export function fetchTopology() {
-  return readLineage<Topology>(LINEAGE_URL);
+export async function fetchTopology() {
+  const graph = await readLineage<Topology>(LINEAGE_URL);
+  if (!Array.isArray(graph.sources) || !Array.isArray(graph.assets) || !Array.isArray(graph.edges)) {
+    throw new Error('血缘响应格式无效');
+  }
+  return graph;
 }
 
-export function fetchTableLineage(dataSourceId: string, tableId: string) {
-  const query = new URLSearchParams({ dataSourceId, tableId });
-  return readLineage<TableLineage>(`${LINEAGE_URL}/table?${query}`);
+export function fetchFieldLineage(asset: LineageAsset) {
+  const query = new URLSearchParams({ entityType: asset.type, entityId: asset.id });
+  return readLineage<FieldLink[]>(`${LINEAGE_URL}/fields?${query}`);
 }

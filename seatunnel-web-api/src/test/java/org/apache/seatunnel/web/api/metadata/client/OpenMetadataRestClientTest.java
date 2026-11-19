@@ -40,21 +40,24 @@ class OpenMetadataRestClientTest {
     }
 
     @Test
-    void readsServiceAndTableLineageThroughTheFixedSdk() throws Exception {
+    void pagesRelatedAssetsAndReadsEntityLineageThroughTheFixedSdk() throws Exception {
         UUID tableId = UUID.randomUUID();
         UUID upstreamId = UUID.randomUUID();
-        AtomicReference<String> serviceQuery = new AtomicReference<>();
+        AtomicReference<String> searchQuery = new AtomicReference<>();
         AtomicReference<String> tableQuery = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/api/v1/lineage/getPlatformLineage", exchange -> {
-            serviceQuery.set(exchange.getRequestURI().getQuery());
-            respond(exchange, 200, """
-                    {"nodes":{},"upstreamEdges":{"edge":{
-                      "fromEntity":{"fullyQualifiedName":"st_ds_42"},
-                      "toEntity":{"fullyQualifiedName":"st_ds_43"},
-                      "assetEdges":2
-                    }},"downstreamEdges":{}}
-                    """);
+        server.createContext("/api/v1/search/query", exchange -> {
+            String query = exchange.getRequestURI().getQuery();
+            searchQuery.set(query);
+            String hit = """
+                    {"sort":["st_ds_43.db.public.orders","orders","%s"],
+                     "_source":{"id":"%s","entityType":"table","fullyQualifiedName":"st_ds_43.db.public.orders",
+                     "upstreamLineage":[{"fromEntity":{"id":"%s","type":"table",
+                     "fullyQualifiedName":"st_ds_42.db.public.orders"},"description":"job"}]}}
+                    """.formatted(tableId, tableId, upstreamId);
+            List<String> page = query.contains("search_after=") ? List.of(hit)
+                    : java.util.Collections.nCopies(250, hit);
+            respond(exchange, 200, "{\"hits\":{\"hits\":[" + String.join(",", page) + "]}}");
         });
         server.createContext("/api/v1/lineage/table/" + tableId, exchange -> {
             tableQuery.set(exchange.getRequestURI().getQuery());
@@ -67,12 +70,16 @@ class OpenMetadataRestClientTest {
         OpenMetadataRestClient client = new OpenMetadataRestClient(
                 properties("http://127.0.0.1:" + server.getAddress().getPort() + "/api"));
 
-        var serviceEdge = client.getServiceLineage().getFirst();
-        var tableLineage = client.getTableLineage(tableId);
+        var edges = client.getAssetLineage(List.of("st_ds_43"));
+        var tableLineage = client.getEntityLineage("table", tableId);
 
-        assertEquals("view=service", serviceQuery.get());
-        assertEquals("st_ds_42", serviceEdge.getFromEntity().getFullyQualifiedName());
-        assertEquals(2, serviceEdge.getAssetEdges());
+        assertEquals(251, edges.size());
+        assertTrue(searchQuery.get().contains("service.fullyQualifiedName"));
+        assertTrue(searchQuery.get().contains("upstreamLineage.fromEntity.id"));
+        assertTrue(searchQuery.get().endsWith("&search_after=st_ds_43.db.public.orders&search_after=orders&search_after=" + tableId));
+        assertEquals("st_ds_42.db.public.orders", edges.getFirst().getFromEntity().getFullyQualifiedName());
+        assertEquals(tableId, edges.getFirst().getToEntity().getId());
+        assertEquals("job", edges.getFirst().getDescription());
         assertTrue(tableQuery.get().contains("upstreamDepth=1"));
         assertTrue(tableQuery.get().contains("downstreamDepth=1"));
         assertEquals(upstreamId, tableLineage.getUpstreamEdges().getFirst().getFromEntity());

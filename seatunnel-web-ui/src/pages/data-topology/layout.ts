@@ -1,14 +1,16 @@
 import type { XYPosition } from 'reactflow';
-import type { Topology } from './service';
 
-const COLUMN_GAP = 300;
-const ROW_GAP = 86;
+const COLUMN_GAP = 345;
+const ROW_GAP = 34;
 
-export function topologyPositions({ nodes, edges }: Topology): Map<string, XYPosition> {
+export function topologyPositions(
+  nodes: { id: string; height: number }[],
+  edges: { source: string; target: string }[],
+): Map<string, XYPosition> {
   const incoming = new Map(nodes.map(({ id }) => [id, 0]));
   const targets = new Map<string, string[]>();
   const linked = new Set<string>();
-  for (const { sourceId, targetId } of edges) {
+  for (const { source: sourceId, target: targetId } of edges) {
     const children = targets.get(sourceId) ?? [];
     children.push(targetId);
     targets.set(sourceId, children);
@@ -31,22 +33,23 @@ export function topologyPositions({ nodes, edges }: Topology): Map<string, XYPos
   }
 
   const positions = new Map<string, XYPosition>();
-  const rowsByColumn = new Map<number, number>();
+  const nextRow = new Map<number, number>();
   let unranked = 0;
-  for (const { id } of nodes) {
+  for (const { id, height } of nodes) {
     if (!linked.has(id)) continue;
     // Real lineage can contain cycles. Place nodes without a rank in a stable order.
     const column = depth.get(id) ?? unranked++ % 3;
-    const row = rowsByColumn.get(column) ?? 0;
-    rowsByColumn.set(column, row + 1);
-    positions.set(id, { x: column * COLUMN_GAP, y: row * ROW_GAP });
+    const y = nextRow.get(column) ?? 0;
+    nextRow.set(column, y + height + ROW_GAP);
+    positions.set(id, { x: column * COLUMN_GAP, y });
   }
-  const startRow = Math.max(0, ...rowsByColumn.values());
-  nodes.filter(({ id }) => !linked.has(id)).forEach(({ id }, index) => {
-    positions.set(id, {
-      x: (index % 3) * COLUMN_GAP,
-      y: (startRow + Math.floor(index / 3)) * ROW_GAP,
-    });
+  // A visible group with only internal lineage still needs its own card.
+  const startRow = Math.max(0, ...nextRow.values());
+  nodes.filter(({ id }) => !linked.has(id)).forEach(({ id, height }, index) => {
+    const column = index % 3;
+    const y = Math.max(startRow, nextRow.get(column) ?? 0);
+    positions.set(id, { x: column * COLUMN_GAP, y });
+    nextRow.set(column, y + height + ROW_GAP);
   });
   return positions;
 }

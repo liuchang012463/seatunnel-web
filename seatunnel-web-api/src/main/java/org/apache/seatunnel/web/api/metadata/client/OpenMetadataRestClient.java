@@ -13,6 +13,7 @@ import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -1010,45 +1011,81 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     }
 
     @Override
-    public List<EsLineageData> getServiceLineage() {
-        JsonNode response = sdkRequest("GET", "/v1/lineage/getPlatformLineage?view=service", null, false);
-        // The platform graph indexes each edge under its target's upstream edges.
-        JsonNode edges = response.path("upstreamEdges");
-        if (!edges.isObject()) {
-            throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata service lineage response is invalid");
+    public List<EsLineageData> getAssetLineage(List<String> serviceFqns) {
+        if (serviceFqns.isEmpty()) {
+            return List.of();
         }
+        // OM indexes each directed edge on its target. Search only related assets and page
+        // past the platform overview limit without loading their columns or unrelated metadata.
+        int size = 250;
+        String scope = OBJECT_MAPPER.valueToTree(Map.of("query", Map.of("bool", Map.of("filter", List.of(
+                Map.of("terms", Map.of("service.fullyQualifiedName", serviceFqns)),
+                Map.of("exists", Map.of("field", "upstreamLineage.fromEntity.id"))))))).toString();
+        String path = "/v1/search/query?index=all&q=*&size=" + size
+                + "&sort_field=fullyQualifiedName&sort_order=asc&include_aggregations=false"
+                + "&include_source_fields=id&include_source_fields=entityType&include_source_fields=fullyQualifiedName"
+                + "&include_source_fields=upstreamLineage.fromEntity&include_source_fields=upstreamLineage.description"
+                + "&query_filter=" + encode(scope);
         List<EsLineageData> result = new ArrayList<>();
+        String cursor = "";
         try {
-            for (JsonNode edge : edges) {
-                result.add(OBJECT_MAPPER.treeToValue(edge, EsLineageData.class));
+            while (true) {
+                JsonNode hits = sdkRequest("GET", path + cursor, null, false).path("hits").path("hits");
+                if (!hits.isArray()) {
+                    throw invalidLineageSearch();
+                }
+                for (JsonNode hit : hits) {
+                    JsonNode asset = hit.path("_source");
+                    var target = new RelationshipRef()
+                            .withId(UUID.fromString(asset.path("id").asText()))
+                            .withType(asset.path("entityType").asText(null))
+                            .withFullyQualifiedName(asset.path("fullyQualifiedName").asText(null));
+                    for (JsonNode edge : asset.path("upstreamLineage")) {
+                        result.add(OBJECT_MAPPER.treeToValue(edge, EsLineageData.class).withToEntity(target));
+                    }
+                }
+                if (hits.size() < size) {
+                    return result;
+                }
+                StringBuilder next = new StringBuilder();
+                for (JsonNode value : hits.path(hits.size() - 1).path("sort")) {
+                    next.append("&search_after=").append(encode(value.asText()));
+                }
+                if (next.isEmpty() || next.toString().equals(cursor)) {
+                    throw invalidLineageSearch();
+                }
+                cursor = next.toString();
             }
-            return result;
-        } catch (JsonProcessingException error) {
+        } catch (JsonProcessingException | IllegalArgumentException error) {
             throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata service lineage response is invalid", error);
+                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage search response is invalid", error);
         }
     }
 
+    private static MetadataIntegrationException invalidLineageSearch() {
+        return new MetadataIntegrationException(
+                MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage search response is invalid");
+    }
+
     @Override
-    public EntityLineage getTableLineage(UUID tableId) {
+    public EntityLineage getEntityLineage(String entityType, UUID entityId) {
         validateBaseUrl();
         try {
-            String response = sdk().lineage().getEntityLineage("table", tableId.toString(), "1", "1");
+            String response = sdk().lineage().getEntityLineage(entityType, entityId.toString(), "1", "1");
             EntityLineage lineage = OBJECT_MAPPER.readValue(response, EntityLineage.class);
             if (lineage == null || lineage.getEntity() == null) {
                 throw new MetadataIntegrationException(
-                        MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage response is invalid");
+                        MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage response is invalid");
             }
             return lineage;
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
             }
-            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage lookup failed", error);
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage lookup failed", error);
         } catch (JsonProcessingException | IllegalArgumentException error) {
             throw new MetadataIntegrationException(
-                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata table lineage response is invalid", error);
+                    MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage response is invalid", error);
         }
     }
 

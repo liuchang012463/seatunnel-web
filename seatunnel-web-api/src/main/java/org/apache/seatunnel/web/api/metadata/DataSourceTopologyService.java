@@ -1,6 +1,5 @@
 package org.apache.seatunnel.web.api.metadata;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDatabase;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataPage;
@@ -17,28 +16,18 @@ import org.apache.seatunnel.web.dao.repository.BusinessSystemDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.DataSourceUnitDao;
 import org.apache.seatunnel.web.dao.repository.MetadataBindingDao;
-import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceTopologyNodeVO;
 import org.apache.seatunnel.web.spi.enums.DataSourceTopologyNodeType;
 import org.apache.seatunnel.web.spi.enums.DbType;
-import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.api.lineage.RelationshipRef;
-import org.openmetadata.schema.type.Edge;
-import org.openmetadata.schema.type.EntityLineage;
-import org.openmetadata.schema.type.EntityReference;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -46,7 +35,6 @@ import java.util.function.Function;
  * Shallow local master-data tree with explicit lazy OpenMetadata children.
  * Database/Schema/Table nodes are never fetched by the initial tree call.
  */
-@Slf4j
 @Service
 public class DataSourceTopologyService {
 
@@ -70,125 +58,6 @@ public class DataSourceTopologyService {
         this.businessSystemDao = businessSystemDao;
         this.metadataBindingDao = metadataBindingDao;
         this.openMetadataClient = openMetadataClient;
-    }
-
-    /** Maps the OM service graph to local data sources without scanning their asset catalogs. */
-    public DataSourceLineageVO lineage() {
-        List<LineageSource> sources = lineageSources();
-        if (sources.isEmpty()) {
-            return new DataSourceLineageVO(List.of(), List.of(), null);
-        }
-        long started = System.nanoTime();
-        openMetadataClient.assertFixedVersion();
-        List<EsLineageData> serviceEdges = openMetadataClient.getServiceLineage();
-        String readAt = Instant.now().toString();
-        Map<String, LineageSource> byServiceId = new HashMap<>();
-        Map<String, LineageSource> byServiceFqn = new HashMap<>();
-        List<DataSourceLineageVO.Node> nodes = new ArrayList<>();
-        for (LineageSource source : sources) {
-            if (StringUtils.hasText(source.binding().getOmServiceId())) {
-                byServiceId.put(source.binding().getOmServiceId(), source);
-            }
-            byServiceFqn.put(source.serviceFqn(), source);
-            nodes.add(new DataSourceLineageVO.Node(source.id(), source.name(),
-                    source.dataSource().getDbType() == null ? null : source.dataSource().getDbType().name(),
-                    source.tableCatalogAvailable()));
-        }
-        Map<String, DataSourceLineageVO.Link> links = new LinkedHashMap<>();
-        for (EsLineageData edge : safe(serviceEdges)) {
-            if (edge == null) {
-                continue;
-            }
-            LineageSource from = sourceForReference(edge.getFromEntity(), byServiceId, byServiceFqn);
-            LineageSource to = sourceForReference(edge.getToEntity(), byServiceId, byServiceFqn);
-            if (from != null && to != null && !from.id().equals(to.id())) {
-                // Asset counts are already computed by OM and must not be summed on duplicate edges.
-                var link = new DataSourceLineageVO.Link(from.id(), to.id(), edge.getAssetEdges());
-                links.merge(from.id() + ":" + to.id(), link,
-                        (previous, duplicate) -> previous.assetCount() == null ? duplicate : previous);
-            }
-        }
-        log.debug("Read data source lineage: nodes={}, edges={}, elapsedMs={}",
-                nodes.size(), links.size(), (System.nanoTime() - started) / 1_000_000);
-        return new DataSourceLineageVO(nodes, List.copyOf(links.values()), readAt);
-    }
-
-    public DataSourceLineageVO.TableLineage tableLineage(Long dataSourceId, UUID tableId) {
-        List<LineageSource> sources = lineageSources();
-        LineageSource selected = sources.stream()
-                .filter(source -> source.dataSource().getId().equals(dataSourceId))
-                .filter(LineageSource::tableCatalogAvailable)
-                .findFirst()
-                .orElseThrow(() -> invalid("数据源的库表目录尚未就绪"));
-        long started = System.nanoTime();
-        openMetadataClient.assertFixedVersion();
-        EntityLineage lineage = openMetadataClient.getTableLineage(tableId);
-        EntityReference root = lineage == null ? null : lineage.getEntity();
-        if (root == null || Boolean.TRUE.equals(root.getDeleted())
-                || !tableId.equals(root.getId()) || !belongsTo(root, selected)) {
-            throw invalid("所选表已不存在或不属于该数据源");
-        }
-
-        Map<UUID, DataSourceLineageVO.Asset> assets = new HashMap<>();
-        for (EntityReference entity : safe(lineage.getNodes())) {
-            if (entity == null || entity.getId() == null || Boolean.TRUE.equals(entity.getDeleted())) {
-                continue;
-            }
-            // The SDK uses a shared bot. Only expose neighbors within the same registered-source scope as the graph.
-            sources.stream().filter(source -> belongsTo(entity, source)).findFirst().ifPresent(owner ->
-                    assets.put(entity.getId(), new DataSourceLineageVO.Asset(entity.getId().toString(),
-                            StringUtils.hasText(entity.getDisplayName()) ? entity.getDisplayName() : entity.getName(),
-                            entity.getFullyQualifiedName(), owner.name())));
-        }
-        List<DataSourceLineageVO.Asset> upstream = relatedAssets(lineage.getUpstreamEdges(), tableId, assets, true);
-        List<DataSourceLineageVO.Asset> downstream = relatedAssets(lineage.getDownstreamEdges(), tableId, assets, false);
-        log.debug("Read table lineage: dataSourceId={}, tableId={}, upstream={}, downstream={}, elapsedMs={}",
-                dataSourceId, tableId, upstream.size(), downstream.size(), (System.nanoTime() - started) / 1_000_000);
-        return new DataSourceLineageVO.TableLineage(upstream, downstream);
-    }
-
-    private List<LineageSource> lineageSources() {
-        Map<Long, DataSource> available = new HashMap<>();
-        for (DataSource source : safe(dataSourceDao.queryAll())) {
-            if (source != null && source.getId() != null && source.getStatus() != DataSourceLifecycleStatus.REVOKED) {
-                available.put(source.getId(), source);
-            }
-        }
-        if (available.isEmpty()) {
-            return List.of();
-        }
-        return safe(metadataBindingDao.queryByDataSourceIds(available.keySet())).stream()
-                .filter(binding -> binding != null && available.containsKey(binding.getDataSourceId())
-                        && binding.getDesiredState() == MetadataDesiredState.ACTIVE
-                        && (StringUtils.hasText(binding.getOmServiceId()) || StringUtils.hasText(binding.getOmServiceFqn())))
-                .map(binding -> new LineageSource(available.get(binding.getDataSourceId()), binding))
-                .sorted(Comparator.comparing(LineageSource::name).thenComparing(LineageSource::id))
-                .toList();
-    }
-
-    private static LineageSource sourceForReference(RelationshipRef ref,
-            Map<String, LineageSource> byId, Map<String, LineageSource> byFqn) {
-        if (ref == null) {
-            return null;
-        }
-        LineageSource source = ref.getId() == null ? null : byId.get(ref.getId().toString());
-        return source != null ? source : byFqn.get(ref.getFullyQualifiedName());
-    }
-
-    private static boolean belongsTo(EntityReference entity, LineageSource source) {
-        String fqn = entity.getFullyQualifiedName();
-        return fqn != null && fqn.startsWith(source.serviceFqn() + ".");
-    }
-
-    private static List<DataSourceLineageVO.Asset> relatedAssets(List<Edge> edges, UUID tableId,
-            Map<UUID, DataSourceLineageVO.Asset> assets, boolean upstream) {
-        return safe(edges).stream()
-                .filter(edge -> edge != null && tableId.equals(upstream ? edge.getToEntity() : edge.getFromEntity()))
-                .map(edge -> assets.get(upstream ? edge.getFromEntity() : edge.getToEntity()))
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .sorted(Comparator.comparing(DataSourceLineageVO.Asset::fullyQualifiedName))
-                .toList();
     }
 
     /** Returns Unit -> BusinessSystem -> DataSource only; OM levels are lazy. */
@@ -455,21 +324,4 @@ public class DataSourceTopologyService {
     private record SourceContext(DataSource source, String serviceFqn) {
     }
 
-    private record LineageSource(DataSource dataSource, MetadataSourceBinding binding) {
-        String id() {
-            return dataSource.getId().toString();
-        }
-
-        String name() {
-            return StringUtils.hasText(dataSource.getName()) ? dataSource.getName() : id();
-        }
-
-        String serviceFqn() {
-            return boundServiceFqn(binding);
-        }
-
-        boolean tableCatalogAvailable() {
-            return binding.getSyncStatus() == MetadataSyncStatus.READY && supported(dataSource.getDbType());
-        }
-    }
 }

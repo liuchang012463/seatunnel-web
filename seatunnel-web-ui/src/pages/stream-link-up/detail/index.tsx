@@ -1,4 +1,6 @@
 import { openPrettyNotification } from "@/utils/prettyNotification";
+import TaskDefinitionView from "@/pages/common/workflow/TaskDefinitionView";
+import { useLocation } from "@umijs/max";
 import { Button, Form } from "antd";
 import BaseInfoSection from "./components/BaseInfoSection";
 import BottomActionBar from "./components/BottomActionBar";
@@ -260,4 +262,9 @@ const DetailPage = () => {
   );
 };
 
-export default DetailPage;
+export default function DetailEntry() {
+  const { search } = useLocation();
+  return new URLSearchParams(search).get("view") === "definition"
+    ? <TaskDefinitionView kind="STREAMING" />
+    : <DetailPage />;
+}

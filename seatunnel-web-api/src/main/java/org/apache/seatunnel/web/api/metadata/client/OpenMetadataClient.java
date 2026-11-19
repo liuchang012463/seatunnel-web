@@ -19,11 +19,11 @@ public interface OpenMetadataClient {
     /** Reads Server and managed-ingestion health through OpenMetadata 2.0.4. */
     OpenMetadataHealth health();
 
-    /** Reads the service edges already aggregated by OpenMetadata. */
-    List<EsLineageData> getServiceLineage();
+    /** Reads direct asset edges indexed on targets in the specified OpenMetadata services. */
+    List<EsLineageData> getAssetLineage(List<String> serviceFqns);
 
-    /** Reads one hop in each direction for a table, or returns null if it no longer exists. */
-    EntityLineage getTableLineage(UUID tableId);
+    /** Reads one hop in each direction, or returns null if the asset no longer exists. */
+    EntityLineage getEntityLineage(String entityType, UUID entityId);
 
     Optional<OpenMetadataEntity> findDatabaseService(String fullyQualifiedName);
 

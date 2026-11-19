@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.controller;
 import jakarta.annotation.Resource;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.seatunnel.web.api.metadata.DataSourceLineageService;
 import org.apache.seatunnel.web.api.metadata.DataSourceTopologyService;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.spi.bean.entity.Result;
@@ -27,21 +28,24 @@ public class DataSourceTopologyController {
     private DataSourceTopologyService dataSourceTopologyService;
 
     @Resource
+    private DataSourceLineageService dataSourceLineageService;
+
+    @Resource
     private CurrentUserProvider currentUserProvider;
 
     @GetMapping("/lineage")
-    @Operation(summary = "getDataSourceLineage", description = "Read the cross-data-source lineage graph")
+    @Operation(summary = "getDataSourceLineage", description = "Read direct asset lineage between registered data sources")
     public Result<DataSourceLineageVO> lineage() {
         currentUserProvider.requireCurrentUser();
-        return Result.buildSuc(dataSourceTopologyService.lineage());
+        return Result.buildSuc(dataSourceLineageService.lineage());
     }
 
-    @GetMapping("/lineage/table")
-    @Operation(summary = "getDataSourceTableLineage", description = "Read direct upstream and downstream table lineage")
-    public Result<DataSourceLineageVO.TableLineage> tableLineage(
-            @RequestParam("dataSourceId") Long dataSourceId, @RequestParam("tableId") UUID tableId) {
+    @GetMapping("/lineage/fields")
+    @Operation(summary = "getDataSourceFieldLineage", description = "Read direct field mappings for one asset")
+    public Result<List<DataSourceLineageVO.FieldLink>> fieldLineage(
+            @RequestParam("entityType") String entityType, @RequestParam("entityId") UUID entityId) {
         currentUserProvider.requireCurrentUser();
-        return Result.buildSuc(dataSourceTopologyService.tableLineage(dataSourceId, tableId));
+        return Result.buildSuc(dataSourceLineageService.fieldLineage(entityType, entityId));
     }
 
     @GetMapping("/tree")
