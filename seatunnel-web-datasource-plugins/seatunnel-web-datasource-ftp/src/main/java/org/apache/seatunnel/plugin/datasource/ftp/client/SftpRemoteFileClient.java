@@ -37,7 +37,9 @@ public class SftpRemoteFileClient implements RemoteFileClient {
             Channel channel = session.openChannel("sftp");
             channel.connect(param.getDataTimeoutMs());
             sftp = (ChannelSftp) channel;
-            Vector<ChannelSftp.LsEntry> entries = sftp.ls(resolved);
+            // 进入实际目录后再列出内容，避免 ls 将文件或通配匹配识别为有效根目录。
+            sftp.cd(resolved.replace("*", "\\*").replace("?", "\\?"));
+            Vector<ChannelSftp.LsEntry> entries = sftp.ls(".");
             List<FileEntryVO> result = new ArrayList<>();
             for (ChannelSftp.LsEntry entry : entries) {
                 if (".".equals(entry.getFilename()) || "..".equals(entry.getFilename())) {

@@ -48,7 +48,14 @@ public class FtpRemoteFileClient implements RemoteFileClient {
             if (!client.setFileType(FTP.BINARY_FILE_TYPE)) {
                 throw new IllegalStateException("FTP server rejected binary transfer mode");
             }
-            FTPFile[] files = client.listFiles(resolved);
+            if (!client.changeWorkingDirectory(resolved)) {
+                throw new IllegalStateException("FTP 无法进入目录「" + resolved + "」，服务器响应码 " + client.getReplyCode());
+            }
+            FTPFile[] files = client.listFiles();
+            // Commons Net 在 LIST 失败时也可能返回空数组，需检查服务器响应以区分空目录。
+            if (!FTPReply.isPositiveCompletion(client.getReplyCode())) {
+                throw new IllegalStateException("FTP 无法读取目录「" + resolved + "」，服务器响应码 " + client.getReplyCode());
+            }
             List<FileEntryVO> result = new ArrayList<>();
             for (FTPFile file : files) {
                 if (".".equals(file.getName()) || "..".equals(file.getName())) {
