@@ -455,7 +455,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                             value="GUIDE_MULTI"
                             current={params.datapackMode === 'multi' ? 'GUIDE_MULTI' : 'GUIDE_SINGLE'}
                             title="多表导入"
-                            desc="勾选包内 CSV 并逐个指定目标表，一次提交为一个任务。"
+                            desc="勾选包内多个 CSV，在同一个任务中自动创建并写入同名表。"
                             onSelect={() => setParams((previous: any) => ({ ...previous, datapackMode: 'multi' }))}
                           />
                         </div>

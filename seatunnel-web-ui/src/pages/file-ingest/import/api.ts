@@ -43,6 +43,7 @@ export interface OfflineDatapackCsvSelection {
   fileName: string;
   fileResource: FileResource;
   schema: Record<string, string>;
+  columnNames?: string[];
   nullValue: string;
 }
 

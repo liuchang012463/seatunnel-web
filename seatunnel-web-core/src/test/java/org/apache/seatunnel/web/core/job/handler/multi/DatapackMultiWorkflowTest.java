@@ -28,6 +28,43 @@ import static org.mockito.Mockito.when;
 class DatapackMultiWorkflowTest {
 
     @Test
+    void createsSameNameTablesWithStringColumnsInCsvOrder() {
+        var content = content();
+        content.getDatapack().setFiles(List.of(
+                file(1L, "reports/Team.CSV", "Z_Ref", "Count", "a_note"),
+                file(2L, "Assets.csv", "Asset_ID")));
+        content.getTarget().setSchemaName("landing");
+        var dag = DagUtil.parseAndCheck(JSONUtils.toJsonString(DatapackMultiWorkflow.assemble(content)));
+        var nodes = dag.getNodesAsConfig();
+
+        assertEquals(4, nodes.size());
+        assertEquals(2, dag.getEdges().size());
+        assertEquals("S3File", nodes.get(0).getString("data.config.pluginName"));
+        var fields = nodes.get(0).getConfig("data.config.schema.fields");
+        assertEquals(Map.of("Z_Ref", "string", "Count", "string", "a_note", "string"), fields.root().unwrapped());
+        assertEquals("Team", nodes.get(1).getString("data.config.table"));
+        assertEquals("landing", nodes.get(1).getString("data.config.schemaName"));
+        assertEquals("csv_1", nodes.get(1).getString("data.config.pluginInput"));
+        assertTrue(nodes.get(1).getBoolean("data.config.autoCreateTable"));
+        assertEquals("CREATE_SCHEMA_WHEN_NOT_EXIST", nodes.get(1).getString("data.config.schemaSaveMode"));
+        assertEquals("ORIGINAL", nodes.get(1).getString("data.config.fieldIde"));
+        assertEquals("Assets", nodes.get(3).getString("data.config.table"));
+        assertEquals("csv_2", nodes.get(3).getString("data.config.pluginInput"));
+
+        String graph = JSONUtils.toJsonString(DatapackMultiWorkflow.assemble(content));
+        assertTrue(graph.indexOf("Z_Ref") < graph.indexOf("Count") && graph.indexOf("Count") < graph.indexOf("a_note"));
+    }
+
+    @Test
+    void rejectsConflictingNamesFromDifferentPackagePaths() {
+        var content = content();
+        content.getDatapack().setFiles(List.of(
+                file(1L, "one/Team.csv", "id"), file(2L, "two/Team.CSV", "id")));
+        var exception = assertThrows(IllegalArgumentException.class, () -> DatapackMultiWorkflow.assemble(content));
+        assertEquals("目标表重复 Team", exception.getMessage());
+    }
+
+    @Test
     void assemblesIndependentBranchesWithAndWithoutAFieldMapper() {
         var content = content(row(1L, "team", "team_landing", "id"), row(2L, "asset", "asset_landing", "asset_id"));
         var dag = DagUtil.parseAndCheck(JSONUtils.toJsonString(DatapackMultiWorkflow.assemble(content)));
@@ -100,5 +137,13 @@ class DatapackMultiWorkflowTest {
         row.setFieldMapping(Map.of("id", field));
         row.setTargetTable(table);
         return row;
+    }
+
+    private static DatapackMultiImportConfig.CsvFile file(Long id, String name, String... columns) {
+        var file = new DatapackMultiImportConfig.CsvFile();
+        file.setFileName(name);
+        file.setFileResourceId(id);
+        file.setColumnNames(List.of(columns));
+        return file;
     }
 }

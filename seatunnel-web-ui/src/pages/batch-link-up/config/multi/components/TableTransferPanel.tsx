@@ -9,6 +9,8 @@ interface Props {
   targetKeys: string[];
   matchMode: string;
   files?: boolean;
+  disabled?: boolean;
+  description?: React.ReactNode;
   onChange: (keys: string[]) => void;
 }
 
@@ -18,6 +20,8 @@ const TableTransferPanel: React.FC<Props> = ({
   targetKeys,
   matchMode,
   files = false,
+  disabled,
+  description,
   onChange,
 }) => {
   const renderFooter: TransferProps["footer"] = (_, info) => {
@@ -44,7 +48,7 @@ const TableTransferPanel: React.FC<Props> = ({
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-medium text-slate-800">{files ? "选择 CSV 文件" : "选择同步表"}</div>
         <div className="text-sm text-slate-400">
-          {matchMode === "4" ? "整库模式下自动全选" : "支持手动筛选与勾选"}
+          {description ?? (matchMode === "4" ? "整库模式下自动全选" : "支持手动筛选与勾选")}
         </div>
       </div>
 
@@ -52,9 +56,10 @@ const TableTransferPanel: React.FC<Props> = ({
         <div className="st-transfer-wrap">
           <Transfer
             dataSource={data}
-            listStyle={{ width: "100%", height: 420 }}
+            listStyle={{ width: "100%", height: files ? 'clamp(230px, calc(100vh - 410px), 520px)' : 420 }}
             operations={["", ""]}
             targetKeys={targetKeys}
+            disabled={disabled}
             onChange={(nextKeys) => {
               if (matchMode === "4") return;
               onChange(nextKeys as string[]);

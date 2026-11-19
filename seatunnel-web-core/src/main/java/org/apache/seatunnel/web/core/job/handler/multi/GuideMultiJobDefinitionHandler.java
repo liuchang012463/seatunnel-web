@@ -91,9 +91,11 @@ public class GuideMultiJobDefinitionHandler implements JobDefinitionModeHandler 
     private String buildDatapackConfig(
             JobDefinitionSaveCommand command, GuideMultiJobContent content, UnaryOperator<String> formatBlock) {
         var workflow = DatapackMultiWorkflow.assemble(content);
-        log.info("Build datapack batch job, definitionId={}, packageResourceId={}, csvCount={}",
-                command.getId(), content.getDatapack().getPackageResourceId(),
-                content.getDatapack().getMappings().size());
+        var datapack = content.getDatapack();
+        boolean autoCreate = datapack.getFiles() != null;
+        int fileCount = autoCreate ? datapack.getFiles().size() : datapack.getMappings().size();
+        log.info("Build datapack batch job, definitionId={}, packageResourceId={}, csvCount={}, autoCreate={}",
+                command.getId(), datapack.getPackageResourceId(), fileCount, autoCreate);
         return workflowBuildService.build(workflow, command, true, formatBlock);
     }
 

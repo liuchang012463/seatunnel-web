@@ -631,6 +631,7 @@ public class OfflineImportTaskServiceImpl implements OfflineImportTaskService {
                 result.setFileName(selection.fileName());
                 result.setFileResource(resources.get(index));
                 result.setSchema(selection.schema());
+                result.setColumnNames(List.copyOf(selection.schema().keySet()));
                 result.setNullValue(selection.nullValue());
                 results.add(result);
             }

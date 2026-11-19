@@ -1,23 +1,33 @@
-import { history } from '@umijs/max';
-import { Alert, App, Button, Collapse, Modal, Select, Space, Table } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Alert, App, Button, Modal, Select, Space, Tag } from 'antd';
+import { ArrowLeft, Eye, LayoutGrid, Save } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { seatunnelJobDefinitionApi } from '@/pages/batch-link-up/api';
+import TableTransferPanel from '@/pages/batch-link-up/config/multi/components/TableTransferPanel';
+import {
+  buildSchedulePayload,
+  getScheduleValidationMessage,
+} from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
 import CodeBlockWithCopy from '@/pages/batch-link-up/workflow/operator/CodeBlockWithCopy';
-import { buildSchedulePayload } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
+import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
+import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import { supportsSchemaScope } from '@/pages/data-source/dataSourceRegistry';
 import { dataSourceCatalogApi, fetchDataSourceOptions } from '@/pages/data-source/service';
-import { fileResourceApi } from '../api';
-import DatapackCsvImportStep from '../DatapackCsvImportStep';
-import type { DatapackIdentity, DatapackSelection } from './datapack';
+import DatapackPackageInput, { useDatapackPackage } from '../DatapackPackageInput';
+import type { FileResource } from '../types';
+import type { DatapackIdentity } from './datapack';
 import { mergeEnvConfig, mergeScheduleConfig } from './runtime';
 
-interface CsvMapping {
+interface CsvFile {
   fileName: string;
   fileResourceId: string;
-  fields: Record<string, string>;
+  columnNames: string[];
   nullValue: string;
-  targetTable?: string;
-  fieldMapping?: Record<string, string>;
+}
+
+interface SavedDatapack extends DatapackIdentity {
+  fileNames?: string[];
+  files?: CsvFile[];
+  mappings?: (Omit<CsvFile, 'columnNames'> & { fields: Record<string, string> })[];
 }
 
 interface Target {
@@ -30,7 +40,6 @@ interface Target {
 }
 
 type Catalog = { code: number; data: any[]; message?: string };
-type Column = { fieldName: string; fieldType: string };
 
 function useCatalog(request: (() => Promise<Catalog>) | undefined) {
   const [state, setState] = useState<{ request?: typeof request; items: any[]; error?: string }>({ items: [] });
@@ -57,40 +66,26 @@ const optionsOf = (items: any[]) => items.map((item) => ({
   label: String(item.label ?? item.name ?? item.value ?? ''),
 })).filter((item) => item.value);
 
-const bareName = (path: string) => path.split('/').pop()?.replace(/\.csv$/i, '') || path;
-const similarName = (left: string, right: string) => left.toLowerCase() === right.toLowerCase();
-
-function typeFamily(value: string) {
-  const type = String(value || '').toLowerCase().trim().replace(/\s*\(.*\)/, '').replace(/\s+unsigned$/, '');
-  if (/^(byte|tinyint|short|smallint|int2|int|int4|integer|mediumint|long|bigint|int8)$/.test(type)) return 'integer';
-  if (/^(float|float4|float8|real|double|double precision|decimal|numeric|number)$/.test(type)) return 'numeric';
-  if (/^(string|.*char.*|.*text|.*clob)$/.test(type)) return 'text';
-  if (/^(bool|boolean|bit)$/.test(type)) return 'boolean';
-  if (/^(timestamp.*|datetime.*)$/.test(type)) return 'timestamp';
-  return type === 'date' || type === 'time' ? type : undefined;
-}
-
-function compatible(sourceType: string, targetType: string) {
-  const source = typeFamily(sourceType);
-  const target = typeFamily(targetType);
-  // Dialect-specific types are resolved by the connector.
-  return !source || !target || source === target || (source === 'integer' && target === 'numeric');
-}
-
-function mappingFor(row: CsvMapping, columns: Column[]) {
-  if (row.fieldMapping) return row.fieldMapping;
-  return Object.fromEntries(Object.entries(row.fields).flatMap(([field, type]) => {
-    const matches = columns.filter((column) => similarName(field, column.fieldName) && compatible(type, column.fieldType));
-    return matches.length === 1 ? [[field, matches[0].fieldName]] : [];
-  }));
-}
-
 const DatapackMultiConfig = ({ params, goBack }: { params: any; goBack: () => void }) => {
   const { message } = App.useApp();
-  const saved = params.content?.datapack;
-  const [datapack, setDatapack] = useState<DatapackIdentity | undefined>(saved);
-  const [rows, setRows] = useState<CsvMapping[]>(saved?.mappings || []);
-  const [selecting, setSelecting] = useState(false);
+  const saved: SavedDatapack | undefined = params.content?.datapack;
+  const [initialFiles] = useState(() => saved?.files ?? saved?.mappings?.map(
+    ({ fileName, fileResourceId, fields, nullValue }) => ({
+      fileName, fileResourceId, columnNames: Object.keys(fields), nullValue,
+    }),
+  ) ?? []);
+  const packet = useDatapackPackage(saved && {
+    resource: { id: saved.packageResourceId, name: saved.packageName, kind: 'FILE' },
+    inspection: {
+      packageFingerprint: saved.packageFingerprint,
+      fileNames: saved.fileNames ?? initialFiles.map(({ fileName }) => fileName),
+    },
+  });
+  const { resource, inspection } = packet;
+  const [selected, setSelected] = useState(() => initialFiles.map(({ fileName }) => fileName));
+  // Keep the extracted resources for this package so preview followed by save can reuse them.
+  const [files, setFiles] = useState(() => new Map(initialFiles.map((file) => [file.fileName, file])));
+
   const [target, setTarget] = useState<Target>(() => {
     const value = params.content?.target || params.targetType;
     return {
@@ -102,10 +97,20 @@ const DatapackMultiConfig = ({ params, goBack }: { params: any; goBack: () => vo
       schemaName: value.schemaName,
     };
   });
+  const [basic, setBasic] = useState(() => ({
+    ...(params.basic || { jobName: params.jobName, jobDesc: params.jobDesc, clientId: params.clientId }),
+    sourceType: 'S3File',
+    targetType: target.dbType,
+    mode: 'GUIDE_MULTI',
+    runtimeType: 'BATCH',
+  }));
+  const [schedule, setSchedule] = useState(() => mergeScheduleConfig(params.schedule));
+  const [env, setEnv] = useState(() => mergeEnvConfig(params.env));
+  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
+  const [dirty, setDirty] = useState(!saved);
   const [busy, setBusy] = useState<'preview' | 'save'>();
+  const submitting = useRef(false);
   const [hocon, setHocon] = useState<string>();
-  const [sample, setSample] = useState<{ fileName: string; columns: string[]; rows: Record<string, unknown>[] }>();
-  const [previewId, setPreviewId] = useState<string>();
 
   const { datasourceId, dbType, pluginName, database, schemaName } = target;
   const schemaScoped = supportsSchemaScope(dbType);
@@ -116,125 +121,86 @@ const DatapackMultiConfig = ({ params, goBack }: { params: any; goBack: () => vo
   const databases = useCatalog(useMemo(() => canUseDatasource && datasourceId
     ? () => dataSourceCatalogApi.listDatabases(String(datasourceId))
     : undefined, [canUseDatasource, datasourceId]));
-  const canUseDatabase = optionsOf(databases.items).some((item) => item.value === database);
+  const databaseOptions = optionsOf(databases.items);
+  const canUseDatabase = databaseOptions.some(({ value }) => value === database);
   const schemas = useCatalog(useMemo(() => canUseDatabase && datasourceId && database && schemaScoped
     ? () => dataSourceCatalogApi.listSchemas(String(datasourceId), database)
     : undefined, [canUseDatabase, datasourceId, database, schemaScoped]));
+  const schemaOptions = optionsOf(schemas.items);
   const canUseSchema = !schemaScoped || (!schemas.loading && !schemas.error
-    && (schemas.items.length === 0 || optionsOf(schemas.items).some((item) => item.value === schemaName)));
-  const tables = useCatalog(useMemo(() => canUseDatabase && canUseSchema && datasourceId && database
-    ? () => dataSourceCatalogApi.listTablesByDatabase(String(datasourceId), database, schemaName)
-    : undefined, [canUseDatabase, canUseSchema, datasourceId, database, schemaName]));
-  const tableOptions = useMemo(() => optionsOf(tables.items), [tables.items]);
+    && (schemaOptions.length === 0 || schemaOptions.some(({ value }) => value === schemaName)));
+  const error = datasources.error || databases.error || schemas.error;
 
-  useEffect(() => {
-    if (!tableOptions.length) return;
-    setRows((current) => {
-      const occupied = new Set(current.flatMap((row) => row.targetTable ? [row.targetTable] : []));
-      let changed = false;
-      const next = current.map((row) => {
-        if (row.targetTable) return row;
-        const matches = tableOptions.filter(({ value }) => similarName(value.split('.').pop() || value, bareName(row.fileName)));
-        if (matches.length !== 1 || occupied.has(matches[0].value)) return row;
-        occupied.add(matches[0].value);
-        changed = true;
-        return { ...row, targetTable: matches[0].value };
-      });
-      return changed ? next : current;
-    });
-  }, [tableOptions, rows.length]);
+  const changePackage = (next: FileResource) => {
+    if (String(next.id) === String(resource?.id)) return;
+    packet.setPackage(next);
+    setSelected([]);
+    setFiles(new Map());
+    setDirty(true);
+  };
 
-  // A saved mapping is keyed by CSV and target table. Changing either namespace or table
-  // invalidates that row's fields and any earlier catalog response.
-  const selectedTables = JSON.stringify([...new Set(rows.flatMap((row) => row.targetTable ? [row.targetTable] : []))].sort());
-  const columns = useCatalog(useMemo(() => {
-    const names: string[] = JSON.parse(selectedTables);
-    if (!names.length || !canUseDatabase || !canUseSchema || !datasourceId || !database) return undefined;
-    return async () => {
-      const results = await Promise.all(names.map(async (table) => {
-        const response = await dataSourceCatalogApi.listColumn(String(datasourceId), {
-          read_mode: 'table', table_path: table, database, schema_name: schemaName, query: '',
-        }).catch(() => undefined);
-        return {
-          table,
-          columns: response?.code === 0 && Array.isArray(response.data) ? response.data as Column[] : [],
-          error: response?.code === 0 ? undefined : response?.message || '读取目标字段失败',
-        };
-      }));
-      return { code: 0, data: results };
-    };
-  }, [canUseDatabase, canUseSchema, datasourceId, database, schemaName, selectedTables]));
-  const metadataByTable = new Map<string, { columns: Column[]; error?: string }>(
-    columns.items.map((item) => [item.table, item]),
-  );
-  const targetsFor = (row: CsvMapping) => metadataByTable.get(row.targetTable || '')?.columns || [];
+  const inspectPackage = async () => {
+    const manifest = await packet.inspect();
+    if (!manifest) return;
+    if (manifest.packageFingerprint !== inspection?.packageFingerprint) {
+      setFiles(new Map());
+      setSelected((names) => names.filter((name) => manifest.fileNames.includes(name)));
+    }
+    setDirty(true);
+  };
 
   const updateTarget = (patch: Partial<Target>) => {
     setTarget((current) => ({ ...current, ...patch }));
-    setRows((current) => current.map((row) => ({ ...row, targetTable: undefined, fieldMapping: undefined })));
-  };
-  const updateRow = (fileName: string, patch: Partial<CsvMapping>) =>
-    setRows((current) => current.map((row) => row.fileName === fileName ? { ...row, ...patch } : row));
-
-  const acceptFiles = ({ files, ...identity }: DatapackSelection) => {
-    setRows((current) => files.map((file) => {
-      const previous = datapack?.packageFingerprint === identity.packageFingerprint
-        ? current.find((row) => row.fileName === file.fileName)
-        : undefined;
-      return {
-        ...previous,
-        fileName: file.fileName,
-        fileResourceId: file.fileResource.id,
-        fields: file.schema,
-        nullValue: file.nullValue,
-      };
-    }));
-    setDatapack(identity);
-    setSelecting(false);
-  };
-
-  const rowIssue = (row: CsvMapping) => {
-    if (!row.targetTable) return '请选择目标表';
-    if (rows.some((other) => other.fileName !== row.fileName && other.targetTable === row.targetTable)) return '目标表重复';
-    if (!tableOptions.some(({ value }) => value === row.targetTable)) return '目标表不在当前目录';
-    const metadata = metadataByTable.get(row.targetTable);
-    if (metadata?.error) return metadata.error;
-    if (!metadata?.columns.length) return '等待目标字段';
-    const fields = Object.entries(mappingFor(row, metadata.columns));
-    if (!fields.length) return '请至少映射一个字段';
-    if (new Set(fields.map((entry) => entry[1])).size !== fields.length) return '目标字段重复';
-    if (fields.some(([from, to]) => !row.fields[from] || !metadata.columns.some(
-      (column) => column.fieldName === to && compatible(row.fields[from], column.fieldType),
-    ))) return '字段不存在或类型不兼容';
-    return undefined;
+    setDirty(true);
   };
 
   const submit = async (action: 'preview' | 'save') => {
-    if (!datapack || !rows.length || !canUseDatabase || !canUseSchema) {
-      message.warning('请选择 CSV 和目标数据库');
+    if (submitting.current || packet.action) return;
+    if (!resource || !inspection || !selected.length || !canUseDatasource || !canUseDatabase || !canUseSchema) {
+      message.warning('请选择要导入的 CSV 和目标库');
       return;
     }
-    const incomplete = rows.find((row) => rowIssue(row));
-    if (incomplete) {
-      message.warning(`${incomplete.fileName} · ${rowIssue(incomplete)}`);
+    if (!basic.jobName?.trim()) {
+      setActiveTab('basic');
+      message.warning('请输入任务名称');
       return;
     }
+    const scheduleWarning = getScheduleValidationMessage(schedule);
+    if (action === 'save' && scheduleWarning) {
+      setActiveTab('schedule');
+      message.warning(scheduleWarning);
+      return;
+    }
+
+    submitting.current = true;
     setBusy(action);
-    const payload = {
-      id: params.id,
-      basic: { ...(params.basic || {
-        jobName: params.jobName, jobDesc: params.jobDesc, clientId: params.clientId,
-      }), mode: 'GUIDE_MULTI', runtimeType: 'BATCH' },
-      content: { target, datapack: {
-        packageResourceId: datapack.packageResourceId,
-        packageName: datapack.packageName,
-        packageFingerprint: datapack.packageFingerprint,
-        mappings: rows.map((row) => ({ ...row, fieldMapping: mappingFor(row, targetsFor(row)) })),
-      } },
-      schedule: buildSchedulePayload(mergeScheduleConfig(params.schedule), false),
-      env: mergeEnvConfig(params.env),
-    };
     try {
+      const missing = selected.filter((name) => !files.has(name));
+      const selectedResources = new Map(files);
+      if (missing.length) {
+        const extracted = await packet.extract(missing, true);
+        if (!extracted) return;
+        extracted.files.forEach((file) => selectedResources.set(file.fileName, {
+          fileName: file.fileName,
+          fileResourceId: file.fileResource.id,
+          columnNames: file.columnNames ?? Object.keys(file.schema),
+          nullValue: file.nullValue,
+        }));
+        setFiles(selectedResources);
+      }
+      const payload = {
+        id: params.id,
+        basic,
+        content: { target, datapack: {
+          packageResourceId: String(resource.id),
+          packageName: resource.name,
+          packageFingerprint: inspection.packageFingerprint,
+          fileNames: inspection.fileNames,
+          files: selected.map((name) => selectedResources.get(name)!),
+        } },
+        schedule: buildSchedulePayload(schedule),
+        env,
+      };
       if (action === 'preview') {
         const response = await seatunnelJobDefinitionApi.buildGuideMultiConfig(payload);
         if (response.code !== 0) throw new Error(response.message || '预览失败');
@@ -248,170 +214,107 @@ const DatapackMultiConfig = ({ params, goBack }: { params: any; goBack: () => vo
     } catch (error: any) {
       message.error(error?.message || '操作失败');
     } finally {
+      submitting.current = false;
       setBusy(undefined);
     }
   };
 
-  const preview = async (row: CsvMapping) => {
-    setPreviewId(row.fileResourceId);
-    try {
-      const response = await fileResourceApi.preview(row.fileResourceId, {
-        fileFormatType: 'csv', encoding: 'UTF-8', fieldDelimiter: ',', limit: 20,
-      });
-      if (response.code !== 0) throw new Error(response.message || '数据预览失败');
-      const result = response.data as { columns: string[]; rows: Record<string, unknown>[] };
-      setSample({ fileName: row.fileName, ...result });
-    } catch (error: any) {
-      message.error(error?.message || '数据预览失败');
-    } finally {
-      setPreviewId(undefined);
-    }
-  };
-
-  if (!datapack) {
-    return (
-      <div className="mx-auto w-full max-w-[1240px] p-6">
-        <DatapackCsvImportStep multiple onImported={acceptFiles} onBack={goBack} />
-      </div>
-    );
-  }
-
-  const error = datasources.error || databases.error || schemas.error || tables.error;
+  const locked = !!busy || !!packet.action;
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Space wrap>
-          <Button onClick={goBack}>返回任务列表</Button>
-          <span className="text-sm">{datapack.packageName} · 已选 {rows.length} 个 CSV</span>
-          <Button onClick={() => setSelecting(true)} disabled={!!busy}>调整 CSV</Button>
-        </Space>
-        <Space>
-          <Button loading={busy === 'preview'} disabled={!!busy} onClick={() => void submit('preview')}>预览配置</Button>
-          <Button type="primary" loading={busy === 'save'} disabled={!!busy} onClick={() => void submit('save')}>
-            保存配置
-          </Button>
-        </Space>
-      </div>
-      <div className="grid grid-cols-3 gap-4 rounded-xl border p-4">
-        <label className="text-sm">
-          <span className="mb-2 block">目标数据源</span>
-          <Select className="w-full" aria-label="目标数据源" value={datasourceId ? String(datasourceId) : undefined}
-            loading={datasources.loading} disabled={!!busy} options={datasourceOptions} showSearch optionFilterProp="label"
-            onChange={(value) => updateTarget({ datasourceId: value, database: undefined, schemaName: undefined })}
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-2 block">目标数据库</span>
-          <Select className="w-full" aria-label="目标数据库" value={database}
-            loading={databases.loading} disabled={!canUseDatasource || !!busy} options={optionsOf(databases.items)}
-            showSearch optionFilterProp="label"
-            onChange={(value) => updateTarget({ database: value, schemaName: undefined })}
-          />
-        </label>
-        {schemaScoped && (
-          <label className="text-sm">
-            <span className="mb-2 block">目标 Schema</span>
-            <Select className="w-full" aria-label="目标 Schema" value={schemaName}
-              loading={schemas.loading} disabled={!canUseDatabase || !!busy} options={optionsOf(schemas.items)}
-              showSearch optionFilterProp="label"
-              onChange={(value) => updateTarget({ schemaName: value })}
-            />
-          </label>
-        )}
-      </div>
-      {error && <Alert type="error" showIcon message={error} />}
-      <section className="min-h-0 flex-1 rounded-xl border p-4">
-        <Collapse
-          items={rows.map((row) => {
-            const fieldOptions = targetsFor(row);
-            const mapping = mappingFor(row, fieldOptions);
-            return {
-              key: row.fileName,
-              label: <span>{row.fileName} · {rowIssue(row) || '映射已就绪'}</span>,
-              extra: (
-                <Space onClick={(event) => event.stopPropagation()}>
-                  <Select
-                    aria-label={`${row.fileName} 目标表`}
-                    className="w-56"
-                    placeholder="请选择目标表"
-                    value={row.targetTable}
-                    options={tableOptions}
-                    loading={tables.loading}
-                    disabled={!canUseDatabase || !canUseSchema || !!busy}
-                    showSearch
-                    optionFilterProp="label"
-                    onChange={(value) => updateRow(row.fileName, { targetTable: value, fieldMapping: undefined })}
+    <div className="datapack-multi-config">
+      <header className="datapack-multi-config__header">
+        <h1><LayoutGrid size={22} />逻辑关系配置（多表导入）</h1>
+        <Button icon={<ArrowLeft size={16} />} onClick={goBack} disabled={!!busy}>返回任务列表</Button>
+      </header>
+
+      <section className="datapack-multi-config__frame">
+        <div className="datapack-multi-config__main">
+          <div className="datapack-multi-config__toolbar">
+            <h2>任务配置</h2>
+            <Space>
+              <Button icon={<Eye size={16} />} loading={busy === 'preview'} disabled={locked}
+                onClick={() => void submit('preview')}>
+                预览
+              </Button>
+              <Tag color={dirty ? 'warning' : 'success'}>{dirty ? '配置未保存' : '配置已保存'}</Tag>
+              <Button type="primary" icon={<Save size={16} />} loading={busy === 'save'} disabled={locked}
+                onClick={() => void submit('save')}>
+                保存配置
+              </Button>
+            </Space>
+          </div>
+          <div className="datapack-multi-config__body">
+            <div className="datapack-multi-config__endpoints">
+              <DatapackPackageInput config={packet} disabled={!!busy}
+                onInspect={() => void inspectPackage()} onSelect={changePackage} />
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm">目标数据源</span>
+                  <Select className="w-full" aria-label="目标数据源" placeholder="请选择目标数据源"
+                    value={datasourceId ? String(datasourceId) : undefined}
+                    loading={datasources.loading} disabled={locked} options={datasourceOptions}
+                    showSearch optionFilterProp="label"
+                    onChange={(value) => updateTarget({ datasourceId: value, database: undefined, schemaName: undefined })}
                   />
-                  <Button loading={previewId === row.fileResourceId} disabled={!!previewId} onClick={() => void preview(row)}>
-                    数据预览
-                  </Button>
-                </Space>
-              ),
-              children: (
-                <Table
-                  size="small"
-                  pagination={false}
-                  rowKey="name"
-                  dataSource={Object.entries(row.fields).map(([name, type]) => ({ name, type }))}
-                  columns={[
-                    { title: 'CSV 字段', dataIndex: 'name' },
-                    { title: '字段类型', dataIndex: 'type' },
-                    {
-                      title: '目标字段',
-                      render: (_, field) => (
-                        <Select
-                          aria-label={`${row.fileName} 字段 ${field.name}`}
-                          className="w-full"
-                          value={mapping[field.name]}
-                          disabled={!fieldOptions.length || !!busy}
-                          loading={columns.loading}
-                          placeholder="未映射"
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          options={fieldOptions.map((column) => ({
-                            value: column.fieldName,
-                            label: `${column.fieldName}（${column.fieldType}）`,
-                            disabled: !compatible(field.type, column.fieldType),
-                          }))}
-                          onChange={(value) => {
-                            const next = { ...mapping };
-                            if (value) next[field.name] = value;
-                            else delete next[field.name];
-                            updateRow(row.fileName, { fieldMapping: next });
-                          }}
-                        />
-                      ),
-                    },
-                  ]}
-                />
-              ),
-            };
-          })}
-        />
-      </section>
-      {selecting && (
-        <Modal open title="调整包内 CSV" footer={null} width={1120} onCancel={() => setSelecting(false)}>
-          <DatapackCsvImportStep
-            multiple
-            initialPackage={{ id: datapack.packageResourceId, name: datapack.packageName, kind: 'FILE' }}
-            preferredFileNames={rows.map((row) => row.fileName)}
-            onImported={acceptFiles}
-            onBack={() => setSelecting(false)}
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm">目标数据库</span>
+                  <Select className="w-full" aria-label="目标数据库" placeholder="请选择目标数据库" value={database}
+                    loading={databases.loading} disabled={!canUseDatasource || locked} options={databaseOptions}
+                    showSearch optionFilterProp="label"
+                    onChange={(value) => updateTarget({ database: value, schemaName: undefined })}
+                  />
+                </label>
+                {schemaScoped && (
+                  <label className="block">
+                    <span className="mb-2 block text-sm">目标 Schema</span>
+                    <Select className="w-full" aria-label="目标 Schema" placeholder="请选择目标 Schema" value={schemaName}
+                      loading={schemas.loading} disabled={!canUseDatabase || locked} options={schemaOptions}
+                      showSearch optionFilterProp="label"
+                      onChange={(value) => updateTarget({ schemaName: value })}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+            {error && <Alert type="error" showIcon message={error} />}
+            {!saved?.files && saved?.mappings && (
+              <Alert type="info" showIcon message="重新保存后，已选 CSV 将按文件名和表头导入同名表。" />
+            )}
+            <TableTransferPanel
+              key={inspection?.packageFingerprint}
+              files
+              matchMode="1"
+              loading={!!packet.action}
+              disabled={!inspection || locked}
+              data={(inspection?.fileNames ?? []).map((name) => ({ key: name, rawTitle: name, title: '' }))}
+              targetKeys={selected}
+              description="按 CSV 文件名和表头创建同名表，字段统一使用 String"
+              onChange={(names) => {
+                setSelected(names);
+                setDirty(true);
+              }}
+            />
+          </div>
+        </div>
+
+        <aside className={activeTab ? 'datapack-multi-config__settings is-open' : 'datapack-multi-config__settings'}>
+          <RightConfigPanel
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            contentDisabled={!!busy}
+            basicConfig={basic}
+            setBasicConfig={(update) => { setBasic(update); setDirty(true); }}
+            scheduleConfig={schedule}
+            setScheduleConfig={(update) => { setSchedule(update); setDirty(true); }}
+            envConfig={env}
+            setEnvConfig={(update) => { setEnv(update); setDirty(true); }}
           />
-        </Modal>
-      )}
+        </aside>
+      </section>
+
       <Modal open={hocon !== undefined} title="任务配置预览" footer={null} width={960} onCancel={() => setHocon(undefined)}>
         {hocon !== undefined && <CodeBlockWithCopy content={hocon} height={500} />}
-      </Modal>
-      <Modal open={!!sample} title={sample?.fileName} footer={null} width={960} onCancel={() => setSample(undefined)}>
-        <Table
-          size="small"
-          pagination={false}
-          columns={(sample?.columns || []).map((name) => ({ title: name, dataIndex: name, key: name }))}
-          dataSource={(sample?.rows || []).map((row, index) => ({ ...row, key: index }))}
-          scroll={{ x: 'max-content', y: 360 }}
-        />
       </Modal>
     </div>
   );
