@@ -4,6 +4,9 @@ import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.vastbase.param.VastbaseConnectionParam;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+
 public class VastbaseConnectionProvider
         extends AbstractJdbcConnectionProvider<VastbaseConnectionParam> {
 
@@ -21,5 +24,11 @@ public class VastbaseConnectionProvider
         return location.contains("/") || location.contains("\\")
                 ? location
                 : defaultBaseUrl() + location;
+    }
+
+    @Override
+    protected void validateConnectionScope(Connection connection, VastbaseConnectionParam param)
+            throws SQLException {
+        validateConfiguredSchema(connection, null, param.getSchemaName());
     }
 }

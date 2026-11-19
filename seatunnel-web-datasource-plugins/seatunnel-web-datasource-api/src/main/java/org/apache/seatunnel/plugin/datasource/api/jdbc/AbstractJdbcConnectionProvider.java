@@ -26,6 +26,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -281,10 +283,11 @@ public abstract class AbstractJdbcConnectionProvider<
     public boolean checkDataSourceConnectivity(
             ConnectionParam connectionParam) {
 
-        try (Connection ignored =
-                     getConnection(connectionParam)) {
-
+        try (Connection connection = getConnection(connectionParam)) {
+            validateConnectionScope(connection, cast(connectionParam));
             return true;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.error(
                     "Check JDBC connectivity failed: {}",
@@ -294,6 +297,28 @@ public abstract class AbstractJdbcConnectionProvider<
 
             return false;
         }
+    }
+
+    /** Validates connector-specific names that JDBC login alone cannot verify. */
+    protected void validateConnectionScope(Connection connection, T param) throws SQLException {
+    }
+
+    protected final void validateConfiguredSchema(Connection connection, String catalog, String schemaName)
+            throws SQLException {
+        if (!StringUtils.hasText(schemaName)) {
+            return;
+        }
+        // 模式名用于限定元数据和表路径，按实际名称比较，避免将输入解释为 JDBC 通配模式。
+        try (ResultSet schemas = connection.getMetaData().getSchemas(catalog, "%")) {
+            while (schemas.next()) {
+                if (schemaName.equals(schemas.getString("TABLE_SCHEM"))) {
+                    log.debug("JDBC 模式校验通过，schema={}", schemaName);
+                    return;
+                }
+            }
+        }
+        throw new IllegalArgumentException(
+                "未找到模式「" + schemaName + "」，请按数据库中的实际名称填写，注意大小写。");
     }
 
     /**

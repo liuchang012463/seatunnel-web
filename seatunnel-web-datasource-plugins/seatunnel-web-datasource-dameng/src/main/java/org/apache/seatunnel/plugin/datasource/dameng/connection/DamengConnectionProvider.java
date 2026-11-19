@@ -1,19 +1,17 @@
 package org.apache.seatunnel.plugin.datasource.dameng.connection;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.plugin.datasource.api.constants.DataSourceConstants;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.AbstractJdbcConnectionProvider;
 import org.apache.seatunnel.plugin.datasource.dameng.param.DamengConnectionParam;
-import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.trimToEmpty;
 
-@Slf4j
 public class DamengConnectionProvider
         extends AbstractJdbcConnectionProvider<DamengConnectionParam> {
 
@@ -35,13 +33,9 @@ public class DamengConnectionProvider
      * so it must match the live database instance name.
      */
     @Override
-    public boolean checkDataSourceConnectivity(ConnectionParam connectionParam) {
-        if (!(connectionParam instanceof DamengConnectionParam param)) {
-            return super.checkDataSourceConnectivity(connectionParam);
-        }
-
-        try (Connection connection = getConnection(param);
-                PreparedStatement statement = connection.prepareStatement(INSTANCE_NAME_SQL);
+    protected void validateConnectionScope(Connection connection, DamengConnectionParam param)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(INSTANCE_NAME_SQL);
                 ResultSet resultSet = statement.executeQuery()) {
             if (!resultSet.next()) {
                 throw new IllegalStateException("Dameng did not return V$DATABASE.NAME");
@@ -58,13 +52,7 @@ public class DamengConnectionProvider
                                         + "a table Owner belongs in the Schema/Owner field.",
                                 configuredDatabase.trim(), actualDatabase));
             }
-
-            return true;
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Dameng connection or instance validation failed", e);
-            return false;
         }
+        validateConfiguredSchema(connection, null, param.getSchemaName());
     }
 }

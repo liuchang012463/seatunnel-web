@@ -21,10 +21,14 @@ import org.apache.seatunnel.web.dao.repository.StreamingJobDefinitionDao;
 import org.apache.seatunnel.web.spi.bean.dto.DataSourceDTO;
 import org.apache.seatunnel.web.spi.bean.entity.PaginationResult;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceVO;
+import org.apache.seatunnel.web.spi.datasource.BaseConnectionParam;
 import org.apache.seatunnel.web.spi.enums.DbType;
+import org.apache.seatunnel.web.spi.enums.Status;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,9 +41,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
@@ -135,6 +144,52 @@ class DataSourceServiceMasterDataTest {
 
         assertThrows(ServiceException.class, () -> service.createDataSource(dto));
         verify(dataSourceDao, never()).insert(any(DataSource.class));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = DbType.class, names = {"KINGBASE", "POSTGRE_SQL"})
+    void validatesSchemaBeforeSavingAndRequeuesMetadataAfterCorrection(DbType dbType) {
+        DataSource existing = new DataSource();
+        existing.setId(42L);
+        existing.setDbType(dbType);
+        existing.setStatus(DataSourceLifecycleStatus.ENABLED);
+        when(dataSourceDao.queryById(42L)).thenReturn(existing);
+
+        BusinessSystem system = new BusinessSystem();
+        system.setId(9L);
+        system.setUnitId(7L);
+        system.setStatus(1);
+        when(businessSystemDao.queryById(9L)).thenReturn(system);
+        DataSourceUnit unit = new DataSourceUnit();
+        unit.setId(7L);
+        unit.setStatus(1);
+        when(dataSourceUnitDao.queryById(7L)).thenReturn(unit);
+
+        DataSourceServiceImpl validatingService = spy(service);
+        doThrow(new ServiceException(Status.DATASOURCE_CONNECT_TEST_ERROR, "模式名称大小写不匹配"))
+                .when(validatingService).checkConnection(eq(dbType), argThat(param ->
+                        param instanceof BaseConnectionParam jdbc && "ORDERS".equals(jdbc.getSchemaName())));
+        doReturn(true).when(validatingService).checkConnection(eq(dbType), argThat(param ->
+                param instanceof BaseConnectionParam jdbc && "orders".equals(jdbc.getSchemaName())));
+
+        DataSourceDTO dto = new DataSourceDTO();
+        dto.setName("orders");
+        dto.setBusinessSystemId(9L);
+        dto.setDbType(dbType);
+        dto.setConnectionParams("{\"schemaName\":\"ORDERS\"}");
+
+        ServiceException failure = assertThrows(ServiceException.class,
+                () -> validatingService.updateDataSource(42L, dto));
+        assertEquals(Status.DATASOURCE_CONNECT_TEST_ERROR.getCode(), failure.getCode());
+        assertTrue(failure.getMessage().contains("模式名称大小写不匹配"));
+        verify(dataSourceDao, never()).updateById(any(DataSource.class));
+        verify(metadataBindingCommandService, never()).markConfigurationChanged(42L);
+
+        dto.setConnectionParams("{\"schemaName\":\"orders\"}");
+        validatingService.updateDataSource(42L, dto);
+
+        verify(dataSourceDao).updateById(any(DataSource.class));
+        verify(metadataBindingCommandService).markConfigurationChanged(42L);
     }
 
     @Test

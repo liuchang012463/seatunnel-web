@@ -200,7 +200,11 @@ class DataSourceSecretHandlingTest {
         request.setConnectionParams("{\"type\":\"MYSQL\",\"host\":\"edited-host\","
                 + "\"port\":\"3306\",\"database\":\"orders\",\"user\":\"app\",\"password\":\"\"}");
 
-        service.updateDataSource(DATA_SOURCE_ID, request);
+        DataSourceServiceImpl validatingService = spy(service);
+        doReturn(true).when(validatingService).checkConnection(
+                org.mockito.ArgumentMatchers.eq(DbType.MYSQL),
+                org.mockito.ArgumentMatchers.any(org.apache.seatunnel.web.spi.datasource.ConnectionParam.class));
+        validatingService.updateDataSource(DATA_SOURCE_ID, request);
 
         ArgumentCaptor<DataSource> saved = ArgumentCaptor.forClass(DataSource.class);
         verify(dataSourceDao).updateById(saved.capture());
