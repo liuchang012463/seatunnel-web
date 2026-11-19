@@ -13,7 +13,7 @@ class H2BootstrapMigrationTest {
                 .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").outOfOrder(true).load();
         flyway.migrate();
         flyway.validate();
-        assertEquals("1.0.59", flyway.info().current().getVersion().toString());
+        assertEquals("1.0.62", flyway.info().current().getVersion().toString());
         try (var connection = DriverManager.getConnection(url, "sa", "");
              var stmt = connection.createStatement()) {
             // Query real application columns and Quartz tables, not just SQL syntax.
