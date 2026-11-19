@@ -14,10 +14,14 @@
                target_path,
                total_files,
                total_size,
+               logical_path,
                status,
                error_message,
                create_time,
                update_time,
+               started_at,
+               finished_at,
+               duration_ms,
                finish_time
         FROM t_seatunnel_web_file_upload_record
         WHERE owner_id = #{ownerId}
@@ -49,6 +53,9 @@
                error_message,
                create_time,
                update_time,
+               started_at,
+               finished_at,
+               duration_ms,
                finish_time
         FROM t_seatunnel_web_file_upload_record
         WHERE id = #{id}
@@ -59,6 +66,9 @@
         UPDATE t_seatunnel_web_file_upload_record
         SET status = 'FAILED',
             error_message = #{errorMessage},
+            started_at = COALESCE(started_at, #{startedAt}),
+            finished_at = #{finishedAt},
+            duration_ms = #{durationMs},
             finish_time = #{finishTime},
             update_time = #{updateTime}
         WHERE id = #{id}

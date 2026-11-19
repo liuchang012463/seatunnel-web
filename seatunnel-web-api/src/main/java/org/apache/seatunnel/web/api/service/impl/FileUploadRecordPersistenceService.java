@@ -28,8 +28,19 @@ public class FileUploadRecordPersistenceService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(Long uploadRecordId, String errorMessage) {
-        Date now = new Date();
-        fileUploadRecordDao.markFailedIfUploading(uploadRecordId, errorMessage, now, now);
+    public void markFailed(
+            Long uploadRecordId,
+            String errorMessage,
+            Date startedAt,
+            Date finishedAt,
+            Long durationMs) {
+        fileUploadRecordDao.markFailedIfUploading(
+                uploadRecordId,
+                errorMessage,
+                startedAt,
+                finishedAt,
+                durationMs,
+                finishedAt,
+                finishedAt);
     }
 }

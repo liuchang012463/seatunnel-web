@@ -3,7 +3,6 @@ import {
   DownloadOutlined,
   FolderAddOutlined,
   FolderOpenOutlined,
-  HistoryOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
@@ -17,17 +16,17 @@ import {
   Input,
   Modal,
   Space,
-  Spin,
   Progress,
   Table,
   Tag,
+  Tabs,
   Typography,
   Upload,
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { history, useLocation } from '@umijs/max';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FileResourceBrowser from './components/FileResourceBrowser';
 import FileResourcePreviewModal from './components/FileResourcePreviewModal';
 import ResourceBreadcrumb from './components/ResourceBreadcrumb';
@@ -89,6 +88,35 @@ function downloadBlob(result: unknown): Blob | undefined {
   return data instanceof Blob ? data : undefined;
 }
 
+function formatUploadDuration(record: FileResourceUploadRecord): string {
+  const persisted = record.durationMs === undefined || record.durationMs === null
+    ? undefined
+    : Number(record.durationMs);
+  let durationMs = persisted !== undefined && Number.isFinite(persisted) && persisted >= 0
+    ? persisted
+    : undefined;
+
+  if (durationMs === undefined) {
+    const parseTimestamp = (value: string | number | undefined) => {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+      if (typeof value !== 'string' || !value.trim()) return undefined;
+      const timestamp = Date.parse(value);
+      return Number.isFinite(timestamp) ? timestamp : undefined;
+    };
+    const startedAt = parseTimestamp(record.startedAt ?? record.createTime ?? record.startTime);
+    const finishedAt = parseTimestamp(record.finishedAt ?? record.finishTime);
+    if (startedAt !== undefined && finishedAt !== undefined) {
+      durationMs = Math.max(0, finishedAt - startedAt);
+    }
+  }
+
+  if (durationMs === undefined) return '-';
+  if (durationMs < 1000) return `${Math.round(durationMs)} 毫秒`;
+  const seconds = durationMs / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)} 秒`;
+  return `${Math.floor(seconds / 60)} 分 ${String(Math.floor(seconds % 60)).padStart(2, '0')} 秒`;
+}
+
 const FileResourcesPage: React.FC = () => {
   const location = useLocation();
   const query = useMemo(() => new URLSearchParams(location.search || ''), [location.search]);
@@ -103,9 +131,10 @@ const FileResourcesPage: React.FC = () => {
   const [refreshToken, setRefreshToken] = useState(0);
   const [directoryModalOpen, setDirectoryModalOpen] = useState(false);
   const [directoryLoading, setDirectoryLoading] = useState(false);
-  const [recordsModalOpen, setRecordsModalOpen] = useState(false);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [records, setRecords] = useState<FileResourceUploadRecordPage>(emptyUploadRecords);
+  const [activeView, setActiveView] = useState<'browse' | 'history'>('browse');
+  const activeViewRef = useRef(activeView);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewResource, setPreviewResource] = useState<FileResourceEntry | null>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -123,6 +152,18 @@ const FileResourcesPage: React.FC = () => {
   }, [initialPath]);
 
   const reload = () => setRefreshToken((value) => value + 1);
+
+  const loadUploadRecords = useCallback(async (pageNo = 1, pageSize = 10) => {
+    setRecordsLoading(true);
+    try {
+      setRecords(await fetchFileResourceUploadRecords({ pageNo, pageSize }));
+    } catch (error) {
+      setRecords(emptyUploadRecords);
+      messageApi.error(error instanceof Error ? error.message : '上传记录加载失败');
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, [messageApi]);
 
   const uploadProps = useMemo<UploadProps>(
     () => ({
@@ -170,6 +211,7 @@ const FileResourcesPage: React.FC = () => {
           }));
           options.onSuccess?.((response || {}) as Record<string, unknown>, file);
           reload();
+          if (activeViewRef.current === 'history') void loadUploadRecords();
           window.setTimeout(() => {
             setUploadProgress((current) => {
               const next = { ...current };
@@ -185,6 +227,7 @@ const FileResourcesPage: React.FC = () => {
           }));
           options.onError?.(reason as any);
           messageApi.error(reason.message);
+          if (activeViewRef.current === 'history') void loadUploadRecords();
           window.setTimeout(() => {
             setUploadProgress((current) => {
               const next = { ...current };
@@ -197,7 +240,7 @@ const FileResourcesPage: React.FC = () => {
         }
       },
     }),
-    [messageApi, path],
+    [loadUploadRecords, messageApi, path],
   );
 
   const handleCreateDirectory = async (values: { name: string }) => {
@@ -248,23 +291,6 @@ const FileResourcesPage: React.FC = () => {
     setPreviewOpen(true);
   };
 
-  const loadUploadRecords = async (pageNo = 1, pageSize = 10) => {
-    setRecordsLoading(true);
-    try {
-      setRecords(await fetchFileResourceUploadRecords({ pageNo, pageSize }));
-    } catch (error) {
-      setRecords(emptyUploadRecords);
-      messageApi.error(error instanceof Error ? error.message : '上传记录加载失败');
-    } finally {
-      setRecordsLoading(false);
-    }
-  };
-
-  const openUploadRecords = () => {
-    setRecordsModalOpen(true);
-    void loadUploadRecords();
-  };
-
   const handleSelectForReturn = (resource: FileResourceEntry) => {
     if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
       messageApi.error('返回地址无效，请从任务配置页重新打开资源选择器');
@@ -279,21 +305,30 @@ const FileResourcesPage: React.FC = () => {
 
   const recordColumns: TableColumnsType<FileResourceUploadRecord> = [
     {
+      title: '文件名',
+      key: 'fileName',
+      width: 220,
+      ellipsis: true,
+      render: (_, record) => {
+        const fileName = record.fileName || record.logicalPath?.split('/').filter(Boolean).pop();
+        const fallback = Number(record.totalFiles ?? record.fileCount ?? 0) > 1
+          ? `${record.totalFiles ?? record.fileCount} 个文件`
+          : '-';
+        const label = fileName || fallback;
+        return <Text ellipsis title={fileName || label}>{label}</Text>;
+      },
+    },
+    {
       title: '目标目录',
       key: 'path',
+      width: 220,
       ellipsis: true,
       render: (_, record) => record.targetPath || record.path || '/',
     },
     {
-      title: '文件数',
-      key: 'fileCount',
-      width: 100,
-      render: (_, record) => record.fileCount ?? record.totalFiles ?? 0,
-    },
-    {
-      title: '总大小',
+      title: '大小',
       key: 'totalSize',
-      width: 120,
+      width: 130,
       render: (_, record) => formatBytes(record.totalSize),
     },
     {
@@ -306,10 +341,26 @@ const FileResourcesPage: React.FC = () => {
       },
     },
     {
-      title: '完成时间',
-      key: 'finishTime',
+      title: '开始时间',
+      key: 'startedAt',
       width: 190,
-      render: (_, record) => formatResourceTime(record.finishTime || record.createTime || record.startTime),
+      render: (_, record) => formatResourceTime(
+        record.startedAt ?? record.createTime ?? record.startTime,
+      ),
+    },
+    {
+      title: '结束时间',
+      key: 'finishedAt',
+      width: 190,
+      render: (_, record) => formatResourceTime(
+        record.finishedAt ?? record.finishTime,
+      ),
+    },
+    {
+      title: '耗时',
+      key: 'durationMs',
+      width: 120,
+      render: (_, record) => formatUploadDuration(record),
     },
     {
       title: '说明',
@@ -354,41 +405,94 @@ const FileResourcesPage: React.FC = () => {
           </div>
         ) : null}
 
-        <FileResourceBrowser
-          path={path}
-          onPathChange={setPath}
-          refreshToken={refreshToken}
-          selectable={selectionMode}
-          onSelect={selectionMode ? handleSelectForReturn : undefined}
-          onPreview={handlePreview}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          location={(
-            <div className="file-resources-page__location">
-              <FolderOpenOutlined />
-              <ResourceBreadcrumb path={path} onNavigate={setPath} rootLabel="当前目录" />
-            </div>
-          )}
-          actions={(
-            <Space wrap>
-              <Upload {...uploadProps}>
-                <Button icon={<UploadOutlined />} loading={uploadingCount > 0}>
-                  上传文件
-                </Button>
-              </Upload>
-              <Upload {...uploadProps} directory>
-                <Button icon={<FolderOpenOutlined />} loading={uploadingCount > 0}>
-                  上传文件夹
-                </Button>
-              </Upload>
-              <Button icon={<FolderAddOutlined />} onClick={() => setDirectoryModalOpen(true)}>
-                新建目录
-              </Button>
-              <Button icon={<HistoryOutlined />} onClick={openUploadRecords}>
-                上传记录
-              </Button>
-            </Space>
-          )}
+        <Tabs
+          className="file-resources-page__tabs"
+          activeKey={activeView}
+          onChange={(key) => {
+            const nextView = key as 'browse' | 'history';
+            activeViewRef.current = nextView;
+            setActiveView(nextView);
+            if (nextView === 'history') void loadUploadRecords();
+          }}
+          items={[
+            {
+              key: 'browse',
+              label: '文件浏览',
+              children: (
+                <div className="file-resources-page__view">
+                  <FileResourceBrowser
+                    path={path}
+                    onPathChange={setPath}
+                    refreshToken={refreshToken}
+                    selectable={selectionMode}
+                    onSelect={selectionMode ? handleSelectForReturn : undefined}
+                    onPreview={handlePreview}
+                    onDownload={handleDownload}
+                    onDelete={handleDelete}
+                    location={(
+                      <div className="file-resources-page__location">
+                        <FolderOpenOutlined />
+                        <ResourceBreadcrumb path={path} onNavigate={setPath} rootLabel="当前目录" />
+                      </div>
+                    )}
+                    actions={(
+                      <Space wrap>
+                        <Upload {...uploadProps}>
+                          <Button icon={<UploadOutlined />} loading={uploadingCount > 0}>
+                            上传文件
+                          </Button>
+                        </Upload>
+                        <Upload {...uploadProps} directory>
+                          <Button icon={<FolderOpenOutlined />} loading={uploadingCount > 0}>
+                            上传文件夹
+                          </Button>
+                        </Upload>
+                        <Button icon={<FolderAddOutlined />} onClick={() => setDirectoryModalOpen(true)}>
+                          新建目录
+                        </Button>
+                      </Space>
+                    )}
+                  />
+                </div>
+              ),
+            },
+            {
+              key: 'history',
+              label: '上传记录',
+              children: (
+                <div className="file-resources-page__history">
+                  <div className="file-resources-page__history-toolbar">
+                    <Text type="secondary">按上传时间倒序显示当前账号的文件记录</Text>
+                    <Button onClick={() => void loadUploadRecords(
+                      records.pagination.pageNo,
+                      records.pagination.pageSize,
+                    )}>
+                      刷新
+                    </Button>
+                  </div>
+                  <div className="file-resources-page__history-table">
+                    <Table<FileResourceUploadRecord>
+                      rowKey={(record) => String(record.id || `${record.path}-${record.createTime}`)}
+                      columns={recordColumns}
+                      dataSource={records.bizData}
+                      loading={recordsLoading}
+                      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无上传记录" /> }}
+                      scroll={{ x: 1280, y: 'calc(100vh - 400px)' }}
+                      pagination={{
+                        current: records.pagination.pageNo,
+                        pageSize: records.pagination.pageSize,
+                        total: records.pagination.total,
+                        showSizeChanger: true,
+                        showTotal: (total) => `共 ${total} 条`,
+                        position: ['bottomRight'],
+                        onChange: (page, pageSize) => void loadUploadRecords(page, pageSize),
+                      }}
+                    />
+                  </div>
+                </div>
+              ),
+            },
+          ]}
         />
       </Card>
 
@@ -428,31 +532,6 @@ const FileResourcesPage: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal
-        title="上传记录"
-        open={recordsModalOpen}
-        width={920}
-        footer={null}
-        destroyOnHidden
-        onCancel={() => setRecordsModalOpen(false)}
-      >
-        <Spin spinning={recordsLoading}>
-          <Table<FileResourceUploadRecord>
-            rowKey={(record) => String(record.id || `${record.path}-${record.createTime}`)}
-            columns={recordColumns}
-            dataSource={records.bizData}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无上传记录" /> }}
-            pagination={{
-              current: records.pagination.pageNo,
-              pageSize: records.pagination.pageSize,
-              total: records.pagination.total,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条`,
-              onChange: (page, pageSize) => void loadUploadRecords(page, pageSize),
-            }}
-          />
-        </Spin>
-      </Modal>
     </PageContainer>
   );
 };

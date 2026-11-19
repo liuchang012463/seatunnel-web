@@ -22,6 +22,8 @@ public class FileUploadRecordVO {
 
     private String targetPath;
 
+    private String fileName;
+
     private Integer totalFiles;
 
     private Long totalSize;
@@ -37,6 +39,15 @@ public class FileUploadRecordVO {
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date updateTime;
 
+    @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
+    private Date startedAt;
+
+    @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
+    private Date finishedAt;
+
+    private Long durationMs;
+
+    /** Kept for clients that still read the original upload-record field. */
     @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss", timezone = "GMT+8")
     private Date finishTime;
 }

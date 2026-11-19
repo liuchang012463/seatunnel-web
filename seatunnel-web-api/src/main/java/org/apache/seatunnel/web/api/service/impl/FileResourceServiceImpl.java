@@ -223,9 +223,14 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         record.setProviderType(storageProvider.providerType());
         record.setBucket(storageProvider.bucket());
         record.setTargetPath(targetPath);
+        if (items.size() == 1) {
+            // Keep the file name available in history for the one-file upload path.
+            record.setLogicalPath(items.get(0).logicalPath());
+        }
         record.setTotalFiles(items.size());
         record.setTotalSize(totalSize(items));
         record.setStatus(UPLOADING);
+        record.setStartedAt(new Date());
         fileUploadRecordPersistenceService.insert(record);
 
         List<String> newObjectKeys = new ArrayList<>();
@@ -317,6 +322,7 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         record.setTotalSize(request.getSize());
         record.setPartSize(partSize);
         record.setStatus(UPLOADING);
+        record.setStartedAt(new Date());
         fileUploadRecordPersistenceService.insert(record);
 
         String storageUploadId = null;
@@ -1149,10 +1155,15 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
     private void markUploadRecord(FileUploadRecord record, String status, String errorMessage) {
         record.setStatus(status);
         record.setErrorMessage(truncate(errorMessage));
-        record.setFinishTime(new Date());
-        record.setUpdateTime(new Date());
+        Date finishedAt = new Date();
+        applyUploadTiming(record, finishedAt);
         try {
-            fileUploadRecordDao.updateById(record);
+            if (fileUploadRecordDao.updateById(record)) {
+                log.info("Completed file resource upload, recordId={}, fileCount={}, sizeBytes={}, durationMs={}",
+                        record.getId(), record.getTotalFiles(), record.getTotalSize(), record.getDurationMs());
+            } else {
+                log.warn("File resource upload record was not updated, recordId={}", record.getId());
+            }
         } catch (Exception e) {
             log.warn("Failed to update file resource upload record, recordId={}", record.getId(), e);
         }
@@ -1163,7 +1174,11 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
             return;
         }
         String truncatedError = truncate(errorMessage);
-        Runnable persist = () -> persistFailedUploadRecord(record.getId(), truncatedError);
+        Date finishedAt = new Date();
+        Date startedAt = resolveUploadStartedAt(record);
+        Long durationMs = elapsedUploadMillis(startedAt, finishedAt);
+        Runnable persist = () -> persistFailedUploadRecord(
+                record.getId(), truncatedError, startedAt, finishedAt, durationMs);
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 && TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -1177,13 +1192,37 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         persist.run();
     }
 
-    private void persistFailedUploadRecord(Long uploadRecordId, String errorMessage) {
+    private void persistFailedUploadRecord(
+            Long uploadRecordId,
+            String errorMessage,
+            Date startedAt,
+            Date finishedAt,
+            Long durationMs) {
         try {
-            fileUploadRecordPersistenceService.markFailed(uploadRecordId, errorMessage);
+            fileUploadRecordPersistenceService.markFailed(
+                    uploadRecordId, errorMessage, startedAt, finishedAt, durationMs);
         } catch (Exception e) {
             log.warn("Failed to persist failed file resource upload record, recordId={}",
                     uploadRecordId, e);
         }
+    }
+
+    private void applyUploadTiming(FileUploadRecord record, Date finishedAt) {
+        Date startedAt = resolveUploadStartedAt(record);
+        record.setStartedAt(startedAt);
+        record.setFinishedAt(finishedAt);
+        record.setDurationMs(elapsedUploadMillis(startedAt, finishedAt));
+        record.setFinishTime(finishedAt);
+        record.setUpdateTime(finishedAt);
+    }
+
+    private Date resolveUploadStartedAt(FileUploadRecord record) {
+        return record.getStartedAt() == null ? record.getCreateTime() : record.getStartedAt();
+    }
+
+    private Long elapsedUploadMillis(Date startedAt, Date finishedAt) {
+        return startedAt == null || finishedAt == null
+                ? null : Math.max(0L, finishedAt.getTime() - startedAt.getTime());
     }
 
     private String contentType(String contentType) {
@@ -1492,12 +1531,22 @@ public class FileResourceServiceImpl implements FileResourceService, FileResourc
         vo.setProviderType(record.getProviderType());
         vo.setBucket(record.getBucket());
         vo.setTargetPath(record.getTargetPath());
+        String logicalPath = record.getLogicalPath();
+        vo.setFileName(StringUtils.isBlank(logicalPath)
+                ? null : logicalPath.substring(logicalPath.lastIndexOf('/') + 1));
         vo.setTotalFiles(record.getTotalFiles());
         vo.setTotalSize(record.getTotalSize());
         vo.setStatus(record.getStatus());
         vo.setErrorMessage(record.getErrorMessage());
         vo.setCreateTime(record.getCreateTime());
         vo.setUpdateTime(record.getUpdateTime());
+        Date startedAt = record.getStartedAt() == null ? record.getCreateTime() : record.getStartedAt();
+        Date finishedAt = record.getFinishedAt() == null ? record.getFinishTime() : record.getFinishedAt();
+        vo.setStartedAt(startedAt);
+        vo.setFinishedAt(finishedAt);
+        vo.setDurationMs(record.getDurationMs() == null
+                ? elapsedUploadMillis(startedAt, finishedAt)
+                : record.getDurationMs());
         vo.setFinishTime(record.getFinishTime());
         return vo;
     }

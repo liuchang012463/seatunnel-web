@@ -38,5 +38,14 @@ public class FileUploadRecord extends BaseEntity {
 
     private String errorMessage;
 
+    /** Durable upload start time; historical rows fall back to create_time. */
+    private Date startedAt;
+
+    /** Durable upload completion time, retained alongside legacy finish_time. */
+    private Date finishedAt;
+
+    /** Elapsed upload time in milliseconds; null for legacy rows without timestamps. */
+    private Long durationMs;
+
     private Date finishTime;
 }

@@ -129,14 +129,20 @@ export type FileResourceUploadRecordStatus = 'PENDING' | 'UPLOADING' | 'SUCCESS'
 
 export interface FileResourceUploadRecord {
   id?: FileResourceId;
+  fileName?: string;
   path?: string;
   targetPath?: string;
+  logicalPath?: string;
   fileCount?: number;
   totalFiles?: number;
   totalSize?: number | string;
   status?: FileResourceUploadRecordStatus;
   errorMessage?: string;
+  startedAt?: string | number;
+  finishedAt?: string | number;
+  durationMs?: number | string;
   createTime?: string | number;
+  /** Legacy aliases retained in responses created before the timing migration. */
   startTime?: string | number;
   finishTime?: string | number;
   [key: string]: unknown;

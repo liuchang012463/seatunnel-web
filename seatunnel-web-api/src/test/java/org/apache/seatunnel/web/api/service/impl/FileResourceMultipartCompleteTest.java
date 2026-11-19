@@ -20,9 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +32,7 @@ import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -135,6 +138,10 @@ class FileResourceMultipartCompleteTest {
         verify(mqNotifier).notifyUploaded(resourceCaptor.capture(), eq(RECORD_ID));
         assertEquals(FILE_SIZE, resourceCaptor.getValue().getSize());
         assertEquals("SUCCESS", record.getStatus());
+        assertEquals(record.getCreateTime(), record.getStartedAt());
+        assertNotNull(record.getFinishedAt());
+        assertNotNull(record.getDurationMs());
+        assertTrue(record.getDurationMs() >= 0);
     }
 
     @Test
@@ -153,7 +160,8 @@ class FileResourceMultipartCompleteTest {
         assertTrue(error.getMessage() != null && error.getMessage().contains("大小与申报不一致"),
                 () -> "unexpected message: " + error.getMessage());
         verify(storageProvider).delete(record.getObjectKey());
-        verify(persistenceService).markFailed(eq(RECORD_ID), anyString());
+        verify(persistenceService).markFailed(
+                eq(RECORD_ID), anyString(), any(Date.class), any(Date.class), anyLong());
         verify(mqNotifier, never()).notifyUploaded(any(), anyLong());
         assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
     }
@@ -179,6 +187,27 @@ class FileResourceMultipartCompleteTest {
         assertEquals(55L, vo.getId());
         verify(storageProvider, never()).completeMultipartUpload(anyString(), anyString(), anyList());
         verify(mqNotifier, never()).notifyUploaded(any(), anyLong());
+    }
+
+    @Test
+    void fallbackUploadPersistsFilenameAndTiming() {
+        MockMultipartFile file = new MockMultipartFile(
+                "files", "fallback.txt", "text/plain", new byte[(int) FILE_SIZE]);
+        when(storageProvider.upload(
+                anyString(), any(java.io.InputStream.class), eq(FILE_SIZE), eq("text/plain")))
+                .thenReturn("fallback-etag");
+
+        service.upload("/docs", new MultipartFile[]{file}, new String[]{"fallback.txt"});
+
+        ArgumentCaptor<FileUploadRecord> inserted = ArgumentCaptor.forClass(FileUploadRecord.class);
+        verify(persistenceService).insert(inserted.capture());
+        FileUploadRecord record = inserted.getValue();
+        assertEquals("/docs/fallback.txt", record.getLogicalPath());
+        assertNotNull(record.getStartedAt());
+        assertNotNull(record.getFinishedAt());
+        assertNotNull(record.getDurationMs());
+        assertTrue(record.getDurationMs() >= 0);
+        assertEquals(record.getFinishedAt(), record.getFinishTime());
     }
 
     @Test
@@ -212,7 +241,8 @@ class FileResourceMultipartCompleteTest {
         assertThrows(ServiceException.class,
                 () -> service.completeMultipartUpload(RECORD_ID, completeRequest(1, "\"part-1\"")));
         verify(storageProvider).abortMultipartUpload(record.getObjectKey(), record.getMultipartUploadId());
-        verify(persistenceService).markFailed(eq(RECORD_ID), anyString());
+        verify(persistenceService).markFailed(
+                eq(RECORD_ID), anyString(), any(Date.class), any(Date.class), anyLong());
         verify(storageProvider, never()).completeMultipartUpload(anyString(), anyString(), anyList());
         verify(mqNotifier, never()).notifyUploaded(any(), anyLong());
     }

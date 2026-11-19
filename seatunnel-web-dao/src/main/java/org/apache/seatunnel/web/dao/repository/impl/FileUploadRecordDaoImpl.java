@@ -52,7 +52,14 @@ public class FileUploadRecordDaoImpl extends BaseDao<FileUploadRecord, FileUploa
 
     @Override
     public boolean markFailedIfUploading(
-            Long id, String errorMessage, Date finishTime, Date updateTime) {
-        return mapper.markFailedIfUploading(id, errorMessage, finishTime, updateTime) > 0;
+            Long id,
+            String errorMessage,
+            Date startedAt,
+            Date finishedAt,
+            Long durationMs,
+            Date finishTime,
+            Date updateTime) {
+        return mapper.markFailedIfUploading(
+                id, errorMessage, startedAt, finishedAt, durationMs, finishTime, updateTime) > 0;
     }
 }

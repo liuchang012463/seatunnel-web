@@ -23,6 +23,9 @@ public interface FileUploadRecordMapper extends BaseMapper<FileUploadRecord> {
     int markFailedIfUploading(
             @Param("id") Long id,
             @Param("errorMessage") String errorMessage,
+            @Param("startedAt") Date startedAt,
+            @Param("finishedAt") Date finishedAt,
+            @Param("durationMs") Long durationMs,
             @Param("finishTime") Date finishTime,
             @Param("updateTime") Date updateTime);
 }

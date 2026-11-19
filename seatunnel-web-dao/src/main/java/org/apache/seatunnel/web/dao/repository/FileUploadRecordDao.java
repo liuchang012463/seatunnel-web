@@ -15,5 +15,12 @@ public interface FileUploadRecordDao extends IDao<FileUploadRecord> {
     FileUploadRecord queryByIdForUpdate(Long id);
 
     /** Fails an upload only while it is still active, avoiding stale status overwrites. */
-    boolean markFailedIfUploading(Long id, String errorMessage, Date finishTime, Date updateTime);
+    boolean markFailedIfUploading(
+            Long id,
+            String errorMessage,
+            Date startedAt,
+            Date finishedAt,
+            Long durationMs,
+            Date finishTime,
+            Date updateTime);
 }
