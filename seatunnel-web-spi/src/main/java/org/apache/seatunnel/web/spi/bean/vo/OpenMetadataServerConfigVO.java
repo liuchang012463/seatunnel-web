@@ -2,10 +2,22 @@ package org.apache.seatunnel.web.spi.bean.vo;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class OpenMetadataServerConfigVO {
 
     private String baseUrl;
+
+    private String defaultDomainFqn;
+
+    private List<String> botDomainFqns;
+
+    private List<String> availableDomainFqns;
+
+    private boolean botDomainLookupAvailable;
+
+    private boolean domainListAvailable;
 
     private boolean tokenConfigured;
 

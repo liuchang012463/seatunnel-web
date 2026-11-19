@@ -19,6 +19,11 @@ export interface MetadataIntegrationHealth {
 
 export interface OpenMetadataServerConfig {
   baseUrl?: string;
+  defaultDomainFqn?: string;
+  botDomainFqns?: string[];
+  availableDomainFqns?: string[];
+  botDomainLookupAvailable?: boolean;
+  domainListAvailable?: boolean;
   tokenConfigured?: boolean;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
@@ -34,6 +39,7 @@ export interface OpenMetadataServerConfig {
 export type OpenMetadataServerPayload = {
   baseUrl?: string;
   token?: string;
+  defaultDomainFqn?: string;
   connectTimeoutMs?: number;
   readTimeoutMs?: number;
   rebuildBindings?: boolean;

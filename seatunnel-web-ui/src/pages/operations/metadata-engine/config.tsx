@@ -6,7 +6,7 @@ import {
   LinkOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { Button, Checkbox, Form, Input, InputNumber, Space, Tag, Typography, message } from 'antd';
+import { Button, Checkbox, Form, Input, InputNumber, Select, Space, Tag, Typography, message } from 'antd';
 import { history } from '@umijs/max';
 import React, { useEffect, useState } from 'react';
 import {
@@ -24,6 +24,7 @@ const { Paragraph, Text, Title } = Typography;
 type FormValues = {
   baseUrl: string;
   token?: string;
+  defaultDomainFqn?: string;
   connectTimeoutMs: number;
   readTimeoutMs: number;
   rebuildBindings: boolean;
@@ -37,9 +38,18 @@ type TestResult = {
 const responseError = (response: MetadataApiResponse<unknown>, fallback: string) =>
   response.msg || response.message || fallback;
 
+const preferredDefaultDomain = (config?: OpenMetadataServerConfig) => {
+  const botDomains = config?.botDomainFqns || [];
+  if (config?.botDomainLookupAvailable && botDomains.length === 1) {
+    return botDomains[0];
+  }
+  return config?.defaultDomainFqn || '';
+};
+
 const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
   baseUrl: values.baseUrl?.trim(),
   token: values.token?.trim() || undefined,
+  defaultDomainFqn: values.defaultDomainFqn?.trim() ?? '',
   connectTimeoutMs: values.connectTimeoutMs,
   readTimeoutMs: values.readTimeoutMs,
   rebuildBindings: values.rebuildBindings,
@@ -48,6 +58,7 @@ const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
 const MetadataEngineConfigPage: React.FC = () => {
   const [form] = Form.useForm<FormValues>();
   const [config, setConfig] = useState<OpenMetadataServerConfig>();
+  const [domainInfo, setDomainInfo] = useState<OpenMetadataServerConfig>();
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,9 +77,11 @@ const MetadataEngineConfigPage: React.FC = () => {
         }
         const data = response.data;
         setConfig(data || undefined);
+        setDomainInfo(data || undefined);
         form.setFieldsValue({
           baseUrl: data?.baseUrl || '',
           token: undefined,
+          defaultDomainFqn: preferredDefaultDomain(data),
           connectTimeoutMs: data?.connectTimeoutMs || 10000,
           readTimeoutMs: data?.readTimeoutMs || 60000,
           rebuildBindings: false,
@@ -101,6 +114,20 @@ const MetadataEngineConfigPage: React.FC = () => {
       setTestResult(undefined);
       const response = await testOpenMetadataServer(toPayload(values));
       if (response.code !== 0) throw new Error(responseError(response, 'OpenMetadata 连接测试失败'));
+      const testedConfig = response.data;
+      if (testedConfig) {
+        setDomainInfo(testedConfig);
+        const botDomains = testedConfig.botDomainFqns || [];
+        const currentDomain = form.getFieldValue('defaultDomainFqn')?.trim() || '';
+        form.setFieldValue(
+          'defaultDomainFqn',
+          botDomains.length === 1
+            ? botDomains[0]
+            : botDomains.length > 1 && !botDomains.includes(currentDomain)
+              ? ''
+              : currentDomain,
+        );
+      }
       if (response.data?.connStatus === 'CONNECTED_SUCCESS') {
         setTestResult({ status: 'success', message: '连接成功：版本契约校验通过。' });
         message.success('OpenMetadata 连接测试成功');
@@ -130,6 +157,7 @@ const MetadataEngineConfigPage: React.FC = () => {
       if (response.code !== 0 || !response.data) {
         throw new Error(responseError(response, '保存探查引擎配置失败'));
       }
+      setDomainInfo(response.data);
       setConfig(response.data);
       form.setFieldsValue({ token: undefined });
       message.success('探查引擎配置已保存');
@@ -144,6 +172,33 @@ const MetadataEngineConfigPage: React.FC = () => {
 
   const expectedServer = config?.expectedServerVersion || '2.0.4';
   const expectedIngestion = config?.expectedIngestionPatch || '2.0.4.0';
+  const botDomainFqns = domainInfo?.botDomainFqns || [];
+  const availableDomainFqns = domainInfo?.availableDomainFqns || [];
+  const domainOptions = botDomainFqns.length > 0 ? botDomainFqns : availableDomainFqns;
+  const storedDomain = domainInfo?.defaultDomainFqn;
+  const visibleDomainOptions = storedDomain && !domainOptions.includes(storedDomain)
+    ? [...domainOptions, storedDomain]
+    : domainOptions;
+  const singleAssignedDomain = domainInfo?.botDomainLookupAvailable && botDomainFqns.length === 1;
+  const domainHelp = !domainInfo?.configured
+    ? '连接测试通过后会读取 Bot Domain 归属和可见 Domain 列表。'
+    : !domainInfo.botDomainLookupAvailable
+      ? 'Bot Domain 归属查询失败。保存前必须先修复 OM Bot 的用户资料读取权限并重新测试。'
+      : singleAssignedDomain
+    ? `Bot 仅关联一个 Domain，已自动选择 ${botDomainFqns[0]}。`
+    : botDomainFqns.length > 1
+      ? 'Bot 关联多个 Domain，请选择一个用于之后新建的数据源服务。'
+      : domainOptions.length > 0
+        ? 'Bot 当前没有关联 Domain。可选填一个可见 Domain，供之后新建的数据源服务使用；留空则不关联。'
+        : domainInfo.domainListAvailable
+          ? 'Bot 未关联 Domain，且当前实例没有可见 Domain。留空时新建服务不会关联 Domain。'
+          : 'Bot 未关联 Domain，但可见 Domain 列表读取失败。留空可继续；显式选择 Domain 前须恢复列表查询。';
+  const botDomainLookupLabel = !domainInfo?.configured
+    ? '连接测试通过后检查'
+    : domainInfo.botDomainLookupAvailable ? '读取成功' : '读取失败';
+  const domainListLookupLabel = !domainInfo?.configured
+    ? '连接测试通过后检查'
+    : domainInfo.domainListAvailable ? '读取成功' : '读取失败';
 
   return (
     <div className="meta-engine-config-page">
@@ -223,6 +278,31 @@ const MetadataEngineConfigPage: React.FC = () => {
               <Input.Password
                 placeholder={config?.tokenConfigured ? '已配置，留空保留' : '请输入 Bot JWT'}
                 autoComplete="new-password"
+              />
+            </Form.Item>
+            <Form.Item
+              name="defaultDomainFqn"
+              label="默认 Domain（新建数据源服务）"
+              extra={(
+                <Space direction="vertical" size={2}>
+                  <Text type={domainInfo?.configured && !domainInfo.botDomainLookupAvailable ? 'danger' : 'secondary'}>
+                    Bot Domain 归属查询：{botDomainLookupLabel}
+                  </Text>
+                  <Text type={domainInfo?.configured && !domainInfo.domainListAvailable ? 'danger' : 'secondary'}>
+                    可见 Domain 列表：{domainListLookupLabel}
+                  </Text>
+                  <Text>{domainHelp}</Text>
+                </Space>
+              )}
+              rules={botDomainFqns.length > 1
+                ? [{ required: true, message: 'Bot 关联多个 Domain，请选择一个默认 Domain' }]
+                : []}
+            >
+              <Select
+                allowClear
+                disabled={Boolean(singleAssignedDomain)}
+                placeholder="不关联 Domain"
+                options={visibleDomainOptions.map((domain) => ({ value: domain, label: domain }))}
               />
             </Form.Item>
             <Form.Item name="rebuildBindings" valuePropName="checked" initialValue={false}>

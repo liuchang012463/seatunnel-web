@@ -13,6 +13,9 @@ public class OpenMetadataServerConfigDTO {
     /** Empty on update means keep the existing token. */
     private String token;
 
+    /** FQN used for newly created services when the Bot domain is not unambiguous. */
+    private String defaultDomainFqn;
+
     private Integer connectTimeoutMs;
 
     private Integer readTimeoutMs;

@@ -29,6 +29,15 @@ public interface OpenMetadataClient {
 
     Optional<OpenMetadataEntity> findService(MetadataServiceCategory category, String fullyQualifiedName);
 
+    /** Lists Domain entities visible to the configured token through the official SDK. */
+    List<OpenMetadataDomain> listDomains();
+
+    /** Returns domains assigned to the user represented by the configured Bot token. */
+    List<String> getBotDomainFqns();
+
+    /** Returns a Domain visible to the configured token, or empty when it cannot be read. */
+    Optional<OpenMetadataDomain> findDomain(String fullyQualifiedName);
+
     /**
      * Reads one cursor page of a non-relational asset collection. Topics, indexes,
      * containers, root directories/files, API collections and endpoints use this path.

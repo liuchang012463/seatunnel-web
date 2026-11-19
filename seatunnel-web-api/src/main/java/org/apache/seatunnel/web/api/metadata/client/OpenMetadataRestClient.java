@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataExplorationPipelinePolicy;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
@@ -23,6 +24,8 @@ import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDriveService;
@@ -56,10 +59,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,6 +90,8 @@ import java.util.function.Function;
 @Slf4j
 @Component
 public class OpenMetadataRestClient implements OpenMetadataClient {
+
+    private static final int DOMAIN_PAGE_SIZE = 100;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -269,6 +277,80 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             }
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata service lookup failed", error);
+        }
+    }
+
+    @Override
+    public List<OpenMetadataDomain> listDomains() {
+        validateBaseUrl();
+        try {
+            List<OpenMetadataDomain> domains = new ArrayList<>();
+            Set<String> cursors = new HashSet<>();
+            String after = null;
+            while (true) {
+                ListParams params = new ListParams().setLimit(DOMAIN_PAGE_SIZE);
+                if (after != null) {
+                    params.setAfter(after);
+                }
+                ListResponse<Domain> response = sdk().domains().list(params);
+                for (Domain domain : safeList(response.getData())) {
+                    OpenMetadataDomain projected = toDomain(domain);
+                    if (projected != null) {
+                        domains.add(projected);
+                    }
+                }
+                String next = response.getPaging() == null ? null : response.getPaging().getAfter();
+                if (next == null || next.isBlank() || !cursors.add(next)) {
+                    break;
+                }
+                after = next;
+            }
+            return List.copyOf(domains);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata Domain list could not be read", error);
+        }
+    }
+
+    @Override
+    public List<String> getBotDomainFqns() {
+        validateBaseUrl();
+        try {
+            UUID userId = sdk().getUserId();
+            if (userId == null) {
+                return List.of();
+            }
+            User bot = sdk().users().get(userId.toString(), "domains");
+            if (bot == null) {
+                return List.of();
+            }
+            Set<String> domains = new LinkedHashSet<>();
+            for (EntityReference reference : safeList(bot.getDomains())) {
+                if (reference != null && !blank(reference.getFullyQualifiedName())) {
+                    domains.add(reference.getFullyQualifiedName());
+                }
+            }
+            return List.copyOf(domains);
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata Bot Domain scope could not be read", error);
+        }
+    }
+
+    @Override
+    public Optional<OpenMetadataDomain> findDomain(String fullyQualifiedName) {
+        if (blank(fullyQualifiedName)) {
+            return Optional.empty();
+        }
+        validateBaseUrl();
+        try {
+            return Optional.ofNullable(toDomain(sdk().domains().getByName(fullyQualifiedName.trim())));
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return Optional.empty();
+            }
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata Domain lookup failed", error);
         }
     }
 
@@ -1334,7 +1416,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         org.openmetadata.schema.entity.services.DatabaseService existing =
                 findDatabaseServiceEntity(createRequest.getName());
         if (existing == null) {
-            return entity(sdk().databaseServices().create(createRequest));
+            return entity(sdk().databaseServices().create(
+                    addDefaultDomain(createRequest, CreateDatabaseService.class)));
         }
         org.openmetadata.schema.entity.services.DatabaseService desired =
                 mergeDatabaseService(existing, createRequest);
@@ -1348,7 +1431,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 (org.openmetadata.schema.entity.services.MessagingService)
                         findServiceEntity(MetadataServiceCategory.MESSAGING, createRequest.getName());
         if (existing == null) {
-            return entity(sdk().messagingServices().create(createRequest));
+            return entity(sdk().messagingServices().create(
+                    addDefaultDomain(createRequest, CreateMessagingService.class)));
         }
         org.openmetadata.schema.entity.services.MessagingService desired =
                 mergeMessagingService(existing, createRequest);
@@ -1362,7 +1446,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 (org.openmetadata.schema.entity.services.SearchService)
                         findServiceEntity(MetadataServiceCategory.SEARCH, createRequest.getName());
         if (existing == null) {
-            return entity(sdk().searchServices().create(createRequest));
+            return entity(sdk().searchServices().create(
+                    addDefaultDomain(createRequest, CreateSearchService.class)));
         }
         org.openmetadata.schema.entity.services.SearchService desired =
                 mergeSearchService(existing, createRequest);
@@ -1376,7 +1461,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 (org.openmetadata.schema.entity.services.StorageService)
                         findServiceEntity(MetadataServiceCategory.STORAGE, createRequest.getName());
         if (existing == null) {
-            return entity(sdk().storageServices().create(createRequest));
+            return entity(sdk().storageServices().create(
+                    addDefaultDomain(createRequest, CreateStorageService.class)));
         }
         org.openmetadata.schema.entity.services.StorageService desired =
                 mergeStorageService(existing, createRequest);
@@ -1390,7 +1476,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 (org.openmetadata.schema.entity.services.ApiService)
                         findServiceEntity(MetadataServiceCategory.API, createRequest.getName());
         if (existing == null) {
-            return entity(sdk().apiServices().create(createRequest));
+            return entity(sdk().apiServices().create(
+                    addDefaultDomain(createRequest, CreateApiService.class)));
         }
         org.openmetadata.schema.entity.services.ApiService desired =
                 mergeApiService(existing, createRequest);
@@ -1404,11 +1491,53 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 (org.openmetadata.schema.entity.services.DriveService)
                         findServiceEntity(MetadataServiceCategory.DRIVE, createRequest.getName());
         if (existing == null) {
-            return entity(sdk().driveServices().create(createRequest));
+            return entity(sdk().driveServices().create(
+                    addDefaultDomain(createRequest, CreateDriveService.class)));
         }
         org.openmetadata.schema.entity.services.DriveService desired =
                 mergeDriveService(existing, createRequest);
         return entity(sdk().driveServices().update(existing.getId().toString(), desired));
+    }
+
+    /** Adds an explicit Domain only to create requests; updates keep the entity's current domains. */
+    private <T> T addDefaultDomain(T request, Class<T> requestType) throws JsonProcessingException {
+        String domainFqn = resolveCreateServiceDomainFqn();
+        if (blank(domainFqn)) {
+            return request;
+        }
+        JsonNode serialized = OBJECT_MAPPER.valueToTree(request);
+        if (!(serialized instanceof ObjectNode object)) {
+            throw new MetadataIntegrationException(
+                    MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata service create request is invalid");
+        }
+        object.putArray("domains").add(domainFqn);
+        log.info("OpenMetadata service create will use Domain FQN {}", domainFqn);
+        return OBJECT_MAPPER.treeToValue(object, requestType);
+    }
+
+    private String resolveCreateServiceDomainFqn() {
+        String fallback = current().getDefaultDomainFqn();
+        List<String> botDomains;
+        try {
+            botDomains = getBotDomainFqns();
+        } catch (RuntimeException error) {
+            log.warn("OpenMetadata Bot Domain scope lookup failed; configured fallback will be used: type={}",
+                    error.getClass().getSimpleName());
+            return fallback;
+        }
+        if (botDomains.size() == 1) {
+            return botDomains.get(0);
+        }
+        if (botDomains.size() > 1) {
+            if (blank(fallback) || !botDomains.contains(fallback)) {
+                throw new MetadataIntegrationException(
+                        MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                        "OpenMetadata Bot has multiple Domains; select a visible default Domain in 探查引擎管理");
+            }
+            return fallback;
+        }
+        return fallback;
     }
 
     private static org.openmetadata.schema.entity.services.DatabaseService mergeDatabaseService(
@@ -1795,6 +1924,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 cause == null ? null : cause.getMessage());
         return new MetadataIntegrationException(
                 code, message, cause, cause == null ? null : cause.getStatusCode());
+    }
+
+    private static OpenMetadataDomain toDomain(Domain domain) {
+        if (domain == null || domain.getId() == null
+                || blank(domain.getFullyQualifiedName())) {
+            return null;
+        }
+        return new OpenMetadataDomain(
+                domain.getId().toString(),
+                domain.getName(),
+                domain.getFullyQualifiedName(),
+                domain.getDisplayName());
     }
 
     private static OpenMetadataEntity entity(

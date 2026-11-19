@@ -102,6 +102,7 @@ public class OpenMetadataConfigResolver {
                 row.getReadTimeoutMs() == null ? 60_000 : row.getReadTimeoutMs(),
                 row.getExpectedServerVersion(),
                 row.getExpectedIngestionPatch(),
+                row.getDefaultDomainFqn(),
                 version);
     }
 

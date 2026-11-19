@@ -8,6 +8,7 @@ import org.apache.seatunnel.web.api.metadata.MetadataIntegrationHealthService;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataHealth;
+import org.apache.seatunnel.web.api.metadata.client.OpenMetadataDomain;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataRestClient;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.MetadataBindingCommandService;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.List;
 import java.util.Objects;
 
 /** Persists the singleton OpenMetadata connection used by exploration and lake dual-mode. */
@@ -54,9 +56,13 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
 
     @Override
     public OpenMetadataServerConfigVO getConfig() {
-        OpenMetadataServerConfigVO vo = toVO(configDao.querySingleton());
+        OpenMetadataServerConfig row = configDao.querySingleton();
+        OpenMetadataServerConfigVO vo = toVO(row);
         if (vo == null) {
             vo = emptyVo();
+        } else if (vo.isConfigured()) {
+            OpenMetadataRuntimeConfig runtime = configResolver.resolve();
+            populateDomainOptions(vo, new OpenMetadataRestClient(OpenMetadataConfigResolver.fixed(runtime)));
         }
         vo.setHealth(healthService.health());
         return vo;
@@ -84,6 +90,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "无法连接 OpenMetadata，请检查 Base URL、Token 与版本契约");
         }
+        validateDefaultDomain(probeConfig, connectionTest);
 
         OpenMetadataServerConfig target = current == null ? new OpenMetadataServerConfig() : current;
         if (current == null) {
@@ -101,6 +108,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         target.setEnabled(true);
         target.setBaseUrl(valid.baseUrl());
         target.setToken(token);
+        target.setDefaultDomainFqn(valid.defaultDomainFqn());
         target.setConnectTimeoutMs(valid.connectTimeoutMs());
         target.setReadTimeoutMs(valid.readTimeoutMs());
         target.setExpectedServerVersion(OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION);
@@ -122,6 +130,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         log.info("OpenMetadata server config saved: baseUrl={}, configVersion={}",
                 sanitizeUrl(target.getBaseUrl()), target.getConfigVersion());
         OpenMetadataServerConfigVO vo = toVO(target);
+        copyDomainOptions(connectionTest, vo);
         vo.setHealth(healthService.health());
         return vo;
     }
@@ -137,7 +146,18 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         if (token.isBlank()) {
             throw invalid("token");
         }
-        return probe(toRuntime(valid, token, existing));
+        OpenMetadataRuntimeConfig runtime = toRuntime(valid, token, existing);
+        OpenMetadataServerConfigVO result = probe(runtime);
+        if (result.isConfigured()
+                && ConnStatus.CONNECTED_SUCCESS.getCode().equals(result.getConnStatus())) {
+            try {
+                validateDefaultDomain(runtime, result);
+            } catch (MetadataIntegrationException exception) {
+                result.setConnStatus(ConnStatus.CONNECTED_FAILED.getCode());
+                result.setLastError(exception.getMessage());
+            }
+        }
+        return result;
     }
 
     private OpenMetadataServerConfigVO probe(OpenMetadataRuntimeConfig config) {
@@ -146,6 +166,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
             result = emptyVo();
         }
         result.setBaseUrl(config.getBaseUrl());
+        result.setDefaultDomainFqn(config.getDefaultDomainFqn());
         result.setTokenConfigured(StringUtils.isNotBlank(config.getToken()));
         result.setConnectTimeoutMs(config.getConnectTimeoutMs());
         result.setReadTimeoutMs(config.getReadTimeoutMs());
@@ -162,6 +183,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                 return result;
             }
             probeClient.assertFixedVersion();
+            populateDomainOptions(result, probeClient);
             result.setConfigured(true);
             result.setConnStatus(ConnStatus.CONNECTED_SUCCESS.getCode());
             result.setLastError(null);
@@ -218,7 +240,10 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         if (readTimeoutMs <= 0 || readTimeoutMs > 300_000) {
             throw invalid("readTimeoutMs");
         }
-        return new ValidConfig(baseUrl, connectTimeoutMs, readTimeoutMs);
+        String defaultDomainFqn = request.getDefaultDomainFqn() == null && existing != null
+                ? StringUtils.trimToNull(existing.getDefaultDomainFqn())
+                : StringUtils.trimToNull(request.getDefaultDomainFqn());
+        return new ValidConfig(baseUrl, connectTimeoutMs, readTimeoutMs, defaultDomainFqn);
     }
 
     private static OpenMetadataRuntimeConfig toRuntime(
@@ -233,6 +258,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                 valid.readTimeoutMs(),
                 OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION,
                 OpenMetadataRuntimeConfig.DEFAULT_INGESTION_PATCH,
+                valid.defaultDomainFqn(),
                 version);
     }
 
@@ -248,6 +274,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         }
         OpenMetadataServerConfigVO result = new OpenMetadataServerConfigVO();
         result.setBaseUrl(config.getBaseUrl());
+        result.setDefaultDomainFqn(config.getDefaultDomainFqn());
         result.setTokenConfigured(StringUtils.isNotBlank(config.getToken()));
         result.setConnectTimeoutMs(config.getConnectTimeoutMs());
         result.setReadTimeoutMs(config.getReadTimeoutMs());
@@ -270,7 +297,89 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         result.setConnectTimeoutMs(DEFAULT_CONNECT_TIMEOUT_MS);
         result.setReadTimeoutMs(DEFAULT_READ_TIMEOUT_MS);
         result.setConnStatus(ConnStatus.CONNECTED_NONE.getCode());
+        result.setBotDomainFqns(List.of());
+        result.setAvailableDomainFqns(List.of());
         return result;
+    }
+
+    private void populateDomainOptions(OpenMetadataServerConfigVO result, OpenMetadataRestClient client) {
+        try {
+            result.setBotDomainFqns(client.getBotDomainFqns());
+            result.setBotDomainLookupAvailable(true);
+        } catch (RuntimeException exception) {
+            result.setBotDomainFqns(List.of());
+            result.setBotDomainLookupAvailable(false);
+            log.warn("OpenMetadata Bot Domain scope could not be read: type={}",
+                    exception.getClass().getSimpleName());
+        }
+        try {
+            result.setAvailableDomainFqns(client.listDomains().stream()
+                    .map(domain -> domain.fullyQualifiedName())
+                    .toList());
+            result.setDomainListAvailable(true);
+        } catch (RuntimeException exception) {
+            result.setAvailableDomainFqns(List.of());
+            result.setDomainListAvailable(false);
+            log.warn("Visible OpenMetadata Domains could not be read: type={}",
+                    exception.getClass().getSimpleName());
+        }
+    }
+
+    private void validateDefaultDomain(
+            OpenMetadataRuntimeConfig config, OpenMetadataServerConfigVO domainOptions) {
+        String requested = config.getDefaultDomainFqn();
+        List<String> botDomains = domainOptions.getBotDomainFqns();
+        boolean requestedExists = false;
+        if (StringUtils.isNotBlank(requested)) {
+            try {
+                OpenMetadataRestClient client = new OpenMetadataRestClient(OpenMetadataConfigResolver.fixed(config));
+                OpenMetadataDomain domain = client.findDomain(requested).orElse(null);
+                requestedExists = domain != null && requested.equals(domain.fullyQualifiedName());
+            } catch (RuntimeException exception) {
+                log.warn("Could not validate configured OpenMetadata Domain: type={}",
+                        exception.getClass().getSimpleName());
+            }
+        }
+        validateDefaultDomainSelection(
+                requested,
+                botDomains,
+                domainOptions.isBotDomainLookupAvailable(),
+                domainOptions.getAvailableDomainFqns(),
+                domainOptions.isDomainListAvailable(),
+                requestedExists);
+    }
+
+    static void validateDefaultDomainSelection(
+            String requested,
+            List<String> botDomains,
+            boolean botLookupAvailable,
+            List<String> availableDomains,
+            boolean domainListAvailable,
+            boolean requestedExists) {
+        List<String> assigned = botDomains == null ? List.of() : botDomains;
+        List<String> visible = availableDomains == null ? List.of() : availableDomains;
+        if (!botLookupAvailable) {
+            throw invalid("botDomainFqns");
+        }
+        if (StringUtils.isBlank(requested)) {
+            if (assigned.size() > 1) {
+                throw invalid("defaultDomainFqn");
+            }
+            return;
+        }
+        if (!requestedExists || (!assigned.isEmpty() && !assigned.contains(requested))) {
+            throw invalid("defaultDomainFqn");
+        }
+        if (assigned.isEmpty() && (!domainListAvailable || !visible.contains(requested))) {
+            throw invalid("defaultDomainFqn");
+        }
+    }
+
+    private static void copyDomainOptions(OpenMetadataServerConfigVO source, OpenMetadataServerConfigVO target) {
+        target.setBotDomainFqns(source.getBotDomainFqns());
+        target.setAvailableDomainFqns(source.getAvailableDomainFqns());
+        target.setBotDomainLookupAvailable(source.isBotDomainLookupAvailable());
+        target.setDomainListAvailable(source.isDomainListAvailable());
     }
 
     private int currentUserId() {
@@ -310,6 +419,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         return normalized;
     }
 
-    private record ValidConfig(String baseUrl, int connectTimeoutMs, int readTimeoutMs) {
+    private record ValidConfig(
+            String baseUrl, int connectTimeoutMs, int readTimeoutMs, String defaultDomainFqn) {
     }
 }

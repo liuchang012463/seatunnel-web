@@ -26,6 +26,9 @@ public class OpenMetadataServerConfig extends BaseEntity {
     /** Bot JWT; never return this field on operator APIs. */
     private String token;
 
+    /** Optional fallback for bots whose assigned Domain cannot be derived uniquely. */
+    private String defaultDomainFqn;
+
     private Integer connectTimeoutMs;
 
     private Integer readTimeoutMs;

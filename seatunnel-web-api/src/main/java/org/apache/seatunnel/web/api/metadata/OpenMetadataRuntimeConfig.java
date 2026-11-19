@@ -16,6 +16,7 @@ public final class OpenMetadataRuntimeConfig {
     private final int readTimeoutMs;
     private final String expectedServerVersion;
     private final String expectedIngestionPatch;
+    private final String defaultDomainFqn;
     private final long configVersion;
 
     public OpenMetadataRuntimeConfig(
@@ -25,6 +26,19 @@ public final class OpenMetadataRuntimeConfig {
             int readTimeoutMs,
             String expectedServerVersion,
             String expectedIngestionPatch,
+            long configVersion) {
+        this(baseUrl, token, connectTimeoutMs, readTimeoutMs, expectedServerVersion,
+                expectedIngestionPatch, null, configVersion);
+    }
+
+    public OpenMetadataRuntimeConfig(
+            String baseUrl,
+            String token,
+            int connectTimeoutMs,
+            int readTimeoutMs,
+            String expectedServerVersion,
+            String expectedIngestionPatch,
+            String defaultDomainFqn,
             long configVersion) {
         this.baseUrl = baseUrl;
         this.token = token;
@@ -38,6 +52,9 @@ public final class OpenMetadataRuntimeConfig {
                 expectedIngestionPatch == null || expectedIngestionPatch.isBlank()
                         ? DEFAULT_INGESTION_PATCH
                         : expectedIngestionPatch;
+        this.defaultDomainFqn = defaultDomainFqn == null || defaultDomainFqn.isBlank()
+                ? null
+                : defaultDomainFqn.trim();
         this.configVersion = configVersion;
     }
 
@@ -100,6 +117,10 @@ public final class OpenMetadataRuntimeConfig {
 
     public String getExpectedIngestionPatch() {
         return expectedIngestionPatch;
+    }
+
+    public String getDefaultDomainFqn() {
+        return defaultDomainFqn;
     }
 
     public long getConfigVersion() {
