@@ -3,10 +3,13 @@ package org.apache.seatunnel.web.engine.client.rest;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.engine.client.exceptions.SeaTunnelClientException;
 import org.apache.seatunnel.web.engine.client.modal.SeaTunnelClientAuth;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -15,10 +18,20 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 @Service
@@ -29,22 +42,56 @@ public class SeaTunnelRestClient {
 
     private final RestTemplate restTemplate;
     private final RestTemplate jobSubmitRestTemplate;
+    private final RestTemplate noRedirectRestTemplate;
     private final SeaTunnelClientResolver seatunnelClientResolver;
+
+    /** Validated Engine metadata for one node-local job log file. */
+    public record NodeLogFile(String node, String logLink, String logName) {
+    }
 
     @Autowired
     public SeaTunnelRestClient(@Qualifier("seaTunnelRestTemplate") RestTemplate restTemplate,
                                @Qualifier("seaTunnelJobSubmitRestTemplate") RestTemplate jobSubmitRestTemplate,
-                               SeaTunnelClientResolver seatunnelClientResolver) {
+                               SeaTunnelClientResolver seatunnelClientResolver,
+                               SeaTunnelClientProperties properties) {
+        this(restTemplate, jobSubmitRestTemplate, seatunnelClientResolver,
+                createNoRedirectRestTemplate(properties));
+    }
+
+    private SeaTunnelRestClient(RestTemplate restTemplate,
+                                RestTemplate jobSubmitRestTemplate,
+                                SeaTunnelClientResolver seatunnelClientResolver,
+                                RestTemplate noRedirectRestTemplate) {
         this.restTemplate = restTemplate;
         this.jobSubmitRestTemplate = jobSubmitRestTemplate;
         this.seatunnelClientResolver = seatunnelClientResolver;
+        this.noRedirectRestTemplate = noRedirectRestTemplate;
     }
 
     public SeaTunnelRestClient(RestTemplate restTemplate,
                                SeaTunnelClientResolver seatunnelClientResolver) {
-        this.restTemplate = restTemplate;
-        this.jobSubmitRestTemplate = restTemplate;
-        this.seatunnelClientResolver = seatunnelClientResolver;
+        this(restTemplate, restTemplate, seatunnelClientResolver,
+                createNoRedirectRestTemplate(new SeaTunnelClientProperties()));
+    }
+
+    public SeaTunnelRestClient(RestTemplate restTemplate,
+                               RestTemplate jobSubmitRestTemplate,
+                               SeaTunnelClientResolver seatunnelClientResolver) {
+        this(restTemplate, jobSubmitRestTemplate, seatunnelClientResolver,
+                createNoRedirectRestTemplate(new SeaTunnelClientProperties()));
+    }
+
+    private static RestTemplate createNoRedirectRestTemplate(SeaTunnelClientProperties properties) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory() {
+            @Override
+            protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
+                super.prepareConnection(connection, httpMethod);
+                connection.setInstanceFollowRedirects(false);
+            }
+        };
+        factory.setConnectTimeout(properties.getConnectTimeoutMs());
+        factory.setReadTimeout(properties.getReadTimeoutMs());
+        return new RestTemplate(factory);
     }
 
     /* ===================== URL ===================== */
@@ -443,6 +490,217 @@ public class SeaTunnelRestClient {
                 String.class,
                 "GET /logs/{fileName} failed"
         );
+    }
+
+    /**
+     * Lists the per-node Engine log files for a job. The Engine supplies absolute log links;
+     * each link is validated against its node authority and the configured REST context path
+     * before it can be used by {@link #writeJobLogFile(Long, String, NodeLogFile, OutputStream)}.
+     */
+    public List<NodeLogFile> jobLogFiles(Long clientId, String engineJobId) {
+        requireClientId(clientId);
+        String safeJobId = requireSafeJobId(engineJobId);
+        String fileName = "job-" + safeJobId + ".log";
+        String encodedJobId = UriUtils.encodePathSegment(safeJobId, StandardCharsets.UTF_8);
+        String requestUrl = UriComponentsBuilder.fromHttpUrl(url(clientId, "/logs/" + encodedJobId))
+                .queryParam("format", "json")
+                .build(true)
+                .toUriString();
+
+        ResponseEntity<List> response = noRedirectRestTemplate.exchange(
+                requestUrl,
+                HttpMethod.GET,
+                new HttpEntity<>(getHeaders(clientId)),
+                List.class
+        );
+        List<?> metadata = response.getBody();
+        if (metadata == null || metadata.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (metadata.size() > 256) {
+            throw new IllegalArgumentException("Engine returned too many job log nodes");
+        }
+
+        Set<String> registeredNodeHosts = registeredNodeHosts(clientId);
+        Map<String, NodeLogFile> uniqueFiles = new LinkedHashMap<>();
+        for (Object item : metadata) {
+            if (!(item instanceof Map<?, ?> fields)) {
+                throw new IllegalArgumentException("Engine returned invalid job log node metadata");
+            }
+            String node = stringField(fields, "node");
+            String logLink = stringField(fields, "logLink");
+            String logName = stringField(fields, "logName");
+            NodeLogFile file = validateNodeLogFile(
+                    clientId, safeJobId, node, logLink, logName, registeredNodeHosts);
+            NodeLogFile previous = uniqueFiles.putIfAbsent(file.node(), file);
+            if (previous != null && !previous.equals(file)) {
+                throw new IllegalArgumentException("Engine returned conflicting job log metadata for a node");
+            }
+        }
+        return List.copyOf(uniqueFiles.values());
+    }
+
+    /** Streams one already-listed node log without buffering it as a String or following redirects. */
+    public long writeJobLogFile(Long clientId,
+                                String engineJobId,
+                                NodeLogFile file,
+                                OutputStream output) {
+        requireClientId(clientId);
+        if (output == null) {
+            throw new IllegalArgumentException("output cannot be empty");
+        }
+        // jobLogFiles already checked this node against the Engine's membership array;
+        // recheck the immutable authority and path here without another topology request.
+        NodeLogFile validated = validateNodeLogFile(
+                clientId,
+                requireSafeJobId(engineJobId),
+                file == null ? null : file.node(),
+                file == null ? null : file.logLink(),
+                file == null ? null : file.logName(),
+                null
+        );
+        return streamNoRedirect(clientId, validated.logLink(), output, "GET Engine node job log failed");
+    }
+
+    /** Streams the configured Engine endpoint's log file, used when node links are unreachable. */
+    public long writeMasterJobLogFile(Long clientId, String engineJobId, OutputStream output) {
+        requireClientId(clientId);
+        if (output == null) {
+            throw new IllegalArgumentException("output cannot be empty");
+        }
+        String fileName = "job-" + requireSafeJobId(engineJobId) + ".log";
+        String encodedFileName = UriUtils.encodePathSegment(fileName, StandardCharsets.UTF_8);
+        String requestUrl = UriComponentsBuilder.fromHttpUrl(url(clientId, "/logs/" + encodedFileName))
+                .build(true)
+                .toUriString();
+        return streamNoRedirect(clientId, requestUrl, output, "GET configured Engine job log fallback failed");
+    }
+
+    private long streamNoRedirect(Long clientId, String requestUrl, OutputStream output, String errorMessage) {
+        try {
+            Long copied = noRedirectRestTemplate.execute(
+                    requestUrl,
+                    HttpMethod.GET,
+                    request -> request.getHeaders().putAll(logHeaders(clientId)),
+                    response -> {
+                        try (InputStream input = response.getBody()) {
+                            return input.transferTo(output);
+                        }
+                    }
+            );
+            return copied == null ? 0L : copied;
+        } catch (Exception e) {
+            throw wrap(e, errorMessage);
+        }
+    }
+
+    private NodeLogFile validateNodeLogFile(Long clientId,
+                                            String engineJobId,
+                                            String node,
+                                            String logLink,
+                                            String logName,
+                                            Set<String> registeredNodeHosts) {
+        String expectedFileName = "job-" + engineJobId + ".log";
+        if (isBlank(node) || isBlank(logLink) || !expectedFileName.equals(logName)) {
+            throw new IllegalArgumentException("Engine returned incomplete job log node metadata");
+        }
+
+        URI baseUri = URI.create(url(clientId, ""));
+        URI nodeUri;
+        URI linkUri;
+        try {
+            nodeUri = URI.create(baseUri.getScheme() + "://" + node.trim());
+            linkUri = URI.create(logLink.trim());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Engine returned malformed job log node metadata", e);
+        }
+
+        String expectedPath = configuredContextPath(baseUri) + "/logs/"
+                + UriUtils.encodePathSegment(expectedFileName, StandardCharsets.UTF_8);
+        if (nodeUri.getHost() == null
+                || nodeUri.getUserInfo() != null
+                || nodeUri.getPort() < 1
+                || (registeredNodeHosts != null
+                        && !registeredNodeHosts.contains(nodeUri.getHost().toLowerCase(Locale.ROOT)))
+                || nodeUri.getRawPath() != null && !nodeUri.getRawPath().isEmpty()
+                || nodeUri.getRawQuery() != null
+                || nodeUri.getRawFragment() != null
+                || !linkUri.isAbsolute()
+                || !StringUtils.equalsIgnoreCase(baseUri.getScheme(), linkUri.getScheme())
+                || linkUri.getUserInfo() != null
+                || linkUri.getHost() == null
+                || !StringUtils.equalsIgnoreCase(nodeUri.getHost(), linkUri.getHost())
+                || nodeUri.getPort() != linkUri.getPort()
+                || !expectedPath.equals(linkUri.getRawPath())
+                || linkUri.getRawQuery() != null
+                || linkUri.getRawFragment() != null) {
+            throw new IllegalArgumentException("Engine returned untrusted job log node metadata");
+        }
+        return new NodeLogFile(node.trim(), linkUri.toString(), logName);
+    }
+
+    /**
+     * SeaTunnel reports cluster membership with its Hazelcast port (5801 by default),
+     * while job log links use the REST port (8080); membership is therefore matched by host.
+     */
+    private Set<String> registeredNodeHosts(Long clientId) {
+        String requestUrl = url(clientId, "/system-monitoring-information");
+        ResponseEntity<List> response = noRedirectRestTemplate.exchange(
+                requestUrl,
+                HttpMethod.GET,
+                new HttpEntity<>(getHeaders(clientId)),
+                List.class
+        );
+        List<?> nodes = response.getBody();
+        if (nodes == null || nodes.isEmpty() || nodes.size() > 256) {
+            throw new IllegalArgumentException("Engine returned invalid cluster node metadata");
+        }
+
+        Set<String> hosts = new LinkedHashSet<>();
+        for (Object node : nodes) {
+            if (!(node instanceof Map<?, ?> fields)) {
+                throw new IllegalArgumentException("Engine returned invalid cluster node metadata");
+            }
+            String host = stringField(fields, "host");
+            if (isBlank(host)) {
+                throw new IllegalArgumentException("Engine returned a cluster node without a host");
+            }
+            hosts.add(host.toLowerCase(Locale.ROOT));
+        }
+        return hosts;
+    }
+
+    private String configuredContextPath(URI baseUri) {
+        String rawPath = baseUri.getRawPath();
+        if (rawPath == null || rawPath.isEmpty() || "/".equals(rawPath)) {
+            return "";
+        }
+        return rawPath.endsWith("/") ? rawPath.substring(0, rawPath.length() - 1) : rawPath;
+    }
+
+    private String stringField(Map<?, ?> fields, String name) {
+        Object value = fields.get(name);
+        return value == null ? null : String.valueOf(value).trim();
+    }
+
+    private String requireSafeJobId(String engineJobId) {
+        if (engineJobId == null || !engineJobId.matches("[A-Za-z0-9_-]+")) {
+            throw new IllegalArgumentException("engineJobId must be an identifier");
+        }
+        return engineJobId;
+    }
+
+    private void requireClientId(Long clientId) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("clientId cannot be empty");
+        }
+    }
+
+    private HttpHeaders logHeaders(Long clientId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.TEXT_PLAIN, MediaType.APPLICATION_OCTET_STREAM));
+        applyBasicAuth(clientId, headers);
+        return headers;
     }
 
     public String metrics(Long clientId, boolean openMetrics) {

@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [summaryData, setSummaryData] = useState<SummaryData>({
     totalRecords: 0,
     totalBytes: 0,
+    definitionCount: 0,
     totalTasks: 0,
     successTasks: 0,
     failedTasks: 0,

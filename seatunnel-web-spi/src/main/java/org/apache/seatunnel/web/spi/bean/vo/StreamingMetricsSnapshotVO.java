@@ -37,6 +37,9 @@ public class StreamingMetricsSnapshotVO {
 
     private BigDecimal writeBps;
 
+    /** Distinguishes a missing current snapshot from measured zero counters. */
+    private Boolean metricsAvailable;
+
     private Long intermediateQueueSize;
 
     private List<StreamingTableMetricsVO> tableMetrics = Collections.emptyList();

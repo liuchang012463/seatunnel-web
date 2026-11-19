@@ -131,16 +131,73 @@ public interface StreamingJobMetricsMapper extends BaseMapper<StreamingJobMetric
                   ON current_metric.job_instance_id = range_instance.job_instance_id
                 LEFT JOIN range_delays range_delay
                   ON range_delay.job_instance_id = range_instance.job_instance_id
+            ),
+            execution_tasks AS (
+                SELECT instance.id AS job_instance_id,
+                       instance.job_status AS job_status
+                FROM t_seatunnel_web_streaming_job_instance instance
+                WHERE COALESCE(instance.start_time, instance.submit_time, instance.create_time)
+                          >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                  AND COALESCE(instance.start_time, instance.submit_time, instance.create_time)
+                          <= FROM_UNIXTIME(#{endTimeMs} / 1000)
+                UNION ALL
+                SELECT instance.id AS job_instance_id,
+                       instance.job_status AS job_status
+                FROM t_seatunnel_web_job_instance instance
+                JOIN t_seatunnel_web_job_definition definition
+                  ON definition.id = instance.job_definition_id
+                WHERE COALESCE(instance.start_time, instance.submit_time, instance.create_time)
+                          >= FROM_UNIXTIME(#{startTimeMs} / 1000)
+                  AND COALESCE(instance.start_time, instance.submit_time, instance.create_time)
+                          <= FROM_UNIXTIME(#{endTimeMs} / 1000)
+                  AND CASE
+                          WHEN definition.task_type IS NOT NULL THEN definition.task_type
+                          WHEN UPPER(COALESCE(definition.job_type, '')) = 'STREAMING' THEN 'STREAM'
+                          WHEN UPPER(COALESCE(definition.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
+                          WHEN UPPER(COALESCE(definition.source_type, '')) IN
+                               ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE') THEN 'FILE_INGEST'
+                          ELSE 'BATCH'
+                      END = 'STREAM'
+            ),
+            execution_summary AS (
+                SELECT COUNT(1) AS totalTasks,
+                       COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks,
+                       COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks,
+                       COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks,
+                       COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
+                FROM execution_tasks
+            ),
+            definition_summary AS (
+                SELECT (SELECT COUNT(1) FROM t_seatunnel_web_streaming_job_definition)
+                       + (SELECT COUNT(1)
+                            FROM t_seatunnel_web_job_definition definition
+                           WHERE CASE
+                                     WHEN definition.task_type IS NOT NULL THEN definition.task_type
+                                     WHEN UPPER(COALESCE(definition.job_type, '')) = 'STREAMING' THEN 'STREAM'
+                                     WHEN UPPER(COALESCE(definition.mode, '')) = 'FILE_SYNC' THEN 'FILE_TRANSFER'
+                                     WHEN UPPER(COALESCE(definition.source_type, '')) IN
+                                          ('WEB_UPLOAD', 'FILE_RESOURCE', 'LOCAL_FILE') THEN 'FILE_INGEST'
+                                     ELSE 'BATCH'
+                                 END = 'STREAM') AS definitionCount
+            ),
+            metrics_summary AS (
+                SELECT COALESCE(SUM(CASE WHEN is_in_range = 1 THEN records_delta ELSE 0 END), 0) AS totalRecords,
+                       COALESCE(SUM(CASE WHEN is_in_range = 1 THEN bytes_delta ELSE 0 END), 0) AS totalBytes,
+                       COALESCE((SELECT AVG(record_delay) FROM task_summary), 0) AS avgRecordDelay
+                FROM sample_deltas
             )
-            SELECT COALESCE((SELECT SUM(records_delta) FROM sample_deltas WHERE is_in_range = 1), 0) AS totalRecords,
-                   COALESCE((SELECT SUM(bytes_delta) FROM sample_deltas WHERE is_in_range = 1), 0) AS totalBytes,
-                   COUNT(1) AS totalTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks,
-                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks,
-                   COALESCE(AVG(record_delay), 0) AS avgRecordDelay
-            FROM task_summary
+            SELECT metrics_summary.totalRecords,
+                   metrics_summary.totalBytes,
+                   execution_summary.totalTasks,
+                   execution_summary.successTasks,
+                   execution_summary.failedTasks,
+                   execution_summary.runningTasks,
+                   execution_summary.stoppedTasks,
+                   definition_summary.definitionCount,
+                   metrics_summary.avgRecordDelay
+            FROM metrics_summary
+            CROSS JOIN execution_summary
+            CROSS JOIN definition_summary
             """)
     Map<String, Object> selectOverviewSummary(@Param("startTimeMs") long startTimeMs,
                                               @Param("endTimeMs") long endTimeMs);

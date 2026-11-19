@@ -516,6 +516,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         open={logOpen}
         jobMode="BATCH"
         instanceId={record?.instanceId}
+        instanceStatus={record?.jobStatus || record?.lastJobStatus}
         onClose={() => setLogOpen(false)}
         title="运行日志"
         subtitle={

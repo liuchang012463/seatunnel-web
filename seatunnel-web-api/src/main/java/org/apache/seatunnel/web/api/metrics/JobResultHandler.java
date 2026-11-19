@@ -177,7 +177,7 @@ public class JobResultHandler {
         }
 
         try {
-            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
+            jobLogService.persistFinalEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
         } catch (Exception e) {
             log.warn("Persist complete batch Engine log failed, instanceId={}", jobInstanceId, e);
         }
@@ -265,7 +265,7 @@ public class JobResultHandler {
         }
 
         try {
-            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
+            jobLogService.persistFinalEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.BATCH);
         } catch (Exception e) {
             log.warn("Persist complete batch Engine log in recovery failed, instanceId={}", jobInstanceId, e);
         }

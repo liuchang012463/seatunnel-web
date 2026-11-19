@@ -99,13 +99,13 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
                 "sinkWriteQPS",
                 "sinkWriteQps"));
 
-        item.setReadBytes(getLong(block,
+        item.setReadBytes(getNullableLong(block,
                 "readBytes",
                 "ReadBytes",
                 "SourceReceivedBytes",
                 "sourceReceivedBytes"));
 
-        item.setWriteBytes(getLong(block,
+        item.setWriteBytes(getNullableLong(block,
                 "writeBytes",
                 "WriteBytes",
                 "SinkWriteBytes",
@@ -176,8 +176,8 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
             item.setReadQps(toDecimal(getMetricValueByTable(sourceQpsMap, pair.getSourceTable())));
             item.setWriteQps(toDecimal(getMetricValueByTable(sinkQpsMap, pair.getSinkTable())));
 
-            item.setReadBytes(toLong(getMetricValueByTable(sourceBytesMap, pair.getSourceTable())));
-            item.setWriteBytes(toLong(getMetricValueByTable(sinkBytesMap, pair.getSinkTable())));
+            item.setReadBytes(toNullableLong(getMetricValueByTable(sourceBytesMap, pair.getSourceTable())));
+            item.setWriteBytes(toNullableLong(getMetricValueByTable(sinkBytesMap, pair.getSinkTable())));
 
             item.setReadBps(toDecimal(getMetricValueByTable(sourceBpsMap, pair.getSourceTable())));
             item.setWriteBps(toDecimal(getMetricValueByTable(sinkBpsMap, pair.getSinkTable())));
@@ -417,6 +417,10 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
         return toLong(getValueIgnoreCase(map, keys));
     }
 
+    private Long getNullableLong(Map<?, ?> map, String... keys) {
+        return toNullableLong(getValueIgnoreCase(map, keys));
+    }
+
     private BigDecimal getDecimal(Map<?, ?> map, String... keys) {
         return toDecimal(getValueIgnoreCase(map, keys));
     }
@@ -439,6 +443,27 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
             return new BigDecimal(str).longValue();
         } catch (Exception e) {
             return 0L;
+        }
+    }
+
+    private Long toNullableLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+
+            String str = String.valueOf(value).trim();
+            if (str.isEmpty() || "null".equalsIgnoreCase(str)) {
+                return null;
+            }
+
+            return new BigDecimal(str).longValue();
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -500,12 +525,6 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
         if (item.getWriteQps() == null) {
             item.setWriteQps(BigDecimal.ZERO);
         }
-        if (item.getReadBytes() == null) {
-            item.setReadBytes(0L);
-        }
-        if (item.getWriteBytes() == null) {
-            item.setWriteBytes(0L);
-        }
         if (item.getReadBps() == null) {
             item.setReadBps(BigDecimal.ZERO);
         }
@@ -535,12 +554,6 @@ public class DefaultStreamingJobInfoMetricsParser implements StreamingJobInfoMet
         }
         if (item.getWriteQps() == null) {
             item.setWriteQps(BigDecimal.ZERO);
-        }
-        if (item.getReadBytes() == null) {
-            item.setReadBytes(0L);
-        }
-        if (item.getWriteBytes() == null) {
-            item.setWriteBytes(0L);
         }
         if (item.getReadBps() == null) {
             item.setReadBps(BigDecimal.ZERO);

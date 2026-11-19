@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.seatunnel.web.api.log.JobLogService;
+import org.apache.seatunnel.web.api.log.JobLogPathResolver;
 import org.apache.seatunnel.web.api.metrics.JobMetricsRateCalculator;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.support.JobInstanceFactory;
@@ -561,9 +562,7 @@ public class BatchJobInstanceServiceImpl implements BatchJobInstanceService {
      * Build log file path.
      */
     private String buildLogPath(Long id) {
-        return System.getProperty("user.dir")
-                + File.separator
-                + Paths.get(baseLogDir, "job-" + id + ".log");
+        return JobLogPathResolver.buildLogPath(baseLogDir, id, JobMode.BATCH);
     }
 
     /**

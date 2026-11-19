@@ -90,6 +90,9 @@ public class JobInstanceVO {
 
     private BigDecimal writeBps;
 
+    /** Distinguishes a missing metrics row from a measured zero value. */
+    private Boolean metricsAvailable;
+
     private Long intermediateQueueSize;
 
     private Long lagCount;

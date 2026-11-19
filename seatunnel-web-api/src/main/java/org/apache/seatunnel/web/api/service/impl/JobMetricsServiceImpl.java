@@ -242,13 +242,13 @@ public class JobMetricsServiceImpl implements JobMetricsService {
                 "SinkWriteQps",
                 "sinkWriteQPS"));
 
-        po.setReadBytes(getLong(block,
+        po.setReadBytes(getNullableLong(block,
                 "readBytes",
                 "ReadBytes",
                 "SourceReceivedBytes",
                 "sourceReceivedBytes"));
 
-        po.setWriteBytes(getLong(block,
+        po.setWriteBytes(getNullableLong(block,
                 "writeBytes",
                 "WriteBytes",
                 "SinkWriteBytes",
@@ -342,8 +342,8 @@ public class JobMetricsServiceImpl implements JobMetricsService {
             item.setReadQps(toDecimal(getMetricValueByTable(sourceQpsMap, pair.getSourceTable())));
             item.setWriteQps(toDecimal(getMetricValueByTable(sinkQpsMap, pair.getSinkTable())));
 
-            item.setReadBytes(toLong(getMetricValueByTable(sourceBytesMap, pair.getSourceTable())));
-            item.setWriteBytes(toLong(getMetricValueByTable(sinkBytesMap, pair.getSinkTable())));
+            item.setReadBytes(toNullableLong(getMetricValueByTable(sourceBytesMap, pair.getSourceTable())));
+            item.setWriteBytes(toNullableLong(getMetricValueByTable(sinkBytesMap, pair.getSinkTable())));
 
             item.setReadBps(toDecimal(getMetricValueByTable(sourceBpsMap, pair.getSourceTable())));
             item.setWriteBps(toDecimal(getMetricValueByTable(sinkBpsMap, pair.getSinkTable())));
@@ -502,8 +502,6 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         if (po.getWriteRowCount() == null) po.setWriteRowCount(0L);
         if (po.getReadQps() == null) po.setReadQps(BigDecimal.ZERO);
         if (po.getWriteQps() == null) po.setWriteQps(BigDecimal.ZERO);
-        if (po.getReadBytes() == null) po.setReadBytes(0L);
-        if (po.getWriteBytes() == null) po.setWriteBytes(0L);
         if (po.getReadBps() == null) po.setReadBps(BigDecimal.ZERO);
         if (po.getWriteBps() == null) po.setWriteBps(BigDecimal.ZERO);
         if (po.getIntermediateQueueSize() == null) po.setIntermediateQueueSize(0L);
@@ -518,8 +516,6 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         if (item.getWriteRowCount() == null) item.setWriteRowCount(0L);
         if (item.getReadQps() == null) item.setReadQps(BigDecimal.ZERO);
         if (item.getWriteQps() == null) item.setWriteQps(BigDecimal.ZERO);
-        if (item.getReadBytes() == null) item.setReadBytes(0L);
-        if (item.getWriteBytes() == null) item.setWriteBytes(0L);
         if (item.getReadBps() == null) item.setReadBps(BigDecimal.ZERO);
         if (item.getWriteBps() == null) item.setWriteBps(BigDecimal.ZERO);
         if (item.getStatus() == null) item.setStatus("UNKNOWN");
@@ -573,6 +569,9 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         dto.setTotalBytes(round2(totalBytes / bytesScale.getFactor()));
         dto.setTotalBytesUnit(bytesScale.getUnit());
 
+        // Run counts come from the authoritative instance/history tables, including runs that
+        // failed before emitting metrics; volume fields above continue to use metric snapshots.
+        dto.setDefinitionCount(toLong(row.get("definitionCount")));
         dto.setTotalTasks(toLong(row.get("totalTasks")));
         dto.setSuccessTasks(toLong(row.get("successTasks")));
         dto.setFailedTasks(toLong(row.get("failedTasks")));
@@ -786,6 +785,10 @@ public class JobMetricsServiceImpl implements JobMetricsService {
         return toLong(value);
     }
 
+    private Long getNullableLong(Map<?, ?> map, String... keys) {
+        return toNullableLong(getValueIgnoreCase(map, keys));
+    }
+
     private BigDecimal getDecimal(Map<?, ?> map, String... keys) {
         Object value = getValueIgnoreCase(map, keys);
         return toDecimal(value);
@@ -829,6 +832,27 @@ public class JobMetricsServiceImpl implements JobMetricsService {
             return new BigDecimal(str).longValue();
         } catch (Exception e) {
             return 0L;
+        }
+    }
+
+    private Long toNullableLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+
+            String str = String.valueOf(value).trim();
+            if (str.isEmpty() || "null".equalsIgnoreCase(str)) {
+                return null;
+            }
+
+            return new BigDecimal(str).longValue();
+        } catch (Exception e) {
+            return null;
         }
     }
 

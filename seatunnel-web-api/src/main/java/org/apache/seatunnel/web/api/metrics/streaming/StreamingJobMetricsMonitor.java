@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.metrics.JobFileLogger;
 import org.apache.seatunnel.web.api.metrics.JobRuntimeContext;
 import org.apache.seatunnel.web.api.metrics.streaming.model.StreamingParsedJobMetrics;
@@ -49,6 +50,9 @@ public class StreamingJobMetricsMonitor {
 
     @Resource
     private WorkflowWebSocketService webSocketService;
+
+    @Resource
+    private JobLogService jobLogService;
 
     @PostConstruct
     public void restoreRunningStreamingJobs() {
@@ -134,6 +138,9 @@ public class StreamingJobMetricsMonitor {
 
     private void pollSingle(Long instanceId, JobRuntimeContext context) {
         MonitorState state = monitorStates.computeIfAbsent(instanceId, key -> MonitorState.create());
+
+        // JobLogService paces Engine requests independently of this five-second metrics loop.
+        jobLogService.persistEngineLog(instanceId, JobMode.STREAMING);
 
         StreamingParsedJobMetrics parsed =
                 streamingJobMetricsService.getRealtimeMetricsFromEngine(

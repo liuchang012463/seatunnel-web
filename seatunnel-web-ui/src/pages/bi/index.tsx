@@ -347,7 +347,7 @@ const IngestionSituationPage: React.FC = () => {
   const successRate = completedTasks > 0 ? (totals.success / completedTasks) * 100 : null;
   const recordsDisplay = formatRecords(totals.records);
   const bytesDisplay = formatBytes(totals.bytes);
-  const maxTypeTasks = Math.max(1, ...visibleMetrics.map((item) => asNumber(item.summary.totalTasks)));
+  const maxTypeDefinitions = Math.max(1, ...visibleMetrics.map((item) => asNumber(item.summary.definitionCount)));
   const otherTasks = Math.max(totals.tasks - totals.success - totals.failed - totals.running - totals.stopped, 0);
   const selectedLabel = selectedTaskType
     ? TASK_TYPES.find((item) => item.key === selectedTaskType)?.label || '任务'
@@ -754,14 +754,18 @@ const IngestionSituationPage: React.FC = () => {
             ) : (
               <div id="system-mode-panel" className="mode-view" role="tabpanel" aria-labelledby="system-mode-tab">
                 <div className="mode-total">
-                  <span className="data-label">{rangeLabel}任务执行</span>
-                  <strong>{taskMetrics ? integerFormat.format(totals.tasks) : '—'}<span> 项</span></strong>
-                  <span className="success-tag"><CheckCircle2 size={13} />运行中 {taskMetrics ? integerFormat.format(totals.running) : '—'} 项</span>
+                  <div className="mode-total__main">
+                    <span className="data-label">{rangeLabel}执行次数</span>
+                    <strong>{taskMetrics ? integerFormat.format(totals.tasks) : '—'}<span> 次</span></strong>
+                  </div>
+                  <span className="success-tag"><CheckCircle2 size={13} />失败 {taskMetrics ? integerFormat.format(totals.failed) : '—'} 次 · 运行中 {taskMetrics ? integerFormat.format(totals.running) : '—'} 次</span>
                 </div>
                 <div className="mode-list">
                   {TASK_TYPES.map((taskType, index) => {
                     const metric = taskMetrics?.find((item) => item.key === taskType.key);
-                    const count = asNumber(metric?.summary.totalTasks);
+                    const definitionCount = asNumber(metric?.summary.definitionCount);
+                    const executionCount = asNumber(metric?.summary.totalTasks);
+                    const failedCount = asNumber(metric?.summary.failedTasks);
                     return (
                       <button
                         key={taskType.key}
@@ -772,22 +776,25 @@ const IngestionSituationPage: React.FC = () => {
                         <div>
                           <span className={'legend-dot ' + SOURCE_TONES[index % SOURCE_TONES.length]} />
                           <b>{taskType.label}</b>
-                          <small>{taskMetrics ? integerFormat.format(count) + ' 项' : '—'}</small>
+                          <small>{taskMetrics ? '任务定义 ' + integerFormat.format(definitionCount) + ' 个' : '—'}</small>
                         </div>
                         <div className="progress-track">
                           <span
                             className={SOURCE_TONES[index % SOURCE_TONES.length]}
-                            style={{ width: (taskMetrics ? (count / maxTypeTasks) * 100 : 0) + '%' }}
+                            style={{ width: (taskMetrics ? (definitionCount / maxTypeDefinitions) * 100 : 0) + '%' }}
                           />
                         </div>
-                        <strong>{metric ? integerFormat.format(metric.summary.runningTasks) : '—'}</strong>
+                        <span className="mode-row__run-counts">
+                          <b>{metric ? '执行总数 ' + integerFormat.format(executionCount) + ' 次' : '—'}</b>
+                          <small>{metric ? '失败总数 ' + integerFormat.format(failedCount) + ' 次' : ''}</small>
+                        </span>
                       </button>
                     );
                   })}
                 </div>
                 <div className="mode-callout">
                   <Gauge size={16} strokeWidth={1.8} />
-                  <span>任务概览指标按任务类型与统计时间汇总。</span>
+                  <span>任务定义数按类型统计；执行和失败次数按所选时间范围统计。</span>
                 </div>
               </div>
             )}

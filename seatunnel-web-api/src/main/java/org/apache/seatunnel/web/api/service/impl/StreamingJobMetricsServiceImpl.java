@@ -2,6 +2,7 @@ package org.apache.seatunnel.web.api.service.impl;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.metrics.JobMetricsRateCalculator;
 import org.apache.seatunnel.web.api.metrics.fetch.EngineJobInfo;
 import org.apache.seatunnel.web.api.metrics.fetch.EngineMetricsFetchService;
 import org.apache.seatunnel.web.api.metrics.streaming.model.StreamingParsedJobMetrics;
@@ -12,10 +13,12 @@ import org.apache.seatunnel.web.api.service.StreamingJobMetricsService;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetrics;
 import org.apache.seatunnel.web.dao.entity.StreamingJobMetricsCurrent;
+import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
 import org.apache.seatunnel.web.dao.entity.StreamingJobTableMetricsCurrent;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsCurrentDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobMetricsDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobTableMetricsCurrentDao;
+import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingMetricsSnapshotVO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingMetricsTrendItemVO;
 import org.apache.seatunnel.web.spi.bean.vo.StreamingMetricsTrendVO;
@@ -86,6 +89,9 @@ public class StreamingJobMetricsServiceImpl implements StreamingJobMetricsServic
      */
     @Resource
     private StreamingJobTableMetricsCurrentDao streamingJobTableMetricsCurrentDao;
+
+    @Resource
+    private StreamingJobInstanceDao streamingJobInstanceDao;
 
     /**
      * 趋势历史采样间隔。
@@ -191,6 +197,7 @@ public class StreamingJobMetricsServiceImpl implements StreamingJobMetricsServic
                 streamingJobTableMetricsCurrentDao.selectByInstanceId(instanceId);
 
         StreamingMetricsSnapshotVO vo = new StreamingMetricsSnapshotVO();
+        vo.setMetricsAvailable(latest != null);
 
         if (latest != null) {
             vo.setCollectTimeMs(latest.getLastCollectTimeMs());
@@ -223,7 +230,51 @@ public class StreamingJobMetricsServiceImpl implements StreamingJobMetricsServic
         }
 
         vo.setTableMetrics(toCurrentTableVOList(tableMetrics));
+        if (latest != null) {
+            applyTerminalAverageRates(vo, streamingJobInstanceDao.queryById(instanceId));
+        }
         return vo;
+    }
+
+    private void applyTerminalAverageRates(StreamingMetricsSnapshotVO metrics, StreamingJobInstance instance) {
+        if (metrics == null || instance == null || instance.getJobStatus() == null
+                || !isTerminalJobStatus(instance.getJobStatus().name())) {
+            return;
+        }
+
+        Date start = instance.getStartTime() != null ? instance.getStartTime()
+                : instance.getSubmitTime() != null ? instance.getSubmitTime() : instance.getCreateTime();
+        long endTimeMs = instance.getEndTime() == null
+                ? (metrics.getCollectTimeMs() == null ? 0L : metrics.getCollectTimeMs())
+                : instance.getEndTime().getTime();
+        if (start == null || endTimeMs <= start.getTime()) {
+            return;
+        }
+
+        long runtimeMillis = endTimeMs - start.getTime();
+        // Byte counters are stored as zero when an Engine payload omits them. A zero counter
+        // must not erase a valid Engine-provided rate in that case.
+        if (metrics.getReadBytes() != null && metrics.getReadBytes() > 0L) {
+            metrics.setReadBps(JobMetricsRateCalculator.calculateAverageBps(metrics.getReadBytes(), runtimeMillis));
+        }
+        if (metrics.getWriteBytes() != null && metrics.getWriteBytes() > 0L) {
+            metrics.setWriteBps(JobMetricsRateCalculator.calculateAverageBps(metrics.getWriteBytes(), runtimeMillis));
+        }
+        for (StreamingTableMetricsVO table : metrics.getTableMetrics()) {
+            if (table != null && table.getReadBytes() != null && table.getReadBytes() > 0L) {
+                table.setReadBps(JobMetricsRateCalculator.calculateAverageBps(table.getReadBytes(), runtimeMillis));
+            }
+            if (table != null && table.getWriteBytes() != null && table.getWriteBytes() > 0L) {
+                table.setWriteBps(JobMetricsRateCalculator.calculateAverageBps(table.getWriteBytes(), runtimeMillis));
+            }
+        }
+    }
+
+    private boolean isTerminalJobStatus(String status) {
+        return switch (status.toUpperCase()) {
+            case "FINISHED", "SUCCESS", "FAILED", "CANCELED", "CANCELLED", "STOPPED", "SAVEPOINT_DONE", "UNKNOWABLE" -> true;
+            default -> false;
+        };
     }
 
     @Override

@@ -6,6 +6,7 @@ import { fetchChartData, fetchSummaryData } from './api';
 type Summary = {
   totalRecords: number;
   totalBytes: number;
+  definitionCount: number;
   totalTasks: number;
   successTasks: number;
   failedTasks: number;
@@ -69,6 +70,7 @@ const deferred = <T,>() => {
 const summary = (totalRecords: number): Summary => ({
   totalRecords,
   totalBytes: totalRecords,
+  definitionCount: 1,
   totalTasks: 1,
   successTasks: 0,
   failedTasks: 0,

@@ -1143,6 +1143,7 @@ const RealtimeSyncPage: React.FC = () => {
         open={logOpen}
         jobMode="STREAMING"
         instanceId={logRecord?.instanceId}
+        instanceStatus={logRecord?.lastJobStatus}
         onClose={() => {
           setLogOpen(false);
           setLogRecord(null);

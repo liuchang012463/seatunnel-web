@@ -1,3 +1,4 @@
+import React from "react";
 import { useIntl } from "@umijs/max";
 
 interface ExecutionStatusProps {
@@ -29,6 +30,16 @@ const formatBytes = (bytes?: number | string | null) => {
   }
 
   return `${size.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2)} ${units[unitIndex]}`;
+};
+
+const formatBytesPerSecond = (bps: any, bytes: any, runtimeMillis: number, terminal: boolean) => {
+  const byteCount = bytes === undefined || bytes === null ? Number.NaN : Number(bytes);
+  // Missing Engine byte counters are persisted as zero; keep its rate when no positive total exists.
+  const averageBps = terminal && runtimeMillis > 0 && Number.isFinite(byteCount) && byteCount > 0
+    ? (byteCount * 1000) / runtimeMillis
+    : undefined;
+  const value = averageBps ?? (bps === undefined || bps === null ? undefined : Number(bps));
+  return value === undefined || !Number.isFinite(value) ? "-" : `${(value / 1_000_000).toFixed(2)} MB/s`;
 };
 
 const formatDuration = (seconds: number) => {
@@ -88,6 +99,13 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const latestMetrics = record?.latestMetrics || {};
 
   const durationSeconds = getDurationSeconds(record);
+  const terminal = ["FINISHED", "SUCCESS", "FAILED", "CANCELED", "CANCELLED", "STOPPED", "SAVEPOINT_DONE", "UNKNOWABLE"]
+    .includes(String(record?.jobStatus || latestMetrics?.jobStatus || "").toUpperCase());
+  const startTime = parseTime(record?.lastStartTime || record?.startTime || record?.lastSubmitTime || record?.submitTime);
+  const endTime = parseTime(record?.lastEndTime || record?.endTime);
+  const runtimeMillis = startTime !== undefined && endTime !== undefined && endTime > startTime
+    ? endTime - startTime
+    : 0;
 
   const readRowCount =
     latestMetrics?.readRowCount ?? record?.readRowCount ?? record?.amount ?? 0;
@@ -99,8 +117,11 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
 
   const writeQps = latestMetrics?.writeQps ?? record?.writeQps ?? undefined;
 
-  const readBytes = latestMetrics?.readBytes ?? record?.readBytes;
-  const writeBytes = latestMetrics?.writeBytes ?? record?.writeBytes;
+  const hasMetrics = latestMetrics?.metricsAvailable !== false;
+  const readBytes = hasMetrics ? latestMetrics?.readBytes ?? record?.readBytes : undefined;
+  const writeBytes = hasMetrics ? latestMetrics?.writeBytes ?? record?.writeBytes : undefined;
+  const readBps = hasMetrics ? latestMetrics?.readBps ?? record?.readBps : undefined;
+  const writeBps = hasMetrics ? latestMetrics?.writeBps ?? record?.writeBps : undefined;
 
   return (
     <div className="space-y-0.5">
@@ -151,6 +172,11 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
             </span>
           )
         }
+      />
+
+      <MetricRow
+        label="读/写 MB/s:"
+        value={`R ${formatBytesPerSecond(readBps, readBytes, runtimeMillis, terminal)} / W ${formatBytesPerSecond(writeBps, writeBytes, runtimeMillis, terminal)}`}
       />
 
       <MetricRow

@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metrics;
 import jakarta.annotation.Resource;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.api.modal.ParsedJobMetrics;
 import org.apache.seatunnel.web.api.service.BatchJobInstanceService;
 import org.apache.seatunnel.web.api.service.JobMetricsService;
@@ -10,6 +11,7 @@ import org.apache.seatunnel.web.api.websocket.WorkflowWebSocketService;
 import org.apache.seatunnel.web.common.utils.CodeGenerateUtils;
 import org.apache.seatunnel.web.dao.entity.JobMetrics;
 import org.apache.seatunnel.web.dao.entity.JobTableMetrics;
+import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -98,6 +100,9 @@ public class JobMetricsMonitor {
 
     @Resource
     private WorkflowWebSocketService webSocketService;
+
+    @Resource
+    private JobLogService jobLogService;
 
     public void register(JobRuntimeContext context) {
         Long instanceId = context.getInstanceId();
@@ -214,11 +219,11 @@ public class JobMetricsMonitor {
             }
 
             long runtimeMillis = instance.getEndTime().getTime() - instance.getStartTime().getTime();
-            JobMetricsRateCalculator.applyAverageQps(parsed, runtimeMillis);
+            JobMetricsRateCalculator.applyAverageRates(parsed, runtimeMillis);
         } catch (Exception e) {
             // Keep the Engine snapshot if runtime timestamps are unavailable; metrics finalization
-            // must continue even when the optional average-QPS calculation cannot be performed.
-            log.debug("Could not calculate average QPS from job runtime, instanceId={}", instanceId, e);
+            // must continue even when optional average-throughput calculation cannot be performed.
+            log.debug("Could not calculate average throughput from job runtime, instanceId={}", instanceId, e);
         }
     }
 
@@ -265,6 +270,10 @@ public class JobMetricsMonitor {
             handleMonitorTimeout(instanceId, context, state);
             return;
         }
+
+        // JobLogService enforces a 30-second per-instance retry interval, so the
+        // two-second metrics loop does not translate into a request on every poll.
+        jobLogService.persistEngineLog(instanceId, JobMode.BATCH);
 
         ParsedJobMetrics parsed = metricsService.getJobMetricsFromEngine(
                 context.getClientId(),

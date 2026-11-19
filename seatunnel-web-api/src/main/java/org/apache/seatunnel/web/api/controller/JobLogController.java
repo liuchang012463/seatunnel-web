@@ -6,12 +6,14 @@ import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.log.JobLogSearchResult;
 import org.apache.seatunnel.web.api.log.JobLogAnalysisResult;
 import org.apache.seatunnel.web.api.log.JobLogReplayResult;
 import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisResult;
 import org.apache.seatunnel.web.api.log.JobLogFaultDiagnosisService;
 import org.apache.seatunnel.web.api.log.JobLogDiagnosisStreamEvent;
+import org.apache.seatunnel.web.api.log.JobLogTailResult;
 import org.apache.seatunnel.web.api.log.JobLogService;
 import org.apache.seatunnel.web.common.enums.JobMode;
 import org.apache.seatunnel.web.core.exceptions.ServiceException;
@@ -37,6 +39,35 @@ public class JobLogController {
 
     @Resource
     private JobLogFaultDiagnosisService jobLogFaultDiagnosisService;
+
+    @Resource
+    private CurrentUserProvider currentUserProvider;
+
+    @GetMapping("/{jobMode}/{instanceId}/tail")
+    @Operation(summary = "tailJobInstanceLog", description = "按字节游标读取有界任务日志页")
+    public Result<JobLogTailResult> tail(
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId,
+            @RequestParam(value = "afterCursor", required = false) Long afterCursor,
+            @RequestParam(value = "beforeCursor", required = false) Long beforeCursor) {
+        currentUserProvider.requireCurrentUser();
+        return Result.buildSuc(jobLogService.tail(
+                instanceId, parseMode(jobMode), afterCursor, beforeCursor));
+    }
+
+    @GetMapping("/{jobMode}/{instanceId}/download")
+    @Operation(summary = "downloadJobInstanceLog", description = "下载任务完整日志")
+    public void download(
+            @PathVariable("jobMode") String jobMode,
+            @PathVariable("instanceId") Long instanceId,
+            HttpServletResponse response) throws java.io.IOException {
+        currentUserProvider.requireCurrentUser();
+        JobMode mode = parseMode(jobMode);
+        response.setContentType("text/plain;charset=UTF-8");
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"job-" + instanceId + ".log\"");
+        jobLogService.writeFullContent(instanceId, mode, response.getOutputStream());
+    }
 
     @GetMapping("/{jobMode}/{instanceId}/search")
     @Operation(summary = "searchJobInstanceLog", description = "按条件检索任务完整日志")

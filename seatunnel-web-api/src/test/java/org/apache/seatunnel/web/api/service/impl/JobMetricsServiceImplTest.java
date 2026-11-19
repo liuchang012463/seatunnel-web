@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -73,6 +74,23 @@ class JobMetricsServiceImplTest {
     }
 
     @Test
+    void preservesEngineRatesWhenCumulativeByteCountersAreOmitted() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("readBps", 1_234.5d);
+        metrics.put("writeBps", 987.6d);
+        when(engineRestClient.jobInfo(7L, "engine-job-bytes-missing"))
+                .thenReturn(Map.of("metrics", metrics));
+
+        ParsedJobMetrics parsed = service.getJobMetricsFromEngine(7L, "engine-job-bytes-missing");
+
+        JobMetrics pipeline = parsed.getPipelineMetrics().get(0);
+        assertNull(pipeline.getReadBytes());
+        assertNull(pipeline.getWriteBytes());
+        assertEquals(0, new BigDecimal("1234.5").compareTo(pipeline.getReadBps()));
+        assertEquals(0, new BigDecimal("987.6").compareTo(pipeline.getWriteBps()));
+    }
+
+    @Test
     void doesNotAttributeAmbiguousTableMetricSuffixes() {
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("TableSourceReceivedCount", Map.of(
@@ -99,6 +117,7 @@ class JobMetricsServiceImplTest {
 
         OverviewSummaryVO result = service.summary(TimeRange.D7, "BATCH");
 
+        assertEquals(5, result.getDefinitionCount());
         assertEquals(3, result.getTotalTasks());
         assertEquals(1, result.getSuccessTasks());
         assertEquals(1, result.getFailedTasks());
@@ -202,6 +221,7 @@ class JobMetricsServiceImplTest {
         Map<String, Object> row = new HashMap<>();
         row.put("totalRecords", 350L);
         row.put("totalBytes", 8192L);
+        row.put("definitionCount", 5L);
         row.put("totalTasks", 3L);
         row.put("successTasks", 1L);
         row.put("failedTasks", 1L);

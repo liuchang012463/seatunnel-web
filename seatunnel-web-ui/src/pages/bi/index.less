@@ -360,16 +360,19 @@
 .bi-dashboard .system-volume b { color: var(--text-main); font: 400 18px/1 var(--font-num); }
 .bi-dashboard .system-volume small { color: currentColor; font: 400 13px var(--font-num); }
 
-.bi-dashboard .mode-total { display: grid; grid-template-columns: 1fr auto; align-items: end; padding: 12px 0; border-bottom: 1px solid rgba(43, 76, 114, 0.35); }
+.bi-dashboard .mode-total { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(43, 76, 114, 0.35); }
+.bi-dashboard .mode-total__main { display: grid; gap: 6px; }
 .bi-dashboard .mode-total strong { color: var(--text-main); font: 400 36px/0.9 var(--font-num); }
 .bi-dashboard .mode-total strong span { color: var(--text-sub); font: 400 14px var(--font-cn); }
 .bi-dashboard .success-tag { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; color: var(--green); font: 400 14px var(--font-num); }
 .bi-dashboard .mode-list { padding-top: 4px; }
-.bi-dashboard .mode-row { display: grid; grid-template-columns: 1fr 1fr 44px; align-items: center; gap: 8px; margin: 13px 0; }
+.bi-dashboard .mode-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(56px, 0.55fr) minmax(120px, auto); align-items: center; gap: 8px; margin: 13px 0; }
 .bi-dashboard .mode-row > div:first-child { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .bi-dashboard .mode-row b { color: var(--text-sub); font-size: 14px; }
 .bi-dashboard .mode-row small { margin-left: 3px; color: var(--muted); font: 400 14px var(--font-num); }
-.bi-dashboard .mode-row > strong { color: var(--text); font: 400 20px var(--font-num); text-align: right; }
+.bi-dashboard .mode-row__run-counts { display: grid; justify-items: end; gap: 2px; min-width: 0; white-space: nowrap; text-align: right; }
+.bi-dashboard .mode-row__run-counts b { color: var(--text); font: 400 14px var(--font-cn); }
+.bi-dashboard .mode-row__run-counts small { margin: 0; color: var(--red); font: 400 14px var(--font-cn); }
 .bi-dashboard .mode-callout { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 9px 8px; color: var(--text-sub); font-size: 14px; line-height: 1.5; border: 1px solid rgba(43, 76, 114, 0.45); background: rgba(26, 51, 80, 0.22); }
 .bi-dashboard .mode-callout svg { flex: 0 0 auto; color: var(--text-main); }
 

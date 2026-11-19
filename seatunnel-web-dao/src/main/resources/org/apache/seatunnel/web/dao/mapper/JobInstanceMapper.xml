@@ -48,6 +48,7 @@
         <result property="writeBytes" column="writeBytes"/>
         <result property="readBps" column="readBps"/>
         <result property="writeBps" column="writeBps"/>
+        <result property="metricsAvailable" column="metricsAvailable"/>
         <result property="intermediateQueueSize" column="intermediateQueueSize"/>
         <result property="lagCount" column="lagCount"/>
         <result property="lossRate" column="lossRate"/>
@@ -107,6 +108,7 @@
         IFNULL(m.write_bytes, 0) AS writeBytes,
         IFNULL(m.read_bps, 0) AS readBps,
         IFNULL(m.write_bps, 0) AS writeBps,
+        (m.job_instance_id IS NOT NULL) AS metricsAvailable,
         IFNULL(m.intermediate_queue_size, 0) AS intermediateQueueSize,
         IFNULL(m.lag_count, 0) AS lagCount,
         IFNULL(m.loss_rate, 0) AS lossRate,

@@ -27,6 +27,7 @@ export interface ApiChartData {
 export interface SummaryData {
   totalRecords: number;
   totalBytes: number;
+  definitionCount: number;
   totalTasks: number;
   successTasks: number;
   failedTasks: number;

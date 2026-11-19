@@ -36,8 +36,7 @@
         WITH metric_tasks AS (
             SELECT metric.job_instance_id,
                    SUM(metric.write_row_count) AS inc_records,
-                   SUM(metric.write_bytes) AS inc_bytes,
-                   MAX(instance.job_status) AS job_status
+                   SUM(metric.write_bytes) AS inc_bytes
             FROM t_seatunnel_web_job_metrics metric
             JOIN t_seatunnel_web_job_instance instance
               ON instance.id = metric.job_instance_id
@@ -47,38 +46,56 @@
               AND metric.update_time &lt;= #{endTime}
             <include refid="TaskTypePredicate"/>
             GROUP BY metric.job_instance_id
-        ), active_tasks AS (
+        ), execution_tasks AS (
             SELECT instance.id AS job_instance_id,
-                   0 AS inc_records,
-                   0 AS inc_bytes,
                    instance.job_status AS job_status
             FROM t_seatunnel_web_job_instance instance
             JOIN t_seatunnel_web_job_definition definition
               ON definition.id = instance.job_definition_id
-            WHERE instance.job_status IN
-                  ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING')
-              AND COALESCE(instance.start_time, instance.create_time) &lt;= #{endTime}
+            WHERE COALESCE(instance.start_time, instance.submit_time, instance.create_time) &gt;= #{startTime}
+              AND COALESCE(instance.start_time, instance.submit_time, instance.create_time) &lt;= #{endTime}
             <include refid="TaskTypePredicate"/>
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM metric_tasks metric_task
-                  WHERE metric_task.job_instance_id = instance.id
-              )
-        ), task_summary AS (
-            SELECT job_instance_id, inc_records, inc_bytes, job_status
-            FROM metric_tasks
+            <if test="taskType == null or taskType == 'FILE_INGEST'">
             UNION ALL
-            SELECT job_instance_id, inc_records, inc_bytes, job_status
-            FROM active_tasks
+            SELECT run.id AS job_instance_id,
+                   run.status AS job_status
+            FROM t_seatunnel_web_offline_import_task_run run
+            WHERE run.start_time &gt;= #{startTime}
+              AND run.start_time &lt;= #{endTime}
+            </if>
+        ), metric_summary AS (
+            SELECT COALESCE(SUM(inc_records), 0) AS totalRecords,
+                   COALESCE(SUM(inc_bytes), 0) AS totalBytes
+            FROM metric_tasks
+        ), execution_summary AS (
+            SELECT COUNT(1) AS totalTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks,
+                   COALESCE(SUM(CASE WHEN UPPER(job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
+            FROM execution_tasks
+        ), definition_summary AS (
+            SELECT (SELECT COUNT(1)
+                      FROM t_seatunnel_web_job_definition definition
+                     WHERE 1 = 1
+                     <include refid="TaskTypePredicate"/>)
+                   + CASE
+                         WHEN #{taskType} IS NULL OR #{taskType} = 'FILE_INGEST'
+                             THEN (SELECT COUNT(1) FROM t_seatunnel_web_offline_import_task)
+                         ELSE 0
+                     END AS definitionCount
         )
-        SELECT COALESCE(SUM(t.inc_records), 0) AS totalRecords,
-               COALESCE(SUM(t.inc_bytes), 0)   AS totalBytes,
-               COALESCE(COUNT(1), 0)           AS totalTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FINISHED', 'SUCCESS') THEN 1 ELSE 0 END), 0) AS successTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('FAILED', 'UNKNOWABLE') THEN 1 ELSE 0 END), 0) AS failedTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('STARTING', 'INITIALIZING', 'CREATED', 'PENDING', 'SCHEDULED', 'RUNNING', 'FAILING', 'DOING_SAVEPOINT', 'CANCELING') THEN 1 ELSE 0 END), 0) AS runningTasks
-               , COALESCE(SUM(CASE WHEN UPPER(t.job_status) IN ('CANCELED', 'CANCELLED', 'SAVEPOINT_DONE') THEN 1 ELSE 0 END), 0) AS stoppedTasks
-        FROM task_summary t
+        SELECT metric_summary.totalRecords,
+               metric_summary.totalBytes,
+               execution_summary.totalTasks,
+               execution_summary.successTasks,
+               execution_summary.failedTasks,
+               execution_summary.runningTasks,
+               execution_summary.stoppedTasks,
+               definition_summary.definitionCount
+        FROM metric_summary
+        CROSS JOIN execution_summary
+        CROSS JOIN definition_summary
     </select>
 
     <select id="selectRecordsTrend" resultType="map">

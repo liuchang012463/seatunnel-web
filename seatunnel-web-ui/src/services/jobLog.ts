@@ -2,6 +2,19 @@ import HttpUtils from "@/utils/HttpUtils";
 
 export type JobLogMode = "BATCH" | "STREAMING";
 
+export type JobLogAvailability = "PENDING" | "RETAINED" | "UNAVAILABLE";
+
+export interface JobLogTailPage {
+  instanceId: number;
+  jobMode: JobLogMode;
+  availability: JobLogAvailability;
+  content: string;
+  startCursor: number;
+  endCursor: number;
+  hasOlder: boolean;
+  hasNewer: boolean;
+}
+
 export interface JobLogSearchParams {
   keyword?: string;
   level?: string;
@@ -22,6 +35,18 @@ export interface JobLogEntry {
   message: string;
   raw: string;
   elapsedMs?: number;
+}
+
+export interface JobLogSearchResult {
+  keyword?: string;
+  level?: string;
+  source?: string;
+  category?: string;
+  totalMatches: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  entries: JobLogEntry[];
 }
 
 export interface JobLogStructuredRecord {
@@ -145,6 +170,21 @@ export const jobLogApi = {
       `/api/v1/job-log/${jobMode}/${instanceId}/search?${query.toString()}`,
     );
   },
+
+  tail: (
+    instanceId: string | number,
+    jobMode: JobLogMode,
+    cursors: { afterCursor?: number; beforeCursor?: number } = {},
+  ) => {
+    const query = new URLSearchParams();
+    if (cursors.afterCursor !== undefined) query.set("afterCursor", String(cursors.afterCursor));
+    if (cursors.beforeCursor !== undefined) query.set("beforeCursor", String(cursors.beforeCursor));
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    return HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/tail${suffix}`);
+  },
+
+  download: (instanceId: string | number, jobMode: JobLogMode) =>
+    HttpUtils.download(`/api/v1/job-log/${jobMode}/${instanceId}/download`),
 
   analysis: (instanceId: string | number, jobMode: JobLogMode) =>
     HttpUtils.get<any>(`/api/v1/job-log/${jobMode}/${instanceId}/analysis`),

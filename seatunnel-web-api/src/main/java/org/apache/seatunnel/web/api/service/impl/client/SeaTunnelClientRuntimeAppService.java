@@ -260,7 +260,7 @@ public class SeaTunnelClientRuntimeAppService {
             );
         }
 
-        return seaTunnelRestClient.jobLogs(clientId, engineJobId, "json");
+        return seaTunnelRestClient.clusterLogFile(clientId, "job-" + engineJobId + ".log");
     }
 
     /**

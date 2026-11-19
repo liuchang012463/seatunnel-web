@@ -1,5 +1,6 @@
 import {
   CheckCircleOutlined,
+  DownloadOutlined,
   ExclamationCircleOutlined,
   LoadingOutlined,
   PauseOutlined,
@@ -18,7 +19,9 @@ import {
   type JobLogMode,
   type JobLogReplayResult,
   type JobLogReplayStep,
+  type JobLogSearchResult,
   type JobLogStructuredRecord,
+  type JobLogTailPage,
 } from "@/services/jobLog";
 
 interface TaskLogObservabilityProps {
@@ -28,52 +31,6 @@ interface TaskLogObservabilityProps {
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
-
-const getLogItemContent = (item: any) => {
-  if (typeof item === "string") {
-    return item;
-  }
-
-  return item?.content || item?.logContent || item?.log || item?.message || item?.data || "";
-};
-
-const formatLogContent = (value: any): string => {
-  const data = getResponseData(value);
-
-  if (!data) {
-    return "";
-  }
-
-  if (typeof data === "string") {
-    return data;
-  }
-
-  if (Array.isArray(data?.logs)) {
-    return formatLogContent(data.logs);
-  }
-
-  if (Array.isArray(data)) {
-    return data
-      .map((item) => {
-        if (typeof item === "string") {
-          return item;
-        }
-
-        const header = [
-          item?.node ? `# Node: ${item.node}` : "",
-          item?.logName ? `# File: ${item.logName}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n");
-        const content = getLogItemContent(item);
-        return content ? (header ? `${header}\n\n${content}` : content) : JSON.stringify(item, null, 2);
-      })
-      .filter(Boolean)
-      .join("\n\n");
-  }
-
-  return String(getLogItemContent(data) || JSON.stringify(data, null, 2));
-};
 
 const formatTime = (value?: string, elapsedMs?: number) => {
   if (value) {
@@ -97,6 +54,9 @@ const statusColor = (status?: string) => {
   }
   return "blue";
 };
+
+const MAX_VISIBLE_LOG_PAGES = 8;
+const LOG_SEARCH_PAGE_SIZE = 100;
 
 const StructuredRecordTable: React.FC<{ rows: JobLogStructuredRecord[] }> = ({ rows }) => {
   if (!rows?.length) {
@@ -168,10 +128,18 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     : !instanceId
       ? "当前任务暂无运行实例，无法进行故障定位。"
       : "";
-  const [logContent, setLogContent] = useState("");
+  const [logPages, setLogPages] = useState<JobLogTailPage[]>([]);
+  const [followingTail, setFollowingTail] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResult, setSearchResult] = useState<JobLogSearchResult | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchMoreLoading, setSearchMoreLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [olderLoading, setOlderLoading] = useState(false);
+  const [newerLoading, setNewerLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<JobLogAnalysisResult | null>(null);
   const [replayLoading, setReplayLoading] = useState(false);
@@ -184,10 +152,14 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   const [diagnosisChunkCount, setDiagnosisChunkCount] = useState(0);
   const [diagnosisResult, setDiagnosisResult] = useState<JobLogFaultDiagnosisResult | null>(null);
   const diagnosisAbortRef = useRef<AbortController | null>(null);
+  const logRequestId = useRef(0);
+  const searchRequestId = useRef(0);
+  const logViewportRef = useRef<HTMLDivElement | null>(null);
 
   const loadLog = useCallback(async () => {
+    const requestId = ++logRequestId.current;
     if (!instanceId) {
-      setLogContent("");
+      setLogPages([]);
       setErrorText("当前任务暂无运行实例，无法查看日志");
       return;
     }
@@ -195,21 +167,171 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     try {
       setLoading(true);
       setErrorText("");
-      const response = await jobLogApi.content(instanceId, jobMode);
+      const response = await jobLogApi.tail(instanceId, jobMode);
+      if (requestId !== logRequestId.current) return;
       if (response?.code !== 0) {
         setErrorText(response?.msg || "获取日志失败");
         return;
       }
-      setLogContent(formatLogContent(response));
+      const page = getResponseData(response) as JobLogTailPage;
+      setLogPages(page ? [page] : []);
+      setFollowingTail(true);
     } catch (error: any) {
+      if (requestId !== logRequestId.current) return;
       setErrorText(error?.message || "获取日志失败");
     } finally {
-      setLoading(false);
+      if (requestId === logRequestId.current) setLoading(false);
+    }
+  }, [instanceId, jobMode]);
+
+  const pollLog = useCallback(async () => {
+    const latestPage = logPages[logPages.length - 1];
+    if (!instanceId || !latestPage) return;
+    const requestId = logRequestId.current;
+    try {
+      const response = await jobLogApi.tail(
+        instanceId,
+        jobMode,
+        latestPage.endCursor > 0 ? { afterCursor: latestPage.endCursor } : {},
+      );
+      if (requestId !== logRequestId.current || response?.code !== 0) return;
+      const page = getResponseData(response) as JobLogTailPage;
+      if (!page) return;
+      setLogPages((current) => {
+        const last = current[current.length - 1];
+        if (!last) return [page];
+        if (!page.content || page.endCursor <= last.endCursor) {
+          if (last.availability === page.availability) return current;
+          return current.map((item, index) => index === current.length - 1
+            ? { ...item, availability: page.availability }
+            : item);
+        }
+        return [...current, page].slice(-MAX_VISIBLE_LOG_PAGES);
+      });
+    } catch (error: any) {
+      if (requestId === logRequestId.current) {
+        setErrorText(error?.message || "刷新日志失败");
+      }
+    }
+  }, [instanceId, jobMode, logPages]);
+
+  const loadOlderLogs = useCallback(async () => {
+    const oldestPage = logPages[0];
+    if (!instanceId || !oldestPage?.hasOlder || olderLoading) return;
+    const viewport = logViewportRef.current;
+    const previousHeight = viewport?.scrollHeight ?? 0;
+    const previousTop = viewport?.scrollTop ?? 0;
+    const requestId = ++logRequestId.current;
+    setFollowingTail(false);
+    setOlderLoading(true);
+    try {
+      const response = await jobLogApi.tail(instanceId, jobMode, { beforeCursor: oldestPage.startCursor });
+      if (requestId !== logRequestId.current) return;
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || "加载更早日志失败");
+        return;
+      }
+      const page = getResponseData(response) as JobLogTailPage;
+      if (!page?.content) return;
+      setLogPages((current) => [page, ...current].slice(0, MAX_VISIBLE_LOG_PAGES));
+      window.requestAnimationFrame(() => {
+        const currentViewport = logViewportRef.current;
+        if (currentViewport) {
+          currentViewport.scrollTop = currentViewport.scrollHeight - previousHeight + previousTop;
+        }
+      });
+    } catch (error: any) {
+      if (requestId === logRequestId.current) setErrorText(error?.message || "加载更早日志失败");
+    } finally {
+      if (requestId === logRequestId.current) setOlderLoading(false);
+    }
+  }, [instanceId, jobMode, logPages, olderLoading]);
+
+  const loadNewerLogs = useCallback(async () => {
+    const newestPage = logPages[logPages.length - 1];
+    if (!instanceId || !newestPage?.hasNewer || newerLoading) return;
+    const requestId = ++logRequestId.current;
+    setNewerLoading(true);
+    try {
+      const response = await jobLogApi.tail(instanceId, jobMode, { afterCursor: newestPage.endCursor });
+      if (requestId !== logRequestId.current) return;
+      if (response?.code !== 0) {
+        setErrorText(response?.msg || "加载更新日志失败");
+        return;
+      }
+      const page = getResponseData(response) as JobLogTailPage;
+      if (!page?.content) return;
+      setLogPages((current) => [...current, page].slice(-MAX_VISIBLE_LOG_PAGES));
+      setFollowingTail(!page.hasNewer);
+    } catch (error: any) {
+      if (requestId === logRequestId.current) setErrorText(error?.message || "加载更新日志失败");
+    } finally {
+      if (requestId === logRequestId.current) setNewerLoading(false);
+    }
+  }, [instanceId, jobMode, logPages, newerLoading]);
+
+  const loadLogSearch = useCallback(async (page: number, append = false) => {
+    const keyword = searchKeyword.trim();
+    if (!instanceId || !keyword) return;
+    const requestId = ++searchRequestId.current;
+    setSearchError("");
+    if (append) setSearchMoreLoading(true);
+    else setSearchLoading(true);
+    try {
+      const response = await jobLogApi.search(instanceId, jobMode, {
+        keyword,
+        page,
+        pageSize: LOG_SEARCH_PAGE_SIZE,
+      });
+      if (requestId !== searchRequestId.current) return;
+      if (response?.code !== 0) {
+        setSearchError(response?.msg || "检索日志失败");
+        return;
+      }
+      const result = getResponseData(response) as JobLogSearchResult;
+      setSearchResult((current) => append && current
+        ? { ...result, entries: [...current.entries, ...(result.entries || [])] }
+        : result);
+    } catch (error: any) {
+      if (requestId === searchRequestId.current) setSearchError(error?.message || "检索日志失败");
+    } finally {
+      if (requestId === searchRequestId.current) {
+        setSearchLoading(false);
+        setSearchMoreLoading(false);
+      }
+    }
+  }, [instanceId, jobMode, searchKeyword]);
+
+  const downloadLog = useCallback(async () => {
+    if (!instanceId) return;
+    try {
+      setDownloadLoading(true);
+      const response = await jobLogApi.download(instanceId, jobMode);
+      const blob = response?.data ?? response;
+      if (!(blob instanceof Blob)) {
+        throw new Error("服务器未返回可下载的日志文件");
+      }
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${jobMode === "STREAMING" ? "streaming-job" : "job"}-${instanceId}.log`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error: any) {
+      message.error(error?.message || "下载日志失败");
+    } finally {
+      setDownloadLoading(false);
     }
   }, [instanceId, jobMode]);
 
   useEffect(() => {
     setSearchKeyword("");
+    setSearchResult(null);
+    setSearchError("");
+    setLogPages([]);
+    setFollowingTail(true);
     setErrorText("");
     setAnalysisResult(null);
     setReplayResult(null);
@@ -223,7 +345,35 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
     if (view === "logs") {
       void loadLog();
     }
+    return () => {
+      logRequestId.current += 1;
+      searchRequestId.current += 1;
+    };
   }, [loadLog, view]);
+
+  useEffect(() => {
+    if (view !== "logs" || !instanceId || !followingTail || logPages.length === 0 || searchKeyword.trim()) {
+      return;
+    }
+    const terminalStatus = ["FINISHED", "SUCCESS", "FAILED", "CANCELED", "CANCELLED", "STOPPED", "SAVEPOINT_DONE", "UNKNOWABLE"];
+    const delay = terminalStatus.includes(String(instanceItem?.jobStatus || "").toUpperCase()) ? 30_000 : 5_000;
+    const timer = window.setTimeout(() => void pollLog(), delay);
+    return () => window.clearTimeout(timer);
+  }, [followingTail, instanceId, instanceItem?.jobStatus, jobMode, logPages, pollLog, searchKeyword, view]);
+
+  useEffect(() => {
+    const keyword = searchKeyword.trim();
+    if (view !== "logs" || !keyword) {
+      searchRequestId.current += 1;
+      setSearchResult(null);
+      setSearchError("");
+      setSearchLoading(false);
+      setSearchMoreLoading(false);
+      return;
+    }
+    const timer = window.setTimeout(() => void loadLogSearch(1), 300);
+    return () => window.clearTimeout(timer);
+  }, [loadLogSearch, searchKeyword, view]);
 
   const loadAnalysis = useCallback(async () => {
     if (!instanceId) return;
@@ -325,11 +475,16 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
 
   useEffect(() => () => diagnosisAbortRef.current?.abort(), []);
 
+  const logContent = useMemo(() => logPages.map((page) => page.content).join(""), [logPages]);
   const logLines = useMemo(() => logContent.split(/\r?\n/), [logContent]);
   const normalizedKeyword = searchKeyword.trim().toLowerCase();
-  const matchedLineCount = normalizedKeyword
-    ? logLines.filter((line) => line.toLowerCase().includes(normalizedKeyword)).length
-    : 0;
+  const matchedLineCount = searchResult?.totalMatches ?? 0;
+
+  useEffect(() => {
+    if (view === "logs" && followingTail && !normalizedKeyword && logViewportRef.current) {
+      logViewportRef.current.scrollTop = logViewportRef.current.scrollHeight;
+    }
+  }, [followingTail, logPages, normalizedKeyword, view]);
 
   if (!instanceItem?.jobStatus) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先从左侧选择任务实例" />;
@@ -368,34 +523,116 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
-          <div className="mt-1 text-sm text-slate-400">完整日志 · 当前实例 #{instanceId}</div>
+          <div className="mt-1 text-sm text-slate-400">当前实例 #{instanceId} · 按需加载历史日志</div>
         </div>
-        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => void loadLog()}>
-          刷新
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            loading={loading}
+            onClick={() => {
+              setSearchKeyword("");
+              setSearchResult(null);
+              void loadLog();
+            }}
+          >
+            跳到最新
+          </Button>
+          <Button size="small" icon={<DownloadOutlined />} loading={downloadLoading} onClick={() => void downloadLog()}>
+            下载完整日志
+          </Button>
+        </div>
       </div>
       <Input
         allowClear
         prefix={<SearchOutlined className="text-slate-400" />}
         value={searchKeyword}
-        onChange={(event) => setSearchKeyword(event.target.value)}
-        placeholder="在当前完整日志中检索 timeout、ERROR、连接..."
-        suffix={normalizedKeyword ? <span className="text-sm text-slate-400">命中 {matchedLineCount} 行</span> : null}
+        onChange={(event) => {
+          searchRequestId.current += 1;
+          setSearchKeyword(event.target.value);
+          setSearchResult(null);
+          setSearchError("");
+        }}
+        placeholder="检索完整日志，例如 timeout、ERROR、连接..."
+        suffix={normalizedKeyword ? (
+          <span className="text-sm text-slate-400">
+            {searchLoading ? "检索中" : `命中 ${matchedLineCount} 行`}
+          </span>
+        ) : null}
       />
-      <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100">
-        {loading && !logContent ? (
-          <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
-        ) : errorText ? (
-          <div className="py-12 text-center text-red-300">{errorText}</div>
-        ) : logContent ? (
-          logLines.map((line, index) => {
-            const matched = normalizedKeyword && line.toLowerCase().includes(normalizedKeyword);
-            return <div key={index} className={matched ? "rounded bg-cyan-950/80 text-cyan-100" : ""}>{line || " "}</div>;
-          })
-        ) : (
-          <div className="py-12 text-center text-slate-500">当前实例暂无日志</div>
-        )}
-      </div>
+      {errorText ? <div className="mt-2 text-sm text-red-600">{errorText}</div> : null}
+      {normalizedKeyword ? (
+        <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100">
+          {searchLoading && !searchResult ? (
+            <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
+          ) : searchError ? (
+            <div className="py-12 text-center text-red-300">{searchError}</div>
+          ) : searchResult?.entries.length ? (
+            <>
+              {searchResult.entries.map((entry) => (
+                <div
+                  key={`${entry.sequence}-${entry.lineNumber}`}
+                  className="whitespace-pre-wrap break-all rounded bg-cyan-950/80 text-cyan-100"
+                  title={`第 ${entry.lineNumber} 行 · ${entry.source} · ${entry.level}`}
+                >
+                  {entry.raw || entry.message || " "}
+                </div>
+              ))}
+              {searchResult.hasNext ? (
+                <div className="pt-3 text-center">
+                  <Button size="small" loading={searchMoreLoading} onClick={() => void loadLogSearch(searchResult.page + 1, true)}>
+                    加载更多匹配项
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="py-12 text-center text-slate-400">没有匹配的日志</div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+            <span>
+              {logPages[logPages.length - 1]?.availability === "RETAINED"
+                ? "日志已写入本地文件"
+                : logPages[logPages.length - 1]?.availability === "PENDING"
+                  ? "日志收集中，服务会继续重试引擎日志"
+                  : "等待当前实例生成日志"}
+              {logContent ? ` · 当前显示 ${logLines.length - (logLines[logLines.length - 1] === "" ? 1 : 0)} 行` : ""}
+            </span>
+            {followingTail ? <span>实时跟随中</span> : <span>历史浏览</span>}
+          </div>
+          {logPages[0]?.hasOlder ? (
+            <div className="my-2 text-center">
+              <Button size="small" loading={olderLoading} onClick={() => void loadOlderLogs()}>
+                加载更早日志
+              </Button>
+            </div>
+          ) : null}
+          <div
+            ref={logViewportRef}
+            className="max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100"
+          >
+            {loading && !logContent ? (
+              <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
+            ) : logContent ? (
+              logLines.map((line, index) => <div key={index} className="whitespace-pre-wrap break-all">{line || " "}</div>)
+            ) : errorText ? (
+              <div className="py-12 text-center text-red-300">{errorText}</div>
+            ) : (
+              <div className="py-12 text-center text-slate-400">当前实例暂无日志</div>
+            )}
+          </div>
+          {logPages[logPages.length - 1]?.hasNewer ? (
+            <div className="my-2 text-center">
+              <Button size="small" loading={newerLoading} onClick={() => void loadNewerLogs()}>
+                加载更新日志
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
     </section>
   );
 

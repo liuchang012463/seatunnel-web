@@ -6,6 +6,7 @@ import lombok.Data;
 public class OverviewSummaryVO {
     private double totalRecords;
     private double totalBytes;
+    private long definitionCount;
     private long totalTasks;
     private long successTasks;
     private long failedTasks;

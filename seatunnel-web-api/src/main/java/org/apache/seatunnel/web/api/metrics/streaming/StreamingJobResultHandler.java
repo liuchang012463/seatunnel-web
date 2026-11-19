@@ -208,7 +208,7 @@ public class StreamingJobResultHandler {
 
     private void persistFinalResult(Long jobInstanceId, JobStatus status) {
         try {
-            jobLogService.persistEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.STREAMING);
+            jobLogService.persistFinalEngineLog(jobInstanceId, org.apache.seatunnel.web.common.enums.JobMode.STREAMING);
         } catch (Exception e) {
             log.warn("Persist complete streaming Engine log failed, instanceId={}", jobInstanceId, e);
         }

@@ -5,6 +5,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.log.JobLogService;
+import org.apache.seatunnel.web.api.log.JobLogPathResolver;
 import org.apache.seatunnel.web.api.service.StreamingJobInstanceService;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobMode;
@@ -546,9 +547,7 @@ public class StreamingJobInstanceServiceImpl implements StreamingJobInstanceServ
     }
 
     private String buildLogPath(Long id) {
-        return System.getProperty("user.dir")
-                + File.separator
-                + Paths.get(baseLogDir, "streaming-job-" + id + ".log");
+        return JobLogPathResolver.buildLogPath(baseLogDir, id, JobMode.STREAMING);
     }
 
     private void validateDefinitionId(Long jobDefineId) {

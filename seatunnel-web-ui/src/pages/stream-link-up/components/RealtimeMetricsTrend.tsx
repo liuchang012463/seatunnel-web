@@ -60,11 +60,12 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   }, [points]);
 
   const latest = record?.latestMetrics || points[points.length - 1] || {};
+  const hasCurrentMetrics = latest.metricsAvailable !== false;
 
-  const latestReadRows = latest.readRowCount ?? 0;
-  const latestWriteRows = latest.writeRowCount;
-  const latestReadQps = latest.readQps ?? 0;
-  const latestWriteQps = latest.writeQps;
+  const latestReadRows = hasCurrentMetrics ? latest.readRowCount ?? 0 : undefined;
+  const latestWriteRows = hasCurrentMetrics ? latest.writeRowCount : undefined;
+  const latestReadQps = hasCurrentMetrics ? latest.readQps ?? 0 : undefined;
+  const latestWriteQps = hasCurrentMetrics ? latest.writeQps : undefined;
 
   const handleOpenDashboard = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -193,7 +194,9 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   if (!points.length) {
     return (
       <div className="group relative min-h-[54px] w-[350px]">
-        <span className="text-sm text-[#D5D5D5]">暂无负载数据</span>
+        <span className="text-sm text-[#D5D5D5]">
+          {record?.latestMetrics?.metricsAvailable === false ? "当前指标暂不可用" : "暂无负载数据"}
+        </span>
         {renderDashboardIcon()}
       </div>
     );
@@ -205,7 +208,9 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         <div className="min-w-0">
           <div className="text-sm font-bold text-slate-700">条数</div>
           <div className="truncate text-sm text-[#D5D5D5]">
-            {latestWriteRows !== undefined ? (
+            {!hasCurrentMetrics ? (
+              "当前指标暂不可用"
+            ) : latestWriteRows !== undefined ? (
               <>
                 R {formatNumber(latestReadRows)} / W{" "}
                 {formatNumber(latestWriteRows)}
@@ -219,7 +224,9 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         <div className="min-w-0 text-right">
           <div className="text-sm font-bold text-slate-700">速度</div>
           <div className="truncate text-sm text-[#D5D5D5]">
-            {latestWriteQps !== undefined ? (
+            {!hasCurrentMetrics ? (
+              "当前指标暂不可用"
+            ) : latestWriteQps !== undefined ? (
               <>
                 R {formatNumber(latestReadQps)} / W{" "}
                 {formatNumber(latestWriteQps)} r/s
