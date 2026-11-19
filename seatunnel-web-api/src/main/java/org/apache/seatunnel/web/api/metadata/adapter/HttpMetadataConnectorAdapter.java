@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.metadata.adapter;
 
+import org.apache.seatunnel.plugin.datasource.http.catalog.HttpOpenApiDocumentClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
@@ -49,7 +50,8 @@ public class HttpMetadataConnectorAdapter extends AbstractNonDatabaseMetadataCon
         ObjectNode root = baseServiceRequest(dataSource, stableServiceName);
         ObjectNode config = root.putObject("connection").putObject("config");
         config.put("type", "Rest");
-        config.putObject("openAPISchemaConnection").put("openAPISchemaURL", openApiSpecUrl);
+        config.putObject("openAPISchemaConnection").put("openAPISchemaURL",
+                HttpOpenApiDocumentClient.resolveDocumentUri(connectionText(raw, "baseUrl"), openApiSpecUrl).toString());
 
         String bearerToken = connectionText(raw, "bearerToken");
         if (!isBlank(bearerToken)) {

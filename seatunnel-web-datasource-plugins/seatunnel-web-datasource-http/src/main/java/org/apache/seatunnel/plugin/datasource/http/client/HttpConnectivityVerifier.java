@@ -1,5 +1,6 @@
 package org.apache.seatunnel.plugin.datasource.http.client;
 
+import org.apache.seatunnel.plugin.datasource.http.catalog.HttpOpenApiDocumentClient;
 import org.apache.seatunnel.plugin.datasource.api.datasource.ConnectivityVerifier;
 import org.apache.seatunnel.plugin.datasource.http.param.HttpConnectionParam;
 import org.apache.seatunnel.web.spi.datasource.ConnectionParam;
@@ -43,7 +44,6 @@ public class HttpConnectivityVerifier implements ConnectivityVerifier {
             if (status < 200 || status >= 400) {
                 throw new IllegalStateException("HTTP health check failed, status=" + status);
             }
-            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("HTTP health check was interrupted", e);
@@ -56,6 +56,8 @@ public class HttpConnectivityVerifier implements ConnectivityVerifier {
             throw new IllegalStateException(
                     "HTTP health check failed: " + exceptionName, e);
         }
+        new HttpOpenApiDocumentClient().verifyForMetadata(param);
+        return true;
     }
 
     private static boolean hasTimeoutCause(Throwable error) {

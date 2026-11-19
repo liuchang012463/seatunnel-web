@@ -60,6 +60,17 @@ class HttpMetadataConnectorAdapterTest {
         assertEquals(MetadataErrorCode.SOURCE_CONNECTION_ERROR, error.getErrorCode());
     }
 
+    @Test
+    void sendsTheResolvedOpenApiUrlToOpenMetadata() {
+        DataSource dataSource = source(42L, """
+                {"baseUrl":"https://api.example.com/v1", "openApiSpecUrl":"/openapi.yaml"}
+                """);
+
+        assertEquals("https://api.example.com/v1/openapi.yaml",
+                adapter.serviceRequest(dataSource, "st_ds_42")
+                        .at("/connection/config/openAPISchemaConnection/openAPISchemaURL").asText());
+    }
+
     private static DataSource source(Long id, String connectionParams) {
         DataSource dataSource = new DataSource();
         dataSource.setId(id);

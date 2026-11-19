@@ -29,6 +29,8 @@ class HttpConnectivityVerifierTest {
             respond(exchange, "Bearer expected-token".equals(authorization) ? 200 : 401, "auth");
         });
         server.createContext("/forbidden", exchange -> respond(exchange, 403, "forbidden"));
+        server.createContext("/openapi.json", exchange -> respond(exchange, 200, "{\"openapi\":\"3.0.3\"}"));
+        server.createContext("/openapi.yaml", exchange -> respond(exchange, 200, "openapi: 3.0.3\npaths: {}"));
         server.createContext("/slow", exchange -> {
             try {
                 Thread.sleep(200);
@@ -70,6 +72,25 @@ class HttpConnectivityVerifierTest {
                 IllegalStateException.class,
                 () -> new HttpConnectivityVerifier().checkDataSourceConnectivity(slow));
         assertTrue(timeout.getMessage().contains("HttpTimeoutException"));
+    }
+
+    @Test
+    void verifiesConfiguredOpenApiDocumentEvenWhenTheHealthCheckSucceeds() {
+        HttpConnectionParam param = param("/ok");
+        HttpConnectivityVerifier verifier = new HttpConnectivityVerifier();
+
+        param.setOpenApiSpecUrl("/missing.json");
+        IllegalStateException unavailable = assertThrows(IllegalStateException.class,
+                () -> verifier.checkDataSourceConnectivity(param));
+        assertTrue(unavailable.getMessage().contains("404"));
+
+        param.setOpenApiSpecUrl("/ok");
+        assertThrows(IllegalArgumentException.class, () -> verifier.checkDataSourceConnectivity(param));
+
+        param.setOpenApiSpecUrl("/openapi.json");
+        assertTrue(verifier.checkDataSourceConnectivity(param));
+        param.setOpenApiSpecUrl("/openapi.yaml");
+        assertTrue(verifier.checkDataSourceConnectivity(param));
     }
 
     private HttpConnectionParam param(String path) {
