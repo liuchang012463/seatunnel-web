@@ -113,7 +113,8 @@
     height: 100%;
   }
 
-  .file-resources-page__tabs .ant-tabs-tabpane {
+  // Keep the inactive panels subject to Ant Design's hiding rule.
+  .file-resources-page__tabs .ant-tabs-tabpane-active {
     display: flex;
     flex-direction: column;
     height: 100%;

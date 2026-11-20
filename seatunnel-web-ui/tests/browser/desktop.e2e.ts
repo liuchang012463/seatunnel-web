@@ -31,6 +31,30 @@ test('release proxy serves OpenAPI JSON and compresses JavaScript', async ({ pag
   expect(asset.headers()['content-encoding']).toBe('gzip');
 });
 
+test('lake file resources show only the selected tab panel', async ({ page }) => {
+  await page.route('**/api/v1/file-resources/upload-records?*', route => route.fulfill({
+    json: {
+      code: 0,
+      data: {
+        bizData: [{ id: 1, fileName: 'upload-history.csv' }],
+        pagination: { pageNo: 1, pageSize: 10, total: 1 },
+      },
+    },
+  }));
+  await page.goto('/lake/file-resources');
+  const directory = page.getByText('当前目录资源', { exact: true });
+  const uploadedFile = page.getByText('upload-history.csv', { exact: true });
+  await expect(directory).toBeInViewport();
+
+  await page.getByRole('tab', { name: '上传记录' }).click();
+  await expect(directory).toBeHidden();
+  await expect(uploadedFile).toBeInViewport();
+
+  await page.getByRole('tab', { name: '文件浏览' }).click();
+  await expect(uploadedFile).toBeHidden();
+  await expect(directory).toBeInViewport();
+});
+
 test('late filter response cannot replace current rows', async ({ page }) => {
   let release!: () => void;
   let seen!: () => void;
