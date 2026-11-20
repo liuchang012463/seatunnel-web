@@ -5,12 +5,14 @@ import {
   dataSourceCatalogApi,
   fetchDataSourceOptions,
 } from '@/pages/data-source/service';
+import { supportsSchemaScope } from '@/pages/data-source/dataSourceRegistry';
 import { seatunnelStremJobDefinitionApi } from '@/pages/stream-link-up/api';
 
 import {
   buildTableItems,
-  DEFAULT_DB_TYPE,
   DEFAULT_FORM_VALUES,
+  DEFAULT_SOURCE_TYPE,
+  DEFAULT_TARGET_TYPE,
   validateServerIdRange,
 } from '../config';
 import type { DbTypeValue, TableItem } from '../types';
@@ -47,7 +49,7 @@ const resolveSourceType = (params?: any, fallback?: any) => {
     };
   }
 
-  return fallback || DEFAULT_DB_TYPE;
+  return fallback || DEFAULT_SOURCE_TYPE;
 };
 
 const resolveTargetType = (params?: any, fallback?: any) => {
@@ -63,7 +65,7 @@ const resolveTargetType = (params?: any, fallback?: any) => {
     };
   }
 
-  return fallback || DEFAULT_DB_TYPE;
+  return fallback || DEFAULT_TARGET_TYPE;
 };
 
 const stableStringify = (value: any) => {
@@ -79,6 +81,20 @@ const isMySqlCdc = (sourceType?: DbTypeValue) =>
 
 const isPostgreSqlCdc = (sourceType?: DbTypeValue) =>
   sourceType?.pluginName?.toUpperCase() === 'POSTGRESQL-CDC';
+
+/** PG/Oracle/达梦等来源的 catalog 会返回 schema.table，取第一段作为 schema。 */
+const resolveTableSchema = (tableKey?: string) => {
+  const parts = String(tableKey || '').split('.');
+  return parts.length > 1 ? parts[0] : '';
+};
+
+const filterTablesBySchema = (tables: TableItem[], schema?: string) =>
+  schema ? tables.filter((item) => resolveTableSchema(item.key) === schema) : tables;
+
+const listTableSchemas = (tables: TableItem[]) =>
+  Array.from(
+    new Set(tables.map((item) => resolveTableSchema(item.key)).filter(Boolean)),
+  );
 
 type SaveResponseData = {
   id?: number | string;
@@ -128,10 +144,10 @@ export function useMultiWorkflowState({
   const [loading, setLoading] = useState(false);
 
   const [sourceType] = useState<DbTypeValue>(
-    resolveSourceType(params, DEFAULT_DB_TYPE),
+    resolveSourceType(params, DEFAULT_SOURCE_TYPE),
   );
   const [targetType] = useState<DbTypeValue>(
-    resolveTargetType(params, DEFAULT_DB_TYPE),
+    resolveTargetType(params, DEFAULT_TARGET_TYPE),
   );
 
   const [sourceOption, setSourceOption] = useState<any[]>([]);
@@ -139,6 +155,10 @@ export function useMultiWorkflowState({
   const [currentSourceId, setCurrentSourceId] = useState('');
 
   const [tableData, setTableData] = useState<TableItem[]>([]);
+  // 保留完整表列表，schema 切换时在本地过滤，避免重复请求 catalog。
+  const [allTableData, setAllTableData] = useState<TableItem[]>([]);
+  const [schemaOptions, setSchemaOptions] = useState<string[]>([]);
+  const [selectedSchema, setSelectedSchema] = useState('');
   const [readOnlyTables, setReadOnlyTables] = useState<TableItem[]>([]);
   const [multiTableList, setMultiTableList] = useState<string[]>([]);
   const [matchMode, setMatchMode] = useState<string>(
@@ -179,7 +199,7 @@ export function useMultiWorkflowState({
   }, []);
 
   const fetchTables = useCallback(
-    async (dataSourceId: string, mode?: string) => {
+    async (dataSourceId: string, mode?: string, preferredSchema?: string) => {
       if (!dataSourceId) return;
 
       try {
@@ -189,10 +209,31 @@ export function useMultiWorkflowState({
         const res = await dataSourceCatalogApi.listTable(dataSourceId);
         if (res?.code === 0) {
           const nextTables = buildTableItems(res.data || []);
-          setTableData(nextTables);
+          setAllTableData(nextTables);
+
+          const schemas = listTableSchemas(nextTables);
+          setSchemaOptions(schemas);
+
+          // 仅整库同步对 PG/Oracle/达梦等 schema 层来源启用过滤；
+          // 自定义模式仍展示全部 schema 的表，避免隐藏跨 schema 的可选表。
+          const schemaScoped = supportsSchemaScope(sourceType?.dbType);
+          const filterBySchema = schemaScoped && mode === '4';
+          const nextSchema = filterBySchema
+            ? preferredSchema && schemas.includes(preferredSchema)
+              ? preferredSchema
+              : schemas.includes('public')
+                ? 'public'
+                : schemas[0] || ''
+            : '';
+          setSelectedSchema(nextSchema);
+
+          const visibleTables = filterBySchema
+            ? filterTablesBySchema(nextTables, nextSchema)
+            : nextTables;
+          setTableData(visibleTables);
 
           if (mode === '4') {
-            setMultiTableList(nextTables.map((item) => item.key));
+            setMultiTableList(visibleTables.map((item) => item.key));
           } else if (mode === '1') {
             setMultiTableList([]);
           }
@@ -206,7 +247,7 @@ export function useMultiWorkflowState({
         setLoading(false);
       }
     },
-    [],
+    [sourceType?.dbType],
   );
 
   const fetchReferenceTables = useCallback(
@@ -249,6 +290,17 @@ export function useMultiWorkflowState({
     const formValues = form.getFieldsValue();
     const mysqlCdc = isMySqlCdc(sourceType);
     const postgreSqlCdc = isPostgreSqlCdc(sourceType);
+    const mysqlSource =
+      String(sourceType?.dbType || '').toUpperCase() === 'MYSQL';
+    // PostgreSQL 兼容目标把 tinyint(1) 映射为 boolean，而运行期值可能是数值；
+    // 对 MySQL 来源显式关闭窄化，保证源 schema 与目标 DDL 都保持数值类型。
+    const postgresCompatibleTarget = [
+      'POSTGRE_SQL',
+      'VASTBASE',
+      'KINGBASE',
+      'ZEONEDB',
+    ].includes(String(targetType?.dbType || '').toUpperCase());
+    const needsNumericTinyint = mysqlSource && postgresCompatibleTarget;
 
     return {
       type: 'GUIDE_MULTI',
@@ -257,8 +309,10 @@ export function useMultiWorkflowState({
         connectorType: sourceType?.connectorType,
         datasourceId: formValues.sourceId,
         pluginName: sourceType?.pluginName,
+        schemaName: selectedSchema || undefined,
         fetchSize: formValues.fetchSize,
         splitSize: formValues.splitSize,
+        ...(needsNumericTinyint ? { intTypeNarrowing: false } : {}),
         ...(mysqlCdc ? { serverIdMode: formValues.serverIdMode } : {}),
         ...(mysqlCdc && formValues.serverId
           ? { 'server-id': String(formValues.serverId).trim() }
@@ -296,7 +350,7 @@ export function useMultiWorkflowState({
           matchMode === '2' || matchMode === '3' ? tableKeyword : undefined,
       },
     };
-  }, [form, sourceType, targetType, matchMode, multiTableList, tableKeyword]);
+  }, [form, sourceType, targetType, matchMode, multiTableList, tableKeyword, selectedSchema]);
 
   const buildFinalPayload = useCallback(() => {
     return {
@@ -437,12 +491,20 @@ export function useMultiWorkflowState({
 
         if (sourceId) {
           if (nextMatchMode === '1') {
-            await fetchTables(String(sourceId), '1');
+            await fetchTables(
+              String(sourceId),
+              '1',
+              resolveTableSchema(nextMultiTableList[0]),
+            );
             if (mounted) {
               setMultiTableList(nextMultiTableList);
             }
           } else if (nextMatchMode === '4') {
-            await fetchTables(String(sourceId), '4');
+            await fetchTables(
+              String(sourceId),
+              '4',
+              resolveTableSchema(nextMultiTableList[0]),
+            );
           } else if (nextMatchMode === '2' || nextMatchMode === '3') {
             if (nextKeyword) {
               await fetchReferenceTables(
@@ -509,9 +571,27 @@ export function useMultiWorkflowState({
       return;
     }
 
+    setAllTableData([]);
+    setSchemaOptions([]);
+    setSelectedSchema('');
     if (tableKeyword) {
       await fetchReferenceTables(value, matchMode, tableKeyword);
     }
+  };
+
+  /** 整库同步切换 schema：本地过滤表列表，并同步全选结果。 */
+  const handleSchemaChange = (schema: string) => {
+    setSelectedSchema(schema);
+    const visibleTables = filterTablesBySchema(allTableData, schema);
+    setTableData(visibleTables);
+
+    if (matchMode === '4') {
+      setMultiTableList(visibleTables.map((item) => item.key));
+      return;
+    }
+
+    const visibleKeys = new Set(visibleTables.map((item) => item.key));
+    setMultiTableList((prev) => prev.filter((key) => visibleKeys.has(key)));
   };
 
   const handleMatchModeChange = async (value: string) => {
@@ -527,6 +607,9 @@ export function useMultiWorkflowState({
     }
 
     setTableData([]);
+    setAllTableData([]);
+    setSchemaOptions([]);
+    setSelectedSchema('');
     setMultiTableList([]);
 
     if (tableKeyword) {
@@ -728,6 +811,8 @@ export function useMultiWorkflowState({
     sourceType,
 
     tableData,
+    schemaOptions,
+    selectedSchema,
     readOnlyTables,
     multiTableList,
     setMultiTableList,
@@ -748,6 +833,7 @@ export function useMultiWorkflowState({
     runDisabledReason,
 
     handleSourceIdChange,
+    handleSchemaChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,

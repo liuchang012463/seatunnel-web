@@ -56,6 +56,8 @@ export default function MultiWorkflow({
     targetOption,
     sourceType,
     tableData,
+    schemaOptions,
+    selectedSchema,
     readOnlyTables,
     multiTableList,
     setMultiTableList,
@@ -70,6 +72,7 @@ export default function MultiWorkflow({
     publishLoading,
 
     handleSourceIdChange,
+    handleSchemaChange,
     handleMatchModeChange,
     handleKeywordChange,
     handleSave,
@@ -120,6 +123,11 @@ export default function MultiWorkflow({
   const handleMatchModeChangeWithDirty = (...args: any[]) => {
     markCurrentDefinitionDirty();
     return (handleMatchModeChange as any)(...args);
+  };
+
+  const handleSchemaChangeWithDirty = (...args: any[]) => {
+    markCurrentDefinitionDirty();
+    return (handleSchemaChange as any)(...args);
   };
 
   const handleKeywordChangeWithDirty = (...args: any[]) => {
@@ -287,7 +295,10 @@ export default function MultiWorkflow({
                           matchMode={matchMode}
                           tableKeyword={tableKeyword}
                           sourceType={sourceType}
+                          schemaOptions={schemaOptions}
+                          selectedSchema={selectedSchema}
                           onSourceIdChange={handleSourceIdChangeWithDirty}
+                          onSchemaChange={handleSchemaChangeWithDirty}
                           onMatchModeChange={handleMatchModeChangeWithDirty}
                           onKeywordChange={handleKeywordChangeWithDirty}
                         />

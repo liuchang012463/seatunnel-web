@@ -1,5 +1,6 @@
 import React from "react";
 import { Col, Form, Input, Radio, Row, Select } from "antd";
+import { supportsSchemaScope } from "@/pages/data-source/dataSourceRegistry";
 import type { DbTypeValue } from "../types";
 
 const { TextArea } = Input;
@@ -10,7 +11,10 @@ interface Props {
   matchMode: string;
   tableKeyword: string;
   sourceType?: DbTypeValue;
+  schemaOptions?: string[];
+  selectedSchema?: string;
   onSourceIdChange: (value: string) => void;
+  onSchemaChange?: (value: string) => void;
   onMatchModeChange: (value: string) => void;
   onKeywordChange: (value: string) => void;
 }
@@ -23,11 +27,16 @@ const MultiSyncForm: React.FC<Props> = ({
   matchMode,
   tableKeyword,
   sourceType,
+  schemaOptions = [],
+  selectedSchema,
   onSourceIdChange,
+  onSchemaChange,
   onMatchModeChange,
   onKeywordChange,
 }) => {
   const isPostgreSqlCdc = sourceType?.pluginName?.toUpperCase() === "POSTGRESQL-CDC";
+  const schemaScoped = supportsSchemaScope(sourceType?.dbType);
+  const showSchemaSelector = schemaScoped && matchMode === "4";
 
   return (
     <div className="rounded-2xl ">
@@ -48,6 +57,24 @@ const MultiSyncForm: React.FC<Props> = ({
                 className="st-round-select"
               />
             </Form.Item>
+
+            {showSchemaSelector && (
+              <Form.Item label="来源 Schema" className={formItemClass}>
+                <Select
+                  size="middle"
+                  placeholder="请选择 Schema"
+                  showSearch
+                  value={selectedSchema || undefined}
+                  options={schemaOptions.map((schema) => ({
+                    label: schema,
+                    value: schema,
+                  }))}
+                  onChange={onSchemaChange}
+                  className="st-round-select"
+                  notFoundContent="当前数据源没有可选 Schema"
+                />
+              </Form.Item>
+            )}
           </Col>
 
           <Col span={12}>
