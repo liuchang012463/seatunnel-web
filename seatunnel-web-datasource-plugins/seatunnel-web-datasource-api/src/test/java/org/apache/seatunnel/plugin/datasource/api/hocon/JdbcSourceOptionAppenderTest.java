@@ -43,4 +43,15 @@ class JdbcSourceOptionAppenderTest {
         assertEquals("1000", result.get("partition_upper_bound"));
         assertEquals(4, result.get("partition_num"));
     }
+
+    @Test
+    void emitsIntTypeNarrowingWhenExplicitlyConfigured() {
+        Map<String, Object> result = new HashMap<>();
+
+        new JdbcSourceOptionAppender().append(
+                ConfigFactory.parseString("int_type_narrowing = false"), result);
+
+        // false 是有效值，不能被当作空值丢弃；MySQL -> Vastbase 依赖它避免 bool/smallint 冲突。
+        assertEquals(false, result.get("int_type_narrowing"));
+    }
 }

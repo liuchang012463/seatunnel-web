@@ -153,6 +153,38 @@ class GuideMultiHoconBuildServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void mysqlIntTypeNarrowingReachesSourceConfig() throws Exception {
+        GuideMultiHoconBuildService service = new GuideMultiHoconBuildService();
+        GuideMultiJobContent.WorkflowSourceConfig source =
+                new GuideMultiJobContent.WorkflowSourceConfig();
+        source.setDatasourceId("1");
+        source.setDbType("MYSQL");
+        source.setConnectorType("Jdbc");
+        source.setPluginName("MYSQL-CDC");
+        source.setIntTypeNarrowing(false);
+
+        GuideMultiJobContent.TableMatchConfig tableMatch =
+                new GuideMultiJobContent.TableMatchConfig();
+        tableMatch.setMode("1");
+
+        Method buildSourceNode = GuideMultiHoconBuildService.class.getDeclaredMethod(
+                "buildSourceNode",
+                GuideMultiJobContent.WorkflowSourceConfig.class,
+                GuideMultiJobContent.TableMatchConfig.class,
+                List.class,
+                boolean.class,
+                org.apache.seatunnel.web.core.job.handler.JobRuntimeContext.class);
+        buildSourceNode.setAccessible(true);
+        Map<String, Object> node = (Map<String, Object>) buildSourceNode.invoke(
+                service, source, tableMatch, List.of("orders"), false, null);
+
+        Map<String, Object> data = (Map<String, Object>) node.get("data");
+        Map<String, Object> config = (Map<String, Object>) data.get("config");
+        assertEquals(false, config.get("int_type_narrowing"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void dorisSinkSettingsReachSinkConfig() throws Exception {
         GuideMultiHoconBuildService service = new GuideMultiHoconBuildService();
         GuideMultiJobContent.WorkflowTargetConfig target =

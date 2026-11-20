@@ -100,6 +100,9 @@ public abstract class AbstractCdcSourceBuilder implements DataSourceHoconBuilder
         putIfPresent(node, SERVER_ID, map);
         putIfPresent(node, SERVER_TIME_ZONE, map);
         putAliasIfPresent(node, "serverTimeZone", SERVER_TIME_ZONE, map);
+        // MySQL-CDC 也接受 JDBC 的 int_type_narrowing；关闭后 tinyint(1) 保持数值型，
+        // 避免写入 PostgreSQL/Vastbase 的 boolean 目标列时出现 smallint 类型不匹配。
+        putIfPresent(node, "int_type_narrowing", map);
 
         if (node != null && node.hasPath(TABLE_NAMES_CONFIG)) {
             map.put(TABLE_NAMES_CONFIG, node.getValue(TABLE_NAMES_CONFIG).unwrapped());

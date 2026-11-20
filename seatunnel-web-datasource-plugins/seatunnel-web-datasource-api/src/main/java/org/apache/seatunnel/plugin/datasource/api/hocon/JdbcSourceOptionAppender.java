@@ -23,6 +23,13 @@ public class JdbcSourceOptionAppender {
             map.put("split.size", splitSize);
         }
 
+        // 透传 MySQL 的 int_type_narrowing。MySQL -> PostgreSQL/Vastbase 多表同步
+        // 需要显式关闭该选项，保证 tinyint(1) 在源端与目标 DDL 中都保持数值型。
+        Boolean intTypeNarrowing = JdbcConfigReaders.getBoolean(config, "int_type_narrowing", null);
+        if (intTypeNarrowing != null) {
+            map.put("int_type_narrowing", intTypeNarrowing);
+        }
+
         appendPartitionOptions(config, map);
     }
 

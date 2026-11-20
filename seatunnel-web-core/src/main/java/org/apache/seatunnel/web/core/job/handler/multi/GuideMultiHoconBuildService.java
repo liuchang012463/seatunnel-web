@@ -222,6 +222,10 @@ public class GuideMultiHoconBuildService {
             config.put("splitSize", source.getSplitSize());
         }
 
+        if (source.getIntTypeNarrowing() != null) {
+            config.put("int_type_narrowing", source.getIntTypeNarrowing());
+        }
+
         if ("Jdbc".equalsIgnoreCase(StringUtils.trimToEmpty(source.getConnectorType()))) {
             putIfNotBlank(config, "partitionColumn", source.getPartitionColumn());
             putIfNotBlank(config, "partitionLowerBound", source.getPartitionLowerBound());

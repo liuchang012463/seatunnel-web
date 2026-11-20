@@ -4,6 +4,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.apache.seatunnel.plugin.datasource.api.cdc.CdcDatasourcePrecheckProvider;
 import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilder;
+import org.apache.seatunnel.plugin.datasource.api.hocon.DataSourceHoconBuilderFactory;
 import org.apache.seatunnel.plugin.datasource.api.hocon.HoconBuildContext;
 import org.apache.seatunnel.plugin.datasource.api.jdbc.SourceOptionRule;
 import org.apache.seatunnel.plugin.datasource.mysql.cdc.builder.MysqlCdcSourceBuilder;
@@ -42,6 +43,38 @@ class MysqlCdcServiceLoaderTest {
     @Test
     void sourceOptionRuleExposesUppercasePluginName() {
         assertEquals("MYSQL-CDC", new MySQLCDCSourceOptionRule().pluginName());
+    }
+
+    @Test
+    void builderLookupAcceptsLegacyMixedCasePluginName() {
+        // 历史任务/旧前端使用 MySQL-CDC，工厂必须归一化后仍能解析。
+        assertNotNull(DataSourceHoconBuilderFactory.getBuilder("MySQL-CDC"));
+        assertNotNull(DataSourceHoconBuilderFactory.getBuilder("MYSQL-CDC"));
+    }
+
+    @Test
+    void sourceConfigPropagatesIntTypeNarrowing() {
+        Config connection = ConfigFactory.parseString("""
+                url = "jdbc:mysql://127.0.0.1:3306/testdb"
+                username = "test_user"
+                password = "test_password"
+                database = "testdb"
+                """);
+        Config node = ConfigFactory.parseString("""
+                table = "testdb.orders"
+                tableNames = ["testdb.orders"]
+                startupMode = "initial"
+                int_type_narrowing = false
+                """);
+
+        Config source = new MysqlCdcSourceBuilder().buildSourceHocon(HoconBuildContext.builder()
+                .connectionParam(connection.root().render())
+                .connectionConfig(connection)
+                .nodeConfig(node)
+                .build());
+
+        assertTrue(source.hasPath("int_type_narrowing"));
+        assertFalse(source.getBoolean("int_type_narrowing"));
     }
 
     @Test

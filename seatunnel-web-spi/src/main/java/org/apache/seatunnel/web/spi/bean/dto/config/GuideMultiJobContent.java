@@ -41,6 +41,11 @@ public class GuideMultiJobContent {
         private String schemaName;
         private Integer fetchSize;
         private Integer splitSize;
+        /**
+         * MySQL JDBC/CDC 的 tinyint(1) 窄化开关。
+         * 写入 PostgreSQL 兼容目标时应显式设为 false，避免 boolean/smallint 类型冲突。
+         */
+        private Boolean intTypeNarrowing;
         private String serverTimeZone;
         private String partitionColumn;
         private String partitionLowerBound;
