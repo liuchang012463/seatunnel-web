@@ -198,9 +198,7 @@ function buildInitialGraph(
           table: undefined,
           targetTableName: '',
           sql: '',
-          writeMode: isIncremental && String(sourceDbType).toUpperCase() !== 'HTTP'
-            ? 'upsert'
-            : 'append',
+          writeMode: isIncremental ? 'upsert' : 'append',
           primaryKey: '',
           batchSize: '',
           pluginInput: sinkId,
