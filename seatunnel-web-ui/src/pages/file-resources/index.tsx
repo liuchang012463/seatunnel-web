@@ -6,7 +6,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import type { UploadProps } from 'antd';
+import type { GetRef, UploadProps } from 'antd';
 import {
   Alert,
   Button,
@@ -15,6 +15,7 @@ import {
   Form,
   Input,
   Modal,
+  Pagination,
   Space,
   Progress,
   Table,
@@ -76,9 +77,11 @@ const uploadRecordStatusColor: Record<string, string> = {
   FAILED: 'error',
 };
 
+const defaultUploadRecordsPageSize = 20;
+
 const emptyUploadRecords: FileResourceUploadRecordPage = {
   bizData: [],
-  pagination: { pageNo: 1, pageSize: 10, total: 0 },
+  pagination: { pageNo: 1, pageSize: defaultUploadRecordsPageSize, total: 0 },
 };
 
 function downloadBlob(result: unknown): Blob | undefined {
@@ -133,6 +136,7 @@ const FileResourcesPage: React.FC = () => {
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [records, setRecords] = useState<FileResourceUploadRecordPage>(emptyUploadRecords);
+  const historyTableRef = useRef<GetRef<typeof Table>>(null);
   const [activeView, setActiveView] = useState<'browse' | 'history'>('browse');
   const activeViewRef = useRef(activeView);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -153,7 +157,7 @@ const FileResourcesPage: React.FC = () => {
 
   const reload = () => setRefreshToken((value) => value + 1);
 
-  const loadUploadRecords = useCallback(async (pageNo = 1, pageSize = 10) => {
+  const loadUploadRecords = useCallback(async (pageNo = 1, pageSize = defaultUploadRecordsPageSize) => {
     setRecordsLoading(true);
     try {
       setRecords(await fetchFileResourceUploadRecords({ pageNo, pageSize }));
@@ -472,23 +476,29 @@ const FileResourcesPage: React.FC = () => {
                   </div>
                   <div className="file-resources-page__history-table">
                     <Table<FileResourceUploadRecord>
+                      ref={historyTableRef}
                       rowKey={(record) => String(record.id || `${record.path}-${record.createTime}`)}
                       columns={recordColumns}
                       dataSource={records.bizData}
                       loading={recordsLoading}
                       locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无上传记录" /> }}
-                      scroll={{ x: 1280, y: 'calc(100vh - 400px)' }}
-                      pagination={{
-                        current: records.pagination.pageNo,
-                        pageSize: records.pagination.pageSize,
-                        total: records.pagination.total,
-                        showSizeChanger: true,
-                        showTotal: (total) => `共 ${total} 条`,
-                        position: ['bottomRight'],
-                        onChange: (page, pageSize) => void loadUploadRecords(page, pageSize),
-                      }}
+                      scroll={{ x: 1280, y: '100%' }}
+                      pagination={false}
                     />
                   </div>
+                  <Pagination
+                    className="file-resources-page__history-pagination"
+                    current={records.pagination.pageNo}
+                    pageSize={records.pagination.pageSize}
+                    total={records.pagination.total}
+                    disabled={recordsLoading || records.pagination.total === 0}
+                    showSizeChanger
+                    showTotal={(total) => `共 ${total} 条`}
+                    onChange={(page, pageSize) => {
+                      historyTableRef.current?.scrollTo({ top: 0 });
+                      void loadUploadRecords(page, pageSize);
+                    }}
+                  />
                 </div>
               ),
             },

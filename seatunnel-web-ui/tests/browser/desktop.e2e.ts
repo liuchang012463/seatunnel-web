@@ -37,7 +37,7 @@ test('lake file resources show only the selected tab panel', async ({ page }) =>
       code: 0,
       data: {
         bizData: [{ id: 1, fileName: 'upload-history.csv' }],
-        pagination: { pageNo: 1, pageSize: 10, total: 1 },
+        pagination: { pageNo: 1, pageSize: 20, total: 1 },
       },
     },
   }));
@@ -53,6 +53,50 @@ test('lake file resources show only the selected tab panel', async ({ page }) =>
   await page.getByRole('tab', { name: '文件浏览' }).click();
   await expect(uploadedFile).toBeHidden();
   await expect(directory).toBeInViewport();
+});
+
+test('lake upload history defaults to 20 records and fills the space above pagination', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let total = 21;
+  await page.route('**/api/v1/file-resources/upload-records?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    const pageNo = Number(params.get('pageNo'));
+    const pageSize = Number(params.get('pageSize'));
+    const start = (pageNo - 1) * pageSize;
+    const records = Array.from({ length: Math.max(0, Math.min(pageSize, total - start)) }, (_, index) => {
+      const id = start + index + 1;
+      return { id, fileName: `upload-${id}.csv` };
+    });
+    return route.fulfill({ json: { code: 0, data: { bizData: records, pagination: { pageNo, pageSize, total } } } });
+  });
+  await page.goto('/lake/file-resources');
+  await page.getByRole('tab', { name: '上传记录' }).click();
+
+  const history = page.getByRole('tabpanel', { name: '上传记录' });
+  const body = history.locator('.ant-table-body');
+  const pagination = history.locator('.ant-pagination');
+  await expect(history.getByText('共 21 条', { exact: true })).toBeVisible();
+  await expect(history.locator('tbody tr[data-row-key]')).toHaveCount(20);
+  await expect(pagination).toBeInViewport({ ratio: 1 });
+  const paginationTop = (await pagination.boundingBox())!.y;
+  const bodyBox = (await body.boundingBox())!;
+  const gap = paginationTop - bodyBox.y - bodyBox.height;
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThanOrEqual(16);
+
+  await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(history.getByText('upload-20.csv', { exact: true })).toBeInViewport();
+  expect((await pagination.boundingBox())!.y).toBe(paginationTop);
+
+  await pagination.locator('.ant-pagination-next button').click();
+  await expect(history.getByText('upload-21.csv', { exact: true })).toBeInViewport();
+  expect((await pagination.boundingBox())!.y).toBe(paginationTop);
+
+  total = 0;
+  await history.getByRole('button', { name: /刷\s*新/ }).click();
+  await expect(history.getByText('暂无上传记录')).toBeVisible();
+  await expect(history.getByText('共 0 条', { exact: true })).toBeVisible();
+  expect((await pagination.boundingBox())!.y).toBe(paginationTop);
 });
 
 test('late filter response cannot replace current rows', async ({ page }) => {

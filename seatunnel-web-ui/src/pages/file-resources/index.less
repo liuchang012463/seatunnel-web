@@ -154,22 +154,29 @@
     height: 100%;
   }
 
-  .ant-table {
+  .ant-table,
+  .ant-table-container {
     display: flex;
     flex: 1 1 0%;
     flex-direction: column;
     min-height: 0;
   }
 
-  .ant-table-container {
+  .ant-table-header {
+    flex: 0 0 auto;
+  }
+
+  // Keep the header in place while the scrollable body takes the remaining height.
+  .ant-table-body {
     flex: 1 1 0%;
     min-height: 0;
   }
+}
 
-  .ant-pagination {
-    flex: 0 0 auto;
-    margin-top: auto;
-  }
+.file-resources-page__history-pagination.ant-pagination {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin: 12px 0 16px;
 }
 
 .file-resources-page__upload-progress {
