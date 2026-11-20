@@ -106,6 +106,7 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
             instanceItem={{ id: instanceId, jobStatus: instanceStatus || "UNKNOWN" }}
             jobMode={jobMode === "STREAMING" ? "STREAMING" : "BATCH"}
             view="logs"
+            fillHeight
           />
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前任务暂无运行实例，无法查看日志" /></div>

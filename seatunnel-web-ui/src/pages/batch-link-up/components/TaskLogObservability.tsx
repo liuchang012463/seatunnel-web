@@ -28,6 +28,8 @@ interface TaskLogObservabilityProps {
   instanceItem: any;
   jobMode: JobLogMode;
   view: "logs" | "operation" | "snapshot" | "execution" | "timeline" | "replay" | "diagnosis";
+  /** 全屏日志弹窗中撑满可用高度；任务详情 Tab 内保持内容高度。 */
+  fillHeight?: boolean;
 }
 
 const getResponseData = (response: any) => response?.data ?? response;
@@ -119,7 +121,7 @@ const ReplayStepView: React.FC<{ step?: JobLogReplayStep; sectionTitle?: string 
   );
 };
 
-const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceItem, jobMode, view }) => {
+const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceItem, jobMode, view, fillHeight = false }) => {
   const instanceId = instanceItem?.id;
   const isFailed = String(instanceItem?.jobStatus || "").toUpperCase() === "FAILED";
   const canDiagnose = Boolean(instanceId) && isFailed;
@@ -519,7 +521,12 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
   );
 
   const renderLogPanel = () => (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
+    <section
+      className={[
+        "rounded-xl border border-slate-200 bg-white p-4",
+        fillHeight ? "flex min-h-0 flex-1 flex-col" : "",
+      ].join(" ")}
+    >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-slate-800">原始执行日志</div>
@@ -562,7 +569,12 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
       />
       {errorText ? <div className="mt-2 text-sm text-red-600">{errorText}</div> : null}
       {normalizedKeyword ? (
-        <div className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100">
+        <div
+          className={[
+            "mt-3 overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100",
+            fillHeight ? "min-h-[240px] flex-1" : "max-h-[360px]",
+          ].join(" ")}
+        >
           {searchLoading && !searchResult ? (
             <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
           ) : searchError ? (
@@ -612,7 +624,10 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
           ) : null}
           <div
             ref={logViewportRef}
-            className="max-h-[360px] overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100"
+            className={[
+              "overflow-auto rounded-xl bg-slate-950 p-3 font-mono text-sm leading-5 text-slate-100",
+              fillHeight ? "min-h-[240px] flex-1" : "max-h-[360px]",
+            ].join(" ")}
           >
             {loading && !logContent ? (
               <div className="flex min-h-[180px] items-center justify-center"><Spin size="small" /></div>
@@ -805,7 +820,15 @@ const TaskLogObservability: React.FC<TaskLogObservabilityProps> = ({ instanceIte
                 ? renderReplayPanel()
                 : renderDiagnosisPanel();
 
-  return <div className="space-y-4">{content}</div>;
+  return (
+    <div
+      className={
+        fillHeight ? "flex h-full min-h-0 flex-col space-y-4" : "space-y-4"
+      }
+    >
+      {content}
+    </div>
+  );
 };
 
 export default TaskLogObservability;
