@@ -1,4 +1,10 @@
 import HttpUtils from "@/utils/HttpUtils";
+import {
+  formatMetric,
+  getThroughputMegabytesPerSecond,
+  isTerminalThroughputStatus,
+  toMegabytes,
+} from "@/pages/common/utils/throughput";
 import { Empty, Modal, Select, Spin, message } from "antd";
 import ReactECharts from "echarts-for-react";
 import { Activity, Clock3, Gauge, RefreshCw, Zap } from "lucide-react";
@@ -13,6 +19,7 @@ import React, {
 } from "react";
 import CountUp from "react-countup";
 import TaskStatus from "./TaskStatus";
+import "./realtime-metrics-overview.less";
 
 type RealtimeGrafanaLightModalRef = {
   onOpen: (visible: boolean, record?: Partial<JobInstanceVO>) => void;
@@ -148,16 +155,14 @@ type ApiResult<T> = {
 };
 
 const REFRESH_INTERVAL = 5000;
+const overviewClassName = "streaming-metrics-overview";
 const rangeSelectClassName = [
-  "w-[132px]",
-  "[&_.ant-select-arrow]:!text-[#b7d9e2]",
-  "[&_.ant-select-selection-item]:!text-[#dff7ff]",
-  "[&_.ant-select-selector]:!border-[#1a829a]",
-  "[&_.ant-select-selector]:!bg-[#064b5f]",
+  "w-[224px]",
+  "[&_.ant-select-arrow]:!text-[var(--st-color-text-secondary)]",
 ].join(" ");
 const refreshButtonClassName = [
-  "hidden items-center gap-2 border border-[#1a829a] bg-[#064b5f] px-3 py-1.5",
-  "text-sm text-[#bdeaf5] transition hover:bg-[#0a5b70] hover:text-white md:flex",
+  "flex items-center gap-2 border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] px-3 py-1.5",
+  "text-base text-[var(--st-color-text-secondary)] transition hover:bg-[var(--st-color-bg-hover)] hover:text-white",
 ].join(" ");
 
 const RealtimeGrafanaLightModal = forwardRef<
@@ -170,7 +175,6 @@ const RealtimeGrafanaLightModal = forwardRef<
   const [dashboard, setDashboard] =
     useState<StreamingInstanceMetricsDashboardVO | null>(null);
   const [loading, setLoading] = useState(false);
-  console.log(record);
   const timerRef = useRef<number | null>(null);
 
   const instanceId = useMemo(() => {
@@ -188,17 +192,13 @@ const RealtimeGrafanaLightModal = forwardRef<
       }
 
       try {
-        const response = await HttpUtils.get(
+        const response = await HttpUtils.get<StreamingInstanceMetricsDashboardVO>(
           `/api/v1/job/streaming-instance/${instanceId}/metrics-dashboard?range=${range}`
         );
 
-        const data =
-          response?.data ||
-          (response?.data as StreamingInstanceMetricsDashboardVO);
-        console.log(data);
-        setDashboard(data);
+        setDashboard(response?.data ?? null);
       } catch (error) {
-        console.error("Fetch streaming metrics dashboard failed", error);
+        console.error("Fetch streaming metrics dashboard failed", { instanceId, range }, error);
         if (!silent) {
           message.error("获取实时监控数据失败");
         }
@@ -268,17 +268,27 @@ const RealtimeGrafanaLightModal = forwardRef<
     dashboard?.topRowDiffTables || dashboard?.topLagTables || [];
 
   const viewData = useMemo(() => {
+    const status = current.jobStatus || instance.jobStatus || "UNKNOWN";
+    const terminal = isTerminalThroughputStatus(status);
+    const runtimeMillis =
+      Date.parse(instance.endTime || "") - Date.parse(instance.startTime || instance.submitTime || "");
+
     return {
       jobName: instance.jobName || "实时任务 (Streaming Job)",
       jobInstanceId: instance.id || current.jobInstanceId || "-",
       engineJobId: instance.engineJobId || current.engineJobId || "-",
       clientId: instance.clientId || current.clientId || "-",
-      status: current.jobStatus || instance.jobStatus || "UNKNOWN",
+      status,
       startTime: formatDateTime(instance.startTime),
       lastCollectTime: formatDateTime(current.lastCollectTime),
 
-      readQps: toNumber(current.readQps),
-      writeQps: toNumber(current.writeQps),
+      readQps: formatMetric(current.readQps),
+      writeQps: formatMetric(current.writeQps),
+      readMegabytes: current.readBytes == null ? undefined : toMegabytes(current.readBytes),
+      writeMegabytes: current.writeBytes == null ? undefined : toMegabytes(current.writeBytes),
+      readMBps: getThroughputMegabytesPerSecond(current.readBps, current.readBytes, runtimeMillis, terminal),
+      writeMBps: getThroughputMegabytesPerSecond(current.writeBps, current.writeBytes, runtimeMillis, terminal),
+      terminal,
       lagCount: toNumber(current.lagCount),
       queueSize: toNumber(current.intermediateQueueSize),
       recordDelay: toNumber(current.recordDelay),
@@ -309,16 +319,18 @@ const RealtimeGrafanaLightModal = forwardRef<
       series: [
         {
           name: "读取 QPS (Read QPS)",
-          color: "#2563eb",
+          color: "#55dfd1",
           data: trends.map((item) => toNumber(item.readQps)),
         },
         {
           name: "写入 QPS (Write QPS)",
-          color: "#7c3aed",
+          color: "#a9e882",
+          dashed: true,
           data: trends.map((item) => toNumber(item.writeQps)),
         },
       ],
-      formatter: formatShortNumber,
+      formatter: (value) => formatMetric(value),
+      isRate: true,
     });
   }, [trends]);
 
@@ -333,12 +345,13 @@ const RealtimeGrafanaLightModal = forwardRef<
       series: [
         {
           name: "读取行数 (Read Rows)",
-          color: "#16a34a",
+          color: "#55dfd1",
           data: trends.map((item) => toNumber(item.readRowCount)),
         },
         {
           name: "写入行数 (Write Rows)",
-          color: "#2563eb",
+          color: "#a9e882",
+          dashed: true,
           data: trends.map((item) => toNumber(item.writeRowCount)),
         },
       ],
@@ -363,6 +376,7 @@ const RealtimeGrafanaLightModal = forwardRef<
   return (
     <Modal
       open={open}
+      className={overviewClassName}
       footer={null}
       title={null}
       destroyOnHidden
@@ -374,26 +388,23 @@ const RealtimeGrafanaLightModal = forwardRef<
       style={{ top: 16 }}
       styles={{
         mask: {
-          background: "rgba(0, 22, 31, 0.82)",
+          background: "rgba(0, 24, 25, 0.82)",
         },
         content: {
           padding: 0,
           overflow: "hidden",
           borderRadius: 18,
-          background: "#002f3f",
-          boxShadow: "none",
-          border: "1px solid #0d6a80",
         },
         body: {
           padding: 0,
         },
       }}
     >
-      <div className="h-[calc(100vh-45px)] overflow-hidden bg-[#002f3f] text-[#dff7ff]">
+      <div className="h-[calc(100vh-45px)] overflow-hidden bg-[var(--st-color-bg-secondary)] text-[var(--st-color-text-primary)]">
         <div className="flex h-full flex-col">
-          <header className="flex shrink-0 items-center justify-between border-b border-[#0d6a80] bg-[#003a4d] px-5 py-4">
+          <header className="flex shrink-0 items-center justify-between border-b border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] px-5 py-4">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1a829a] bg-[#064b5f] text-[#4bd8ff]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-hover)] text-[var(--st-color-accent)]">
                 <Gauge className="h-5 w-5" />
               </div>
 
@@ -406,7 +417,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                   <TaskStatus status={viewData.status} />
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#a9cbd4]">
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-[var(--st-color-text-secondary)]">
                   <span>实例 (Instance)：{viewData.jobInstanceId}</span>
                   <span>引擎 (Engine)：{viewData.engineJobId}</span>
                   <span>模式 (Mode)：{viewData.syncMode}</span>
@@ -420,10 +431,10 @@ const RealtimeGrafanaLightModal = forwardRef<
               style={{ marginRight: "3rem" }}
             >
               <Select
-                // size="small"
                 value={range}
                 onChange={setRange}
                 className={rangeSelectClassName}
+                classNames={{ popup: { root: overviewClassName } }}
                 options={[
                   { label: "最近 15 分钟 (Last 15 min)", value: "15m" },
                   { label: "最近 1 小时 (Last 1 hour)", value: "1h" },
@@ -450,7 +461,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                 type="button"
                 aria-label="Close"
                 className="ant-modal-close"
-                style={{ top: "22px", color: "#b7d9e2" }}
+                style={{ top: "22px", color: "#b7ded8" }}
                 onClick={handleClose}
               >
                 <span className="ant-modal-close-x" aria-label="关闭">
@@ -480,7 +491,7 @@ const RealtimeGrafanaLightModal = forwardRef<
           <main className="flex-1 overflow-auto p-5">
             <Spin spinning={loading && !dashboard}>
               {!instanceId ? (
-                <div className="flex h-[520px] items-center justify-center rounded-xl border border-[#0d6a80] bg-[#003a4d]">
+                <div className="flex h-[520px] items-center justify-center rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)]">
                   <Empty description="缺少 instanceId，无法加载实时监控数据" />
                 </div>
               ) : (
@@ -491,7 +502,9 @@ const RealtimeGrafanaLightModal = forwardRef<
                     value={viewData.readRows}
                     unit="行 (rows)"
                     icon={<Activity className="h-4 w-4" />}
-                    accent="blue"
+                    accent="read"
+                    secondaryLabel="累计读取数据量"
+                    secondaryValue={formatMetric(viewData.readMegabytes, "MB")}
                   />
 
                   <LightStatPanel
@@ -500,7 +513,9 @@ const RealtimeGrafanaLightModal = forwardRef<
                     value={viewData.writeRows}
                     unit="行 (rows)"
                     icon={<Zap className="h-4 w-4" />}
-                    accent="purple"
+                    accent="write"
+                    secondaryLabel="累计写入数据量"
+                    secondaryValue={formatMetric(viewData.writeMegabytes, "MB")}
                   />
 
                   <LightStatPanel
@@ -509,7 +524,9 @@ const RealtimeGrafanaLightModal = forwardRef<
                     value={viewData.readQps}
                     unit="行/秒 (rows/s)"
                     icon={<Gauge className="h-4 w-4" />}
-                    accent="orange"
+                    accent="read"
+                    secondaryLabel={viewData.terminal ? "平均读取吞吐" : "读取吞吐"}
+                    secondaryValue={formatMetric(viewData.readMBps, "MB/s")}
                   />
 
                   <LightStatPanel
@@ -518,7 +535,9 @@ const RealtimeGrafanaLightModal = forwardRef<
                     value={viewData.writeQps}
                     unit="行/秒 (rows/s)"
                     icon={<Clock3 className="h-4 w-4" />}
-                    accent="green"
+                    accent="write"
+                    secondaryLabel={viewData.terminal ? "平均写入吞吐" : "写入吞吐"}
+                    secondaryValue={formatMetric(viewData.writeMBps, "MB/s")}
                   />
 
                   <LightPanel
@@ -604,7 +623,7 @@ const RealtimeGrafanaLightModal = forwardRef<
                     title="基本信息 (Basic Info)"
                     description="来源 / 去向 (Source / Sink)"
                   >
-                    <div className="grid gap-3 text-sm">
+                    <div className="grid gap-3 text-base">
                       <BasicRow
                         label="来源 (Source)"
                         value={viewData.source}
@@ -655,16 +674,16 @@ const LightPanel: React.FC<{
   return (
     <section
       className={[
-        "rounded-xl border border-[#0d6a80] bg-[#003a4d] ",
+        "rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] ",
         className,
       ].join(" ")}
     >
-      <div className="border-b border-[#0d6a80] px-4 py-3">
+      <div className="border-b border-[var(--st-color-border)] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="m-0 text-sm font-bold text-white">{title}</h2>
+            <h2 className="m-0 text-base font-bold text-white">{title}</h2>
             {description ? (
-              <div className="mt-1 text-sm text-[#b7d9e2]">{description}</div>
+              <div className="mt-1 text-base text-[var(--st-color-text-secondary)]">{description}</div>
             ) : null}
           </div>
         </div>
@@ -677,31 +696,28 @@ const LightPanel: React.FC<{
 
 const LightStatPanel: React.FC<{
   title: string;
-  value: React.ReactNode;
+  value: number | string;
   unit?: string;
   icon: React.ReactNode;
-  accent: "blue" | "purple" | "orange" | "green";
+  accent: "read" | "write";
   className?: string;
-}> = ({ title, value, unit, icon, accent, className = "" }) => {
+  secondaryLabel: string;
+  secondaryValue: string;
+}> = ({ title, value, unit, icon, accent, className = "", secondaryLabel, secondaryValue }) => {
   const accentMap = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    purple: "text-violet-600 bg-violet-50 border-violet-100",
-    orange: "text-orange-600 bg-orange-50 border-orange-100",
-    green: "text-emerald-600 bg-emerald-50 border-emerald-100",
+    read: "border-teal-300/30 bg-teal-300/10 text-teal-200",
+    write: "border-lime-300/30 bg-lime-300/10 text-lime-200",
   };
-
-  const num = typeof value === "number" ? value : Number(value);
-  const canCountUp = !Number.isNaN(num);
 
   return (
     <section
       className={[
-        "rounded-xl border border-[#0d6a80] bg-[#003a4d] p-4 ",
+        "rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] p-4 ",
         className,
       ].join(" ")}
     >
       <div className="mb-6 flex items-center justify-between">
-        <div className="text-sm font-semibold text-[#c3e7ef]">{title}</div>
+        <div className="text-base font-semibold text-[var(--st-color-text-secondary)]">{title}</div>
         <div
           className={[
             "flex h-8 w-8 items-center justify-center rounded-lg border",
@@ -712,26 +728,29 @@ const LightStatPanel: React.FC<{
         </div>
       </div>
 
-      <div className="flex items-end gap-2">
+      <div className="flex flex-wrap items-baseline gap-x-2">
         <div className="text-4xl font-bold tracking-tight text-white">
-          {canCountUp ? (
+          {typeof value === "number" ? (
             <CountUp
-              key={`${title}-${num}`}
-              end={num}
+              key={`${title}-${value}`}
+              end={value}
               duration={0.8}
               separator=","
-              decimals={num % 1 === 0 ? 0 : 2}
             />
           ) : (
-            value || "-"
+            value
           )}
         </div>
 
         {unit ? (
-          <div className="mb-1 text-sm font-semibold text-[#c3e7ef]">
+          <div className="text-base font-semibold text-[var(--st-color-text-secondary)]">
             {unit}
           </div>
         ) : null}
+      </div>
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-2 border-t border-[var(--st-color-border)] pt-2 text-base text-[var(--st-color-text-secondary)]">
+        <span>{secondaryLabel}</span>
+        <strong className="whitespace-nowrap text-[var(--st-color-text-primary)]">{secondaryValue}</strong>
       </div>
     </section>
   );
@@ -742,8 +761,8 @@ const MiniInfo: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => {
   return (
-    <div className="rounded-lg border border-[#1a829a] bg-[#033747] p-3">
-      <div className="text-sm text-[#b7d9e2]">{label}</div>
+    <div className="rounded-lg border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-control)] p-3">
+      <div className="text-base text-[var(--st-color-text-secondary)]">{label}</div>
       <div className="mt-2 truncate text-lg font-bold text-white">
         {value || "-"}
       </div>
@@ -756,8 +775,8 @@ const BasicRow: React.FC<{
   value: React.ReactNode;
 }> = ({ label, value }) => {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-[#1a829a] bg-[#033747] px-3 py-2">
-      <span className="text-[#b7d9e2]">{label}</span>
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-control)] px-3 py-2">
+      <span className="text-[var(--st-color-text-secondary)]">{label}</span>
       <span className="truncate text-right font-semibold text-white">
         {value || "-"}
       </span>
@@ -798,9 +817,9 @@ const TableMetricsView: React.FC<{
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#0d6a80]">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-[#033747] text-sm text-[#b7d9e2]">
+    <div className="overflow-hidden rounded-lg border border-[var(--st-color-border)]">
+      <table className="w-full text-left text-base">
+        <thead className="bg-[var(--st-color-bg-control)] text-base text-[var(--st-color-text-secondary)]">
           <tr>
             <th className="px-4 py-3 font-semibold">表 (Table)</th>
             <th className="px-4 py-3 text-right font-semibold">
@@ -824,7 +843,7 @@ const TableMetricsView: React.FC<{
           </tr>
         </thead>
 
-        <tbody className="divide-y divide-[#0d6a80]">
+        <tbody className="divide-y divide-[var(--st-color-border)]">
           {rows.map((item, index) => {
             const tableName = buildTableName(item);
             const rowDiff = calcRowDiff(item);
@@ -832,7 +851,7 @@ const TableMetricsView: React.FC<{
             return (
               <tr
                 key={`${tableName}-${item.pipelineId || index}`}
-                className="bg-[#003a4d] text-[#c3e7ef] hover:bg-[#064b5f]"
+                className="bg-[var(--st-color-bg-elevated)] text-[var(--st-color-text-secondary)] hover:bg-[var(--st-color-bg-hover)]"
               >
                 <td className="max-w-[220px] truncate px-4 py-3 font-semibold text-white">
                   {tableName}
@@ -844,18 +863,18 @@ const TableMetricsView: React.FC<{
                   {formatNumber(item.writeRowCount)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-sm font-semibold text-orange-300">
+                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-base font-semibold text-orange-300">
                     {formatNumber(rowDiff)}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {formatNumber(item.readQps)}
+                  {formatMetric(item.readQps)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {formatNumber(item.writeQps)}
+                  {formatMetric(item.writeQps)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-white/5 px-2 py-1 text-sm font-semibold text-[#b7d9e2]">
+                  <span className="rounded-md bg-white/5 px-2 py-1 text-base font-semibold text-[var(--st-color-text-secondary)]">
                     {item.status || "-"}
                   </span>
                 </td>
@@ -883,10 +902,11 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      backgroundColor: "rgba(4, 39, 40, 0.96)",
       borderWidth: 0,
       textStyle: {
         color: "#fff",
+        fontSize: 14,
       },
       formatter: (params: any[]) => {
         const item = params?.[0];
@@ -900,7 +920,8 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     xAxis: {
       type: "value",
       axisLabel: {
-        color: "#8fb5c0",
+        color: "#a0c9c3",
+        fontSize: 14,
         formatter: formatShortNumber,
       },
       axisLine: {
@@ -911,7 +932,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
       },
       splitLine: {
         lineStyle: {
-          color: "rgba(125, 190, 205, 0.34)",
+          color: "rgba(125, 200, 187, 0.34)",
         },
       },
     },
@@ -919,7 +940,8 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
       type: "category",
       data: yAxis,
       axisLabel: {
-        color: "#8fb5c0",
+        color: "#a0c9c3",
+        fontSize: 14,
         width: 82,
         overflow: "truncate",
       },
@@ -950,15 +972,18 @@ const buildLightLineOption = ({
   xAxis,
   series,
   formatter,
+  isRate = false,
 }: {
   unit: string;
   xAxis: string[];
   series: Array<{
     name: string;
     color: string;
+    dashed?: boolean;
     data: number[];
   }>;
   formatter: (value: number) => string;
+  isRate?: boolean;
 }) => {
   return {
     backgroundColor: "transparent",
@@ -968,14 +993,17 @@ const buildLightLineOption = ({
       right: 24,
       top: 48,
       bottom: 34,
+      containLabel: true,
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
+      backgroundColor: "rgba(4, 39, 40, 0.96)",
       borderWidth: 0,
       textStyle: {
         color: "#fff",
+        fontSize: 14,
       },
+      valueFormatter: isRate ? (value: unknown) => formatMetric(value, unit) : undefined,
     },
     legend: {
       top: 6,
@@ -983,7 +1011,8 @@ const buildLightLineOption = ({
       itemWidth: 12,
       itemHeight: 8,
       textStyle: {
-        color: "#b7d9e2",
+        color: "#b7ded8",
+        fontSize: 14,
       },
     },
     xAxis: {
@@ -992,30 +1021,34 @@ const buildLightLineOption = ({
       data: xAxis,
       axisLine: {
         lineStyle: {
-          color: "rgba(125, 190, 205, 0.4)",
+          color: "rgba(125, 200, 187, 0.4)",
         },
       },
       axisTick: {
         show: false,
       },
       axisLabel: {
-        color: "#8fb5c0",
+        color: "#a0c9c3",
+        fontSize: 14,
       },
     },
     yAxis: {
       type: "value",
+      minInterval: isRate ? 0.1 : undefined,
       name: unit,
       nameTextStyle: {
-        color: "#8fb5c0",
+        color: "#a0c9c3",
+        fontSize: 14,
         padding: [0, 0, 0, -28],
       },
       axisLabel: {
-        color: "#8fb5c0",
+        color: "#a0c9c3",
+        fontSize: 14,
         formatter,
       },
       splitLine: {
         lineStyle: {
-          color: "rgba(125, 190, 205, 0.28)",
+          color: "rgba(125, 200, 187, 0.28)",
         },
       },
     },
@@ -1028,6 +1061,7 @@ const buildLightLineOption = ({
       lineStyle: {
         width: 2,
         color: item.color,
+        type: item.dashed ? "dashed" : "solid",
       },
       areaStyle: {
         color: item.color,
