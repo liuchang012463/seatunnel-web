@@ -6,9 +6,12 @@ import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
+import org.apache.seatunnel.web.dao.entity.StreamingJobInstance;
+import org.apache.seatunnel.web.dao.mapper.StreamingJobInstanceMapper;
 import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
+import org.apache.seatunnel.web.dao.repository.impl.StreamingJobInstanceDaoImpl;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -940,5 +945,78 @@ class OpenLineageJobLineageServiceTest {
         service.pulseStreamingJobs();
 
         verifyNoInteractions(bridge);
+    }
+
+    /**
+     * Regression for the missing status conversion: the real DAO path must hand "RUNNING" to the
+     * pulse, which then sends the heartbeat and detects the later terminal.
+     */
+    @Test
+    void theRealStreamingDaoConversionPublishesAHeartbeatAndTheLaterTerminal() throws Exception {
+        StreamingJobInstanceMapper mapper = mock(StreamingJobInstanceMapper.class);
+        StreamingJobInstance running = StreamingJobInstance.builder()
+                .id(100L)
+                .jobDefinitionId(200L)
+                .clientId(1L)
+                .engineJobId("engine-job-90")
+                .jobStatus(JobStatus.RUNNING)
+                .build();
+        when(mapper.selectList(any())).thenReturn(List.of(running)).thenReturn(List.of());
+        StreamingJobInstanceDaoImpl realDao = new StreamingJobInstanceDaoImpl(mapper);
+        ReflectionTestUtils.setField(realDao, "streamingJobInstanceMapper", mapper);
+        service = new OpenLineageJobLineageService(
+                properties, bridge, jobInstanceDao, realDao, dataSourceDao);
+
+        JobInstanceVO runningDetails = instance();
+        runningDetails.setJobStatus("RUNNING");
+        runningDetails.setEngineJobId("engine-job-90");
+        JobInstanceVO finishedDetails = instance();
+        finishedDetails.setJobStatus("FINISHED");
+        finishedDetails.setEngineJobId("engine-job-90");
+        when(mapper.selectDetailById(100L)).thenReturn(runningDetails).thenReturn(finishedDetails);
+
+        service.pulseStreamingJobs();
+        assertEquals(1, published.size());
+        assertEquals("RUNNING", MAPPER.readTree(published.get(0)).path("eventType").asText());
+
+        service.pulseStreamingJobs();
+        assertEquals(2, published.size());
+        JsonNode terminal = MAPPER.readTree(published.get(1));
+        assertEquals("COMPLETE", terminal.path("eventType").asText());
+        assertEquals("RUNNING", terminal.path("run").path("facets").path("seatunnel")
+                .path("prevStatus").asText());
+    }
+
+    /**
+     * One listing row without a status must not abort the pulse: the remaining instances keep
+     * their heartbeats and stay tracked, so their later terminal is still published.
+     */
+    @Test
+    void aMissingStatusDoesNotAbortTheStreamingPulseOrLoseTracking() throws Exception {
+        JobInstanceVO missing = instance();
+        missing.setId(110L);
+        missing.setJobStatus(null);
+        missing.setEngineJobId("engine-job-91");
+        JobInstanceVO running = instance();
+        running.setId(111L);
+        running.setJobStatus("RUNNING");
+        running.setEngineJobId("engine-job-92");
+        JobInstanceVO failed = instance();
+        failed.setId(111L);
+        failed.setJobStatus("FAILED");
+        failed.setEngineJobId("engine-job-92");
+        when(streamingJobInstanceDao.listRunning())
+                .thenReturn(List.of(missing, running))
+                .thenReturn(List.of());
+        when(streamingJobInstanceDao.selectDetailById(111L))
+                .thenReturn(running)
+                .thenReturn(failed);
+
+        service.pulseStreamingJobs();
+        service.pulseStreamingJobs();
+
+        assertEquals(2, published.size());
+        assertEquals("RUNNING", MAPPER.readTree(published.get(0)).path("eventType").asText());
+        assertEquals("FAIL", MAPPER.readTree(published.get(1)).path("eventType").asText());
     }
 }

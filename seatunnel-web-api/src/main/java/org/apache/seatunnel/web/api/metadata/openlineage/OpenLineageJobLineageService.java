@@ -251,6 +251,13 @@ public class OpenLineageJobLineageService {
                     continue;
                 }
                 present.add(listed.getId());
+                if (StringUtils.isBlank(listed.getJobStatus())) {
+                    // Keep the instance in the present set and its last known status: one
+                    // malformed row must not abort this pulse or lose terminal detection.
+                    log.warn("OpenLineage streaming pulse skips an instance without a status and "
+                            + "keeps its last known status, instanceId={}", listed.getId());
+                    continue;
+                }
                 if ("RUNNING".equalsIgnoreCase(listed.getJobStatus())) {
                     publishHeartbeat(listed);
                 }
@@ -259,7 +266,8 @@ public class OpenLineageJobLineageService {
             Map<Long, String> vanished = vanished(monitoredStreamingStatuses, present);
             monitoredStreamingStatuses.keySet().retainAll(present);
             for (JobInstanceVO listed : running) {
-                if (listed != null && listed.getId() != null) {
+                if (listed != null && listed.getId() != null
+                        && StringUtils.isNotBlank(listed.getJobStatus())) {
                     monitoredStreamingStatuses.put(listed.getId(), listed.getJobStatus());
                 }
             }

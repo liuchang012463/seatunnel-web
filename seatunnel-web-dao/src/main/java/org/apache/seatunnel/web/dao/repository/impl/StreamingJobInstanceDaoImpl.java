@@ -365,7 +365,13 @@ public class StreamingJobInstanceDaoImpl
         }
 
         return records.stream()
-                .map(item -> ConvertUtil.sourceToTarget(item, JobInstanceVO.class))
+                .map(item -> {
+                    JobInstanceVO vo = ConvertUtil.sourceToTarget(item, JobInstanceVO.class);
+                    // ConvertUtil copies only assignable properties: the entity holds the enum
+                    // while the VO holds the status name, so it must be copied explicitly.
+                    vo.setJobStatus(item.getJobStatus() == null ? null : item.getJobStatus().name());
+                    return vo;
+                })
                 .collect(Collectors.toList());
     }
 
