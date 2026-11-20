@@ -1,6 +1,7 @@
 import React from "react";
 import { useIntl } from "@umijs/max";
 import {
+  formatMetric,
   getThroughputMegabytesPerSecond,
   isTerminalThroughputStatus,
 } from "@/pages/common/utils/throughput";
@@ -29,7 +30,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
     : 0;
   const toMegabytesPerSecond = (bps: any, bytes: any) => {
     const value = getThroughputMegabytesPerSecond(bps, bytes, runtimeMillis, terminal);
-    return value === undefined ? "—" : `${value.toFixed(2)} MB/s`;
+    return formatMetric(value, "MB/s");
   };
   const hasMetrics = record?.metricsAvailable !== false && record?.latestMetrics?.metricsAvailable !== false;
   const readRowCount = hasMetrics ? record?.latestMetrics?.readRowCount ?? record?.readRowCount ?? record?.amount ?? 0 : undefined;
@@ -88,7 +89,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         <span className="task-metric">
           <span className="task-metric__label">QPS</span>
           <span className="task-metric__value">
-            {qps ?? "—"}
+            {formatMetric(qps)}
             {intl.formatMessage({
               id: "pages.job.execution.unit.rowsPerSecond",
               defaultMessage: "行/秒",

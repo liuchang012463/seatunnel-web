@@ -15,8 +15,10 @@ import {
 import { batchJobInstanceApi } from "../api";
 import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
 import {
+  formatMetric,
   getThroughputMegabytesPerSecond,
   isTerminalThroughputStatus,
+  toMegabytes,
 } from "@/pages/common/utils/throughput";
 import { parseEngineOperatorMetrics, type EngineOperatorMetric } from "../utils/engineOperatorMetrics";
 
@@ -29,7 +31,7 @@ interface MetricCardProps {
   title: string;
   value: number | undefined;
   unit: string;
-  decimals?: number;
+  isRate?: boolean;
   hint?: string;
   icon: React.ReactNode;
   accentClassName: string;
@@ -43,20 +45,6 @@ const toNumber = (value: any) => {
 const formatNumber = (value: any) => {
   const n = toNumber(value);
   return n.toLocaleString();
-};
-
-const formatDecimal = (value: any) => {
-  const n = toNumber(value);
-
-  if (n === 0) {
-    return "0";
-  }
-
-  if (n < 1) {
-    return n.toFixed(4);
-  }
-
-  return n.toFixed(2).replace(/\.?0+$/, "");
 };
 
 const parseTimestamp = (value: any) => {
@@ -156,7 +144,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
   unit,
-  decimals = 0,
+  isRate = false,
   hint,
   icon,
   accentClassName,
@@ -171,7 +159,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
           <div className="mt-3 flex items-end gap-1.5">
             <span className="text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
-              {value === undefined ? "—" : <CountUp end={value} duration={1.1} separator="," decimals={decimals} />}
+              {isRate
+                ? formatMetric(value)
+                : value === undefined
+                  ? "—"
+                  : <CountUp end={value} duration={1.1} separator="," />}
             </span>
             <span className="pb-0.5 text-sm font-medium text-slate-600">
               {unit}
@@ -469,7 +461,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         width: 100,
         align: "right" as const,
         render: (value: any) => (
-          <span className="text-slate-600">{formatDecimal(value)}</span>
+          <span className="text-slate-600">{formatMetric(value)}</span>
         ),
       },
       {
@@ -479,7 +471,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         width: 100,
         align: "right" as const,
         render: (value: any) => (
-          <span className="text-slate-600">{formatDecimal(value)}</span>
+          <span className="text-slate-600">{formatMetric(value)}</span>
         ),
       },
       {
@@ -550,7 +542,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         key: "receivedQps",
         width: 110,
         align: "right" as const,
-        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+        render: (value?: number) => value == null ? "-" : formatMetric(value),
       },
       {
         title: "写入 QPS",
@@ -558,23 +550,23 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         key: "writeQps",
         width: 110,
         align: "right" as const,
-        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+        render: (value?: number) => value == null ? "-" : formatMetric(value),
       },
       {
-        title: "接收字节/秒",
+        title: "接收 MB/s",
         dataIndex: "receivedBytesPerSecond",
         key: "receivedBytesPerSecond",
         width: 140,
         align: "right" as const,
-        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+        render: (value?: number) => value == null ? "-" : formatMetric(toMegabytes(value)),
       },
       {
-        title: "写入字节/秒",
+        title: "写入 MB/s",
         dataIndex: "writeBytesPerSecond",
         key: "writeBytesPerSecond",
         width: 140,
         align: "right" as const,
-        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+        render: (value?: number) => value == null ? "-" : formatMetric(toMegabytes(value)),
       },
       {
         title: "Flush Signal QPS",
@@ -582,7 +574,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         key: "flushSignalQps",
         width: 150,
         align: "right" as const,
-        render: (value?: number) => value == null ? "-" : formatDecimal(value),
+        render: (value?: number) => value == null ? "-" : formatMetric(value),
       },
     ],
     [],
@@ -614,6 +606,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             <MetricCard
               title={readQpsTitle}
               value={readQps}
+              isRate
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
               icon={<ArrowDownToLine size={17} strokeWidth={1.9} />}
               accentClassName="border-blue-100 bg-blue-50 text-blue-600"
@@ -622,6 +615,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             <MetricCard
               title={writeQpsTitle}
               value={writeQps}
+              isRate
               unit={t("pages.job.detail.metrics.unit.rowsPerSecond", "行/秒")}
               icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
               accentClassName="border-emerald-100 bg-emerald-50 text-emerald-600"
@@ -630,7 +624,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             <MetricCard
               title={readMBpsTitle}
               value={readMBps}
-              decimals={2}
+              isRate
               unit="MB/s"
               icon={<ArrowDownToLine size={17} strokeWidth={1.9} />}
               accentClassName="border-blue-100 bg-blue-50 text-blue-600"
@@ -639,7 +633,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
             <MetricCard
               title={writeMBpsTitle}
               value={writeMBps}
-              decimals={2}
+              isRate
               unit="MB/s"
               icon={<ArrowUpFromLine size={17} strokeWidth={1.9} />}
               accentClassName="border-emerald-100 bg-emerald-50 text-emerald-600"

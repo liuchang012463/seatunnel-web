@@ -721,7 +721,8 @@ public class JobMetricsServiceImpl implements JobMetricsService {
                     : toLong(row.get("value"));
             double shown = raw / scale.getFactor();
 
-            item.setValue(round2(shown));
+            // Rates retain their precision until the UI formats them in the displayed unit.
+            item.setValue(kind == UnitKind.RAW ? raw : round2(shown));
             item.setUnit(scale.getUnit());
 
             list.add(item);

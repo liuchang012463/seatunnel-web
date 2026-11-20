@@ -1,5 +1,6 @@
 import React from "react";
 import LineChart from "./LineChart";
+import { toMegabytes } from "@/pages/common/utils/throughput";
 
 import BarChart from "./BarChart";
 import { ChartData } from "./types";
@@ -36,10 +37,10 @@ const ChartsContainer: React.FC<ChartsContainerProps> = ({
       type: "line" as const,
     },
     {
-      data: chartData.bytesSpeedTrend.data,
+      data: chartData.bytesSpeedTrend.data.map(toMegabytes),
       xAxisData: chartData.bytesSpeedTrend.xAxis,
       title: "Sync Rate (Bytes)",
-      unit: "M/s",
+      unit: "MB/s",
       type: "line" as const,
     },
   ];

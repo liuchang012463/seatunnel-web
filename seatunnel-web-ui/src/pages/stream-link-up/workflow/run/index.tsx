@@ -1,3 +1,4 @@
+import { formatMetric } from "@/pages/common/utils/throughput";
 import { Client } from "@stomp/stompjs";
 import { message } from "antd";
 import type { FC, ReactNode } from "react";
@@ -244,9 +245,9 @@ const RunLog: FC<RunLogProps> = ({
       `Instance ${payload.instanceId} - Pipeline ${
         pipeline.pipelineId
       }${formatTableText(tableMetric)}: Read ${pipeline.readRowCount ?? 0} (${
-        pipeline.readQps ?? 0
+        formatMetric(pipeline.readQps ?? 0)
       } QPS), Write ${pipeline.writeRowCount ?? 0} (${
-        pipeline.writeQps ?? 0
+        formatMetric(pipeline.writeQps ?? 0)
       } QPS), Queue ${pipeline.intermediateQueueSize ?? 0}${formatStatusText(
         tableMetric
       )};`,
@@ -482,7 +483,7 @@ const RunLog: FC<RunLogProps> = ({
 
   const readQps = latestPipeline?.readQps ?? 0;
   const writeQps = latestPipeline?.writeQps ?? 0;
-  const qpsText = latestPipeline ? `${readQps}/${writeQps}` : "--/--";
+  const qpsText = latestPipeline ? `${formatMetric(readQps)}/${formatMetric(writeQps)}` : "--/--";
 
   const statusText = latestTableMetric?.status || connectionStatus;
 

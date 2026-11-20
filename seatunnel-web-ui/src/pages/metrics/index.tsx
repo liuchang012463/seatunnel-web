@@ -12,6 +12,7 @@ import { fetchChartData, fetchSummaryData } from "./api";
 import BarChart from "./BarChart";
 import "./index.less";
 import LineChart from "./LineChart";
+import { toMegabytes } from "@/pages/common/utils/throughput";
 import { ChartData, SummaryData, TaskType, TimeRange } from "./types";
 import { calculateSuccessRate, taskTypeOptions, transformChartData } from "./utils";
 
@@ -470,10 +471,10 @@ const App: React.FC = () => {
                     <motion.div variants={fadeUp}>
                       <ChartCard title={bytesSpeedTitle}>
                         <LineChart
-                          data={chartData.bytesSpeedTrend.data}
+                          data={chartData.bytesSpeedTrend.data.map(toMegabytes)}
                           xAxisData={chartData.bytesSpeedTrend.xAxis}
                           title={bytesSpeedTitle}
-                          unit="B/s"
+                          unit="MB/s"
                           loading={loading}
                         />
                       </ChartCard>

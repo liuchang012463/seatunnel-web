@@ -4,6 +4,7 @@ import * as echarts from "echarts";
 import React, { useEffect, useMemo, useRef } from "react";
 
 import {
+  formatMetric,
   getThroughputMegabytesPerSecond,
   isTerminalThroughputStatus,
 } from "@/pages/common/utils/throughput";
@@ -33,9 +34,6 @@ const toNumber = (value: any, fallback = 0) => {
 const formatNumber = (value: any) => {
   return toNumber(value).toLocaleString();
 };
-
-const formatMegabytesPerSecond = (value?: number) =>
-  value === undefined ? "—" : `${value.toFixed(2)} MB/s`;
 
 const dashboardIconClass =
   [
@@ -164,8 +162,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
           return `
             <div style="color:#fff;line-height:1.6;">
               <div>条数：${formatNumber(rowItem?.value ?? 0)}</div>
-              <div>吞吐：R ${formatMegabytesPerSecond(readMBps)} / W ${formatMegabytesPerSecond(writeMBps)}</div>
-              <div>QPS：R ${formatNumber(qpsItem?.value ?? 0)} / W ${formatNumber(point.writeQps)} r/s</div>
+              <div>吞吐：R ${formatMetric(readMBps, "MB/s")} / W ${formatMetric(writeMBps, "MB/s")}</div>
+              <div>QPS：R ${formatMetric(qpsItem?.value ?? 0)} / W ${formatMetric(point.writeQps)} r/s</div>
             </div>
           `;
         },
@@ -289,9 +287,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
           <Tooltip
             title={
               hasCurrentMetrics
-                ? `QPS R ${formatNumber(latestReadQps)} / W ${formatNumber(
-                    latestWriteQps,
-                  )}`
+                ? `QPS R ${formatMetric(latestReadQps)} / W ${formatMetric(latestWriteQps)}`
                 : undefined
             }
           >
@@ -300,8 +296,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
                 "当前指标暂不可用"
               ) : (
                 <>
-                  R {formatMegabytesPerSecond(latestReadMBps)} / W{" "}
-                  {formatMegabytesPerSecond(latestWriteMBps)}
+                  R {formatMetric(latestReadMBps, "MB/s")} / W{" "}
+                  {formatMetric(latestWriteMBps, "MB/s")}
                 </>
               )}
             </div>

@@ -1,3 +1,4 @@
+import { formatMetric } from "@/pages/common/utils/throughput";
 import type { MetricsData } from "../types";
 
 export const MetricsSummary = ({ data }: { data: MetricsData }) => {
@@ -137,11 +138,11 @@ export const MetricsSummary = ({ data }: { data: MetricsData }) => {
                   <span>
                     QPS{" "}
                     <span style={{ color: "#2563eb", fontWeight: 600 }}>
-                      {v.readQps ?? 0}
+                      {formatMetric(v.readQps ?? 0)}
                     </span>
                     <span style={{ color: "#cbd5e1", margin: "0 4px" }}>/</span>
                     <span style={{ color: "#7c3aed", fontWeight: 600 }}>
-                      {v.writeQps ?? 0}
+                      {formatMetric(v.writeQps ?? 0)}
                     </span>
                   </span>
                 </div>

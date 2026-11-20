@@ -1,6 +1,7 @@
 import React from "react";
 import { useIntl } from "@umijs/max";
 import {
+  formatMetric,
   getThroughputMegabytesPerSecond,
   isTerminalThroughputStatus,
 } from "@/pages/common/utils/throughput";
@@ -118,8 +119,6 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
   const writeBps = hasMetrics ? latestMetrics?.writeBps ?? record?.writeBps : undefined;
   const readMBps = getThroughputMegabytesPerSecond(readBps, readBytes, runtimeMillis, terminal);
   const writeMBps = getThroughputMegabytesPerSecond(writeBps, writeBytes, runtimeMillis, terminal);
-  const formatMegabytesPerSecond = (value: number | undefined) =>
-    value === undefined ? "-" : `${value.toFixed(2)} MB/s`;
 
   return (
     <div className="space-y-0.5">
@@ -158,11 +157,11 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
         value={
           writeQps !== undefined ? (
             <span>
-              R {formatNumber(readQps)} / W {formatNumber(writeQps)}
+              R {formatMetric(readQps)} / W {formatMetric(writeQps)}
             </span>
           ) : (
             <span>
-              {formatNumber(readQps)}{" "}
+              {formatMetric(readQps)}{" "}
               {intl.formatMessage({
                 id: "pages.job.execution.unit.rowsPerSecond",
                 defaultMessage: "r/s",
@@ -174,7 +173,7 @@ const ExecutionStatus: React.FC<ExecutionStatusProps> = ({ record }) => {
 
       <MetricRow
         label="读/写 MB/s:"
-        value={`R ${formatMegabytesPerSecond(readMBps)} / W ${formatMegabytesPerSecond(writeMBps)}`}
+        value={`R ${formatMetric(readMBps, "MB/s", "-")} / W ${formatMetric(writeMBps, "MB/s", "-")}`}
       />
 
       <MetricRow

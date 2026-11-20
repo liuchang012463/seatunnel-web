@@ -176,7 +176,7 @@ class JobMetricsServiceImplTest {
         trend.put("date", "2026-10-01");
         trend.put("recordsValue", 120L);
         trend.put("bytesValue", 4096L);
-        trend.put("recordsSpeed", new BigDecimal("0.75"));
+        trend.put("recordsSpeed", new BigDecimal("0.1001"));
         trend.put("bytesSpeed", new BigDecimal("512.125"));
         when(streamingJobMetricsDao.selectOverviewTrend(anyLong(), anyLong(), eq("DAY")))
                 .thenReturn(List.of(trend));
@@ -186,8 +186,8 @@ class JobMetricsServiceImplTest {
         assertEquals("2026-10-01", result.getRecordsTrend().get(0).getDate());
         assertEquals(120d, result.getRecordsTrend().get(0).getValue());
         assertEquals(4d, result.getBytesTrend().get(0).getValue());
-        assertEquals(0.75d, result.getRecordsSpeedTrend().get(0).getValue(), 0.001d);
-        assertEquals(512.13d, result.getBytesSpeedTrend().get(0).getValue(), 0.001d);
+        assertEquals(0.1001d, result.getRecordsSpeedTrend().get(0).getValue(), 0.000001d);
+        assertEquals(512.125d, result.getBytesSpeedTrend().get(0).getValue(), 0.000001d);
         verify(jobMetricsDao, never()).selectRecordsTrend(anyString(), anyString(), anyString(), anyString());
     }
 

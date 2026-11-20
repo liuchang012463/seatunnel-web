@@ -2,6 +2,7 @@ import { Link } from '@umijs/max';
 import { withLayoutPrefix } from '@/utils/iframeLayout';
 import MetricsGrid from './MetricsGrid';
 import { integerFormat, numberFormat, asNumber, toRecords, toBytes, chartRecordsToRaw, chartBytesToRaw, formatRecords, formatBytes, formatTime } from './metricFormat';
+import { formatMetric, toMegabytes } from '@/pages/common/utils/throughput';
 import { Spin } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -39,7 +40,7 @@ import type {
   DataInventorySummary,
 } from '@/pages/data-source/types';
 import { fetchChartData, fetchSummaryData } from '@/pages/metrics/api';
-import type { ApiChartData, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
+import type { ApiChartData, ChartDataItem, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
 import './index.less';
 
 type TaskTypeMeta = {
@@ -407,18 +408,18 @@ const IngestionSituationPage: React.FC = () => {
       ? asNumber(streamMetric?.summary.avgRecordDelay)
       : null;
 
-  const latestRecordsSpeed = visibleCharts
-    .map(({ charts }) => {
-      const points = charts.recordsSpeedTrend || [];
-      if (points.length === 0) return null;
-      const latest = [...points].sort((left, right) => left.date.localeCompare(right.date))[points.length - 1];
-      return asNumber(latest.value);
-    })
-    .filter((value): value is number => value !== null);
-  const currentRecordsSpeed =
-    latestRecordsSpeed.length > 0
-      ? latestRecordsSpeed.reduce((sum, value) => sum + value, 0)
-      : null;
+  const sumLatestSpeed = (key: 'recordsSpeedTrend' | 'bytesSpeedTrend') => {
+    const latestValues = visibleCharts.flatMap(({ charts }) => {
+      const latest = charts[key]?.reduce<ChartDataItem | undefined>(
+        (last, point) => !last || point.date >= last.date ? point : last,
+        undefined,
+      );
+      return latest ? [asNumber(latest.value)] : [];
+    });
+    return latestValues.length ? latestValues.reduce((sum, value) => sum + value, 0) : undefined;
+  };
+  const currentRecordsSpeed = sumLatestSpeed('recordsSpeedTrend');
+  const currentBytesSpeed = sumLatestSpeed('bytesSpeedTrend');
 
   /**
    * The headline figures are the accumulated assets the system runs on: they answer
@@ -1171,7 +1172,11 @@ const IngestionSituationPage: React.FC = () => {
                 </div>
                 <div>
                   <span>最新记录速率</span>
-                  <b>{currentRecordsSpeed === null ? '—' : `${numberFormat.format(currentRecordsSpeed)} 条/秒`}</b>
+                  <b>{formatMetric(currentRecordsSpeed, '条/秒')}</b>
+                </div>
+                <div>
+                  <span>最新数据速率</span>
+                  <b>{formatMetric(currentBytesSpeed === undefined ? undefined : toMegabytes(currentBytesSpeed), 'MB/s')}</b>
                 </div>
                 <div>
                   <span>实时平均延迟</span>

@@ -9,6 +9,7 @@ import {
   Table2,
 } from "lucide-react";
 import {
+  formatMetric,
   getThroughputMegabytesPerSecond,
   isTerminalThroughputStatus,
 } from "@/pages/common/utils/throughput";
@@ -33,20 +34,6 @@ const toNumber = (value: any) => {
 const formatNumber = (value: any) => {
   const n = toNumber(value);
   return n.toLocaleString();
-};
-
-const formatDecimal = (value: any) => {
-  const n = toNumber(value);
-
-  if (n === 0) {
-    return "0";
-  }
-
-  if (n < 1) {
-    return n.toFixed(4);
-  }
-
-  return n.toFixed(2).replace(/\.?0+$/, "");
 };
 
 const parseTimestamp = (value: any) => {
@@ -278,7 +265,7 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
                 const isQps = String(item.seriesName).includes("QPS");
                 const unit = isQps ? "行/秒" : "行";
                 const value = isQps
-                  ? formatDecimal(item.value)
+                  ? formatMetric(item.value)
                   : formatNumber(item.value);
 
                 return `
@@ -337,13 +324,14 @@ const MetricsFlowChart: React.FC<{ data: FlowMetricPoint[] }> = ({ data }) => {
             type: "value",
             name: "QPS",
             min: 0,
+            minInterval: 0.1,
             nameTextStyle: {
               color: "var(--st-color-text-muted)",
               fontSize: 14,
             },
             axisLabel: {
               color: "var(--st-color-text-muted)",
-              formatter: (value: number) => formatCompactNumber(value),
+              formatter: (value: number) => formatMetric(value),
             },
             splitLine: {
               lineStyle: {
@@ -618,7 +606,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         width: 100,
         align: "right" as const,
         render: (value: any) => (
-          <span className="text-slate-600">{formatDecimal(value)}</span>
+          <span className="text-slate-600">{formatMetric(value)}</span>
         ),
       },
       {
@@ -628,7 +616,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
         width: 100,
         align: "right" as const,
         render: (value: any) => (
-          <span className="text-slate-600">{formatDecimal(value)}</span>
+          <span className="text-slate-600">{formatMetric(value)}</span>
         ),
       },
       {
@@ -680,7 +668,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
                 {isTerminal ? "平均读取 MB/s" : "读取 MB/s"}
               </div>
               <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
-                {readMBps === undefined ? "—" : `${readMBps.toFixed(2)} MB/s`}
+                {formatMetric(readMBps, "MB/s")}
               </div>
             </div>
 
@@ -689,7 +677,7 @@ const MetricsTab: React.FC<MetricsTabProps> = ({ instanceItem }) => {
                 {isTerminal ? "平均写入 MB/s" : "写入 MB/s"}
               </div>
               <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
-                {writeMBps === undefined ? "—" : `${writeMBps.toFixed(2)} MB/s`}
+                {formatMetric(writeMBps, "MB/s")}
               </div>
             </div>
           </div>

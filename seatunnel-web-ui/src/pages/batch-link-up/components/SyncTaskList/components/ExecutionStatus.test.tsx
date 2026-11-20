@@ -38,6 +38,7 @@ describe("ExecutionStatus metrics availability", () => {
             metricsAvailable: true,
             readBytes: 0,
             writeBytes: 0,
+            readQps: 10.9078,
             readBps: 1_234_567,
             writeBps: 987_654,
           },
@@ -45,6 +46,7 @@ describe("ExecutionStatus metrics availability", () => {
       }),
     );
 
-    expect(container.textContent).toContain("R 1.23 MB/s / W 0.99 MB/s");
+    expect(container.textContent).toContain("R 1.3 MB/s / W 1.0 MB/s");
+    expect(container.textContent).toContain("QPS11.0行/秒");
   });
 });

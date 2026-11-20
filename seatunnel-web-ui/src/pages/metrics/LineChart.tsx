@@ -1,6 +1,7 @@
 import * as echarts from 'echarts';
 import React, { useEffect, useRef } from 'react';
 import { ST_CHART_ACCENT } from '@/utils/echarts-theme-st';
+import { formatMetric } from '@/pages/common/utils/throughput';
 
 interface LineChartProps {
   data: number[];
@@ -53,7 +54,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
           return [
             firstItem?.name || '',
             ...items.map(
-              (item: any) => `${item.marker}${item.seriesName}: ${item.value} ${unit}`
+              (item: any) => `${item.marker}${item.seriesName}: ${formatMetric(item.value, unit)}`
             ),
           ].join('<br/>');
         },
@@ -77,10 +78,11 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
       },
       yAxis: {
         type: 'value',
+        minInterval: 0.1,
         name: '',
         axisLabel: {
           color: '#d5d5d5',
-          formatter: '{value} ' + unit,
+          formatter: (value: number) => formatMetric(value, unit),
         },
         axisLine: {
           lineStyle: {
@@ -133,7 +135,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
       window.removeEventListener('resize', handleResize);
       chart.dispose();
     };
-  }, [data, xAxisData]);
+  }, [data, xAxisData, title, unit]);
 
   return (
     <div
