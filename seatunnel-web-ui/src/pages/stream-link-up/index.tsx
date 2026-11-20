@@ -1,4 +1,7 @@
-import { DEFAULT_TASK_TARGET_DATASOURCE_TYPE } from '@/pages/data-source/dataSourceRegistry';
+import {
+  DEFAULT_REALTIME_SOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from '@/pages/data-source/dataSourceRegistry';
 import { PlusOutlined } from '@ant-design/icons';
 import { Alert, Button, Divider, Pagination, message, Modal } from 'antd';
 import moment from 'moment';
@@ -220,12 +223,8 @@ const getPageRecords = (res: any) => {
 const isReleaseOnline = (releaseState?: string | number) => releaseState === 'ONLINE' || releaseState === 1;
 
 const RealtimeSyncPage: React.FC = () => {
-  // 实时引接默认源仍用 MySQL-CDC；去向统一使用注册表默认值（ZeoneDB-D）
-  const sourceType = {
-    dbType: 'MYSQL',
-    connectorType: 'MySQL-CDC',
-    pluginName: 'MySQL-CDC',
-  };
+  // 实时引接默认源统一使用 MySQL-CDC；去向使用注册表默认值（ZeoneDB-D）。
+  const sourceType = { ...DEFAULT_REALTIME_SOURCE_TYPE };
 
   const sinkType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 

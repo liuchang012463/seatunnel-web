@@ -93,8 +93,8 @@ const buildError = (node: any, field: string, message: string): CheckItem => ({
 const isPostgresCdcSourceNode = (node: any) => {
   const config = getConfig(node);
   return (
-    String(config.pluginName || node?.data?.pluginName || "") ===
-      "PostgreSQL-CDC" ||
+    String(config.pluginName || node?.data?.pluginName || "").toUpperCase() ===
+      "POSTGRESQL-CDC" ||
     String(node?.data?.dbType || config.dbType || "").toUpperCase() ===
       "POSTGRE_SQL"
   );

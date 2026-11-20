@@ -71,8 +71,10 @@ export const generateTaskTargetDataSourceOptions = (): DataSourceType[] => {
 export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   {
     value: 'MYSQL',
-    connectorType: 'Jdbc',
-    pluginName: 'MySQL-CDC',
+    // connectorType 同时是 HOCON 的插件块名，MySQL-CDC 不能写成 Jdbc。
+    connectorType: 'MySQL-CDC',
+    // 与后端 DataSourceHoconBuilderFactory 注册名保持一致，避免大小写查找失败。
+    pluginName: 'MYSQL-CDC',
     rawLabel: 'MySQL-CDC',
     label: (
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -84,7 +86,8 @@ export const generateCDCDataSourceOptions = (): DataSourceType[] => [
   {
     value: 'POSTGRE_SQL',
     connectorType: 'Postgres-CDC',
-    pluginName: 'PostgreSQL-CDC',
+    // 与后端 PostgreSqlCdcSourceBuilder 注册名保持一致。
+    pluginName: 'POSTGRESQL-CDC',
     rawLabel: 'PostgreSQL-CDC',
     label: (
       <div style={{ display: 'flex', alignItems: 'center' }}>

@@ -95,8 +95,8 @@ function SourcePanel({
 
   const sourceConfig = selectedNode?.data?.config || {};
   const isPostgresCdc =
-    sourceConfig.pluginName === "PostgreSQL-CDC" ||
-    selectedNode?.data?.dbType === "POSTGRE_SQL";
+    String(sourceConfig.pluginName || "").toUpperCase() === "POSTGRESQL-CDC" ||
+    String(selectedNode?.data?.dbType || "").toUpperCase() === "POSTGRE_SQL";
   const startupModeOptions = isPostgresCdc
     ? POSTGRES_STARTUP_MODE_OPTIONS
     : MYSQL_STARTUP_MODE_OPTIONS;

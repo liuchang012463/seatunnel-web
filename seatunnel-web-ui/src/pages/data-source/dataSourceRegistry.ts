@@ -81,11 +81,22 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistryItem[] = [
   { dbType: 'H2', label: 'H2', category: 'OTHER', connectorType: 'Jdbc', creatable: false },
 ];
 
-/** 新建引接任务默认来源（达梦） */
+/** 新建离线引接任务默认来源（达梦） */
 export const DEFAULT_TASK_DATASOURCE_TYPE = {
   dbType: 'DAMENG',
   connectorType: 'Jdbc',
   pluginName: 'JDBC-DAMENG',
+} as const;
+
+/**
+ * 新建实时引接任务默认来源（MySQL-CDC）。
+ * 实时任务只接受 CDC/消息/HTTP 等实时源，不能复用离线的达梦默认值。
+ */
+export const DEFAULT_REALTIME_SOURCE_TYPE = {
+  dbType: 'MYSQL',
+  // connectorType 会作为 SeaTunnel HOCON 插件块名使用，CDC 必须写 MySQL-CDC。
+  connectorType: 'MySQL-CDC',
+  pluginName: 'MYSQL-CDC',
 } as const;
 
 /**

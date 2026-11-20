@@ -6,7 +6,8 @@ import type { DbType, TableItem, WholeSyncTaskDraft } from "../types";
 import {
   buildDataSourceOptions,
   buildTableItems,
-  DEFAULT_DB_TYPE,
+  DEFAULT_SOURCE_DB_TYPE,
+  DEFAULT_TARGET_DB_TYPE,
   isGraphDraft,
   safeParseDraft,
 } from "../utils";
@@ -26,8 +27,8 @@ export const useWholeSync = ({ baseForm, form }: UseWholeSyncProps) => {
   const [matchMode, setMatchMode] = useState<string>("1");
   const [readOnlyTables, setReadOnlyTables] = useState<TableItem[]>([]);
 
-  const [sourceType, setSourceType] = useState<DbType>(DEFAULT_DB_TYPE);
-  const [targetType, setTargetType] = useState<DbType>(DEFAULT_DB_TYPE);
+  const [sourceType, setSourceType] = useState<DbType>(DEFAULT_SOURCE_DB_TYPE);
+  const [targetType, setTargetType] = useState<DbType>(DEFAULT_TARGET_DB_TYPE);
 
   const [sourceOption, setSourceOption] = useState<any[]>([]);
   const [targetOption, setTargetOption] = useState<any[]>([]);

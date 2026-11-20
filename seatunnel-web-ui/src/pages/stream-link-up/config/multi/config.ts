@@ -1,11 +1,23 @@
 
-import { DEFAULT_TASK_DATASOURCE_TYPE } from '../../../data-source/dataSourceRegistry';
+import {
+  DEFAULT_REALTIME_SOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from '../../../data-source/dataSourceRegistry';
 import { CDC_SERVER_ID_DEFAULTS } from '../serverId';
 import type { DbTypeValue, TableItem } from './types';
 
-export const DEFAULT_DB_TYPE: DbTypeValue = {
-  dbType: DEFAULT_TASK_DATASOURCE_TYPE.dbType,
-  connectorType: DEFAULT_TASK_DATASOURCE_TYPE.connectorType,
+/** 实时多表任务来源默认 MySQL-CDC。 */
+export const DEFAULT_SOURCE_TYPE: DbTypeValue = {
+  dbType: DEFAULT_REALTIME_SOURCE_TYPE.dbType,
+  connectorType: DEFAULT_REALTIME_SOURCE_TYPE.connectorType,
+  pluginName: DEFAULT_REALTIME_SOURCE_TYPE.pluginName,
+};
+
+/** 实时多表任务去向默认 ZeoneDB-D。 */
+export const DEFAULT_TARGET_TYPE: DbTypeValue = {
+  dbType: DEFAULT_TASK_TARGET_DATASOURCE_TYPE.dbType,
+  connectorType: DEFAULT_TASK_TARGET_DATASOURCE_TYPE.connectorType,
+  pluginName: DEFAULT_TASK_TARGET_DATASOURCE_TYPE.pluginName,
 };
 
 export const DEFAULT_FORM_VALUES = {

@@ -1,10 +1,15 @@
 import React from "react";
 import DatabaseIcons from "@/pages/data-source/icon/DatabaseIcons";
-import { DEFAULT_TASK_DATASOURCE_TYPE } from "@/pages/data-source/dataSourceRegistry";
+import {
+  DEFAULT_REALTIME_SOURCE_TYPE,
+  DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
+} from "@/pages/data-source/dataSourceRegistry";
 import { TableOutlined } from "@ant-design/icons";
 import type { TableItem } from "./types";
 
-export const DEFAULT_DB_TYPE = { ...DEFAULT_TASK_DATASOURCE_TYPE };
+/** 实时整库任务默认来源 MySQL-CDC，去向默认 ZeoneDB-D。 */
+export const DEFAULT_SOURCE_DB_TYPE = { ...DEFAULT_REALTIME_SOURCE_TYPE };
+export const DEFAULT_TARGET_DB_TYPE = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
 export const safeParseDraft = (draftStr?: string) => {
   if (!draftStr) return null;

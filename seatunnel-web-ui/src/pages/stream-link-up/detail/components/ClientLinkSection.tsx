@@ -1,7 +1,10 @@
 import CommonClientLinkSection, {
   ConnectivityStatus,
 } from "@/pages/common/components/CommonClientLinkSection";
-import { generateTaskTargetDataSourceOptions } from "@/pages/batch-link-up/DataSourceSelect";
+import {
+  generateRealtimeSourceOptions,
+  generateTaskTargetDataSourceOptions,
+} from "@/pages/batch-link-up/DataSourceSelect";
 
 interface Props {
   activeStep: "base" | "client";
@@ -38,6 +41,8 @@ const RealtimeClientLinkSection: React.FC<Props> = (props) => {
       targetTitle="实时去向"
       sourceCreateText="新建实时来源数据源"
       targetCreateText="新建实时去向数据源"
+      // 实时来源只能展示 CDC / 消息 / HTTP 等实时源，不能回退到离线通用列表。
+      sourceDataSourceTypeOptions={generateRealtimeSourceOptions()}
       targetDataSourceTypeOptions={generateTaskTargetDataSourceOptions()}
       getVerifyExtraParams={({ side }) => ({
         linkType: "REALTIME",

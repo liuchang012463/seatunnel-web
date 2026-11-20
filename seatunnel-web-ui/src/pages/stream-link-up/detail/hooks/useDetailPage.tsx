@@ -2,13 +2,13 @@ import { history, useLocation, useParams } from "@umijs/max";
 import { Form, message } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  DEFAULT_TASK_DATASOURCE_TYPE,
+  DEFAULT_REALTIME_SOURCE_TYPE,
   DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
 } from "../../../data-source/dataSourceRegistry";
 import { buildDefaultJobName, getDbLabel } from "../constants";
 import type { DetailFormValues, SourceTargetType, StepKey } from "../types";
 
-const defaultSourceType: SourceTargetType = { ...DEFAULT_TASK_DATASOURCE_TYPE };
+const defaultSourceType: SourceTargetType = { ...DEFAULT_REALTIME_SOURCE_TYPE };
 const defaultTargetType: SourceTargetType = { ...DEFAULT_TASK_TARGET_DATASOURCE_TYPE };
 
 const readStepFromSearch = (search?: string): StepKey => {

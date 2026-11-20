@@ -48,6 +48,22 @@ class DataSourceUsageValidatorTest {
     }
 
     @Test
+    void resolvesCdcPluginNamesCaseInsensitively() {
+        // 前端历史版本使用 MySQL-CDC / PostgreSQL-CDC 混合大小写，
+        // 后端注册名为全大写，查找时必须归一化，否则数据源下拉会为空。
+        assertTrue(DataSourceUsageValidator.supportsConnector(
+                DbType.MYSQL, DataSourceUsage.SOURCE, "MySQL-CDC"));
+        assertTrue(DataSourceUsageValidator.supportsConnector(
+                DbType.MYSQL, DataSourceUsage.SOURCE, "MYSQL-CDC"));
+        assertTrue(DataSourceUsageValidator.supportsConnector(
+                DbType.POSTGRE_SQL, DataSourceUsage.SOURCE, "PostgreSQL-CDC"));
+        assertTrue(DataSourceUsageValidator.supportsConnector(
+                DbType.POSTGRE_SQL, DataSourceUsage.SOURCE, "POSTGRESQL-CDC"));
+        assertFalse(DataSourceUsageValidator.supportsConnector(
+                DbType.MYSQL, DataSourceUsage.SINK, "MySQL-CDC"));
+    }
+
+    @Test
     void rejectsAConnectionWhosePurposeWasDisabled() {
         DataSource sourceOnly = dataSource(DbType.MYSQL, true, false);
         when(dataSourceDao.queryById(DATA_SOURCE_ID)).thenReturn(sourceOnly);
