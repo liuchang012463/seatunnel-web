@@ -191,6 +191,12 @@ seatunnel:
   job:
     log-dir: logs
 
+    # Engine clients whose nodes share one log directory (for example a mounted volume).
+    # For these clients one job log file is downloaded through the configured REST address
+    # instead of listing and downloading every node. Comma-separated client IDs; empty keeps
+    # the per-node collection for every client.
+    shared-log-client-ids: ${SEATUNNEL_JOB_SHARED_LOG_CLIENT_IDS:}
+
     # Maximum file size allowed for a single log query: 50MB
     max-log-query-bytes: 52428800
 

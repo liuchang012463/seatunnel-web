@@ -11,6 +11,7 @@ import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.enums.Status;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
@@ -83,6 +84,14 @@ public class JobLogService {
 
     @Resource
     private JobLogParser jobLogParser;
+
+    /**
+     * Engine clients whose nodes share one log directory. For these clients every node writes the
+     * same {@code job-{engineJobId}.log}, so one download through the configured REST address
+     * replaces the node listing and the per-node downloads.
+     */
+    @Value("${seatunnel.job.shared-log-client-ids:}")
+    private String sharedLogClientIds;
 
     private final JobLogFileReader jobLogFileReader = new JobLogFileReader();
 
@@ -624,6 +633,10 @@ public class JobLogService {
                 && now - state.lastAttemptAt() < ENGINE_LOG_RETRY_INTERVAL_MS) {
             return;
         }
+        if (isSharedLogClient(context.clientId())) {
+            collectSharedEngineLogLocked(context, path, state, now, stagedLogs);
+            return;
+        }
 
         Map<String, EngineNodeSnapshotState> nodeSnapshots = new LinkedHashMap<>(state.nodeSnapshots());
         List<SeaTunnelRestClient.NodeLogFile> files = List.of();
@@ -703,6 +716,103 @@ public class JobLogService {
                 terminalCollected,
                 masterFallback,
                 nodeSnapshots));
+    }
+
+    /**
+     * Collects the log of a client whose Engine nodes share one log directory. The configured
+     * REST endpoint already serves the merged file, so one download replaces the node listing
+     * and the per-node downloads; the file keeps the existing master-fallback cursor identity so
+     * a previous archive is continued instead of duplicated.
+     */
+    private void collectSharedEngineLogLocked(
+            JobLogContext context,
+            Path path,
+            EngineSnapshotState state,
+            long now,
+            List<StagedLog> stagedLogs) throws IOException {
+        Map<String, EngineNodeSnapshotState> nodeSnapshots = new LinkedHashMap<>(state.nodeSnapshots());
+        StagedLog staged = null;
+        try {
+            staged = stageMasterLog(context, path);
+        } catch (Exception e) {
+            log.warn("Fetch shared Engine job log failed, keep the archived content and cursor, "
+                            + "clientId={}, instanceId={}, engineJobId={}, reason={}",
+                    context.clientId(), context.instanceId(), context.engineJobId(), e.getMessage(), e);
+        }
+
+        if (staged == null) {
+            log.warn("Shared Engine job log is not available yet, keep the archived content and cursor, "
+                            + "clientId={}, instanceId={}, engineJobId={}",
+                    context.clientId(), context.instanceId(), context.engineJobId());
+            // Remember the attempt so the next one honours the retry interval, but keep the
+            // archived snapshots and the cursor untouched.
+            writeSnapshotState(path, new EngineSnapshotState(
+                    now,
+                    state.lastTerminalAttemptAt(),
+                    state.terminalCollected(),
+                    state.masterFallback(),
+                    nodeSnapshots));
+            return;
+        }
+
+        stagedLogs.add(staged);
+        EngineNodeSnapshotState previous = nodeSnapshots.get(MASTER_FALLBACK_NODE);
+        if (previous == null) {
+            previous = findMatchingNodeCursor(nodeSnapshots, staged.path());
+        }
+        EngineNodeSnapshotState next = appendEngineSnapshot(
+                context, path, staged.path(), MASTER_FALLBACK_NODE, previous);
+        nodeSnapshots.put(MASTER_FALLBACK_NODE, next);
+        writeSnapshotState(path, new EngineSnapshotState(
+                now,
+                next.terminalCollected() ? now : state.lastTerminalAttemptAt(),
+                next.terminalCollected(),
+                true,
+                nodeSnapshots));
+        log.debug("Collected shared Engine job log, clientId={}, instanceId={}, engineJobId={}, "
+                        + "bytes={}, terminalCollected={}",
+                context.clientId(), context.instanceId(), context.engineJobId(),
+                next.snapshotBytes(), next.terminalCollected());
+    }
+
+    private boolean isSharedLogClient(Long clientId) {
+        if (clientId == null || clientId <= 0 || StringUtils.isBlank(sharedLogClientIds)) {
+            return false;
+        }
+        String target = String.valueOf(clientId);
+        for (String configuredId : StringUtils.split(sharedLogClientIds, ',')) {
+            if (target.equals(StringUtils.trim(configuredId))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Picks the furthest legacy per-node cursor whose archived prefix still matches the shared
+     * file. Only a verified prefix may reuse an old offset; a mismatch makes the next append
+     * start from the beginning of the shared file.
+     */
+    private EngineNodeSnapshotState findMatchingNodeCursor(
+            Map<String, EngineNodeSnapshotState> nodeSnapshots, Path sharedLog) throws IOException {
+        long currentBytes = Files.size(sharedLog);
+        EngineNodeSnapshotState matched = null;
+        for (Map.Entry<String, EngineNodeSnapshotState> entry : nodeSnapshots.entrySet()) {
+            if (MASTER_FALLBACK_NODE.equals(entry.getKey())) {
+                continue;
+            }
+            EngineNodeSnapshotState candidate = entry.getValue();
+            if (candidate.snapshotBytes() <= 0L
+                    || candidate.snapshotBytes() > currentBytes
+                    || StringUtils.isBlank(candidate.snapshotHash())
+                    || (matched != null && matched.snapshotBytes() >= candidate.snapshotBytes())) {
+                continue;
+            }
+            if (sha256Prefix(sharedLog, candidate.snapshotBytes()).equals(candidate.snapshotHash())) {
+                matched = candidate;
+            }
+        }
+        return matched;
     }
 
     private StagedLog stageNodeLog(JobLogContext context, Path logPath, SeaTunnelRestClient.NodeLogFile file)
