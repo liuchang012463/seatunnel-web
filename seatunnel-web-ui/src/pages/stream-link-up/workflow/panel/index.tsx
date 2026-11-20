@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import { memo } from "react";
+import JdbcSinkPanel from "@/pages/batch-link-up/workflow/panel/components/SinkPanel";
 
 import SinkPanel from "./components/SinkPanel";
 import SourcePanel from "./components/SourcePanel";
@@ -53,8 +54,12 @@ const WorkflowPanel: FC<WorkflowPanelProps> = ({
   }
 
   if (nodeType === "sink") {
+    // Reuse the existing catalog-aware editor for Vastbase's database and Schema.
+    const TargetPanel = String(selectedNode.data?.dbType).toUpperCase() === "VASTBASE"
+      ? JdbcSinkPanel
+      : SinkPanel;
     return (
-      <SinkPanel
+      <TargetPanel
         selectedNode={selectedNode}
         onClose={onClose}
         onNodeDataChange={onNodeDataChange}

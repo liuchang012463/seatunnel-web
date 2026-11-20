@@ -1,4 +1,4 @@
-import { type FormInstance, message } from 'antd';
+import { Form, type FormInstance, message } from 'antd';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -96,6 +96,44 @@ const listTableSchemas = (tables: TableItem[]) =>
     new Set(tables.map((item) => resolveTableSchema(item.key)).filter(Boolean)),
   );
 
+function useTargetCatalogOptions(kind: 'databases' | 'schemas', sinkId?: string, database = '') {
+  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setOptions([]);
+    if (!sinkId || (kind === 'schemas' && !database)) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    const request = kind === 'databases'
+      ? dataSourceCatalogApi.listDatabases(sinkId)
+      : dataSourceCatalogApi.listSchemas(sinkId, database);
+    request.then((response) => {
+      if (!active) return;
+      if (response.code !== 0) throw new Error(response.message);
+      setOptions(response.data.map((item) => ({
+        label: String(item.label ?? item.value),
+        value: String(item.value),
+      })));
+    }).catch((error) => {
+      if (!active) return;
+      console.error('加载实时任务目标目录失败', { kind, sinkId, database }, error);
+      message.error(kind === 'databases' ? '获取目标数据库失败' : '获取目标 Schema 失败');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+
+    // Ignore results from a previous destination or database.
+    return () => { active = false; };
+  }, [kind, sinkId, database]);
+
+  return { options, loading };
+}
+
 type SaveResponseData = {
   id?: number | string;
   state?: JobDefinitionState;
@@ -149,6 +187,13 @@ export function useMultiWorkflowState({
   const [targetType] = useState<DbTypeValue>(
     resolveTargetType(params, DEFAULT_TARGET_TYPE),
   );
+  const targetSchemaScoped = supportsSchemaScope(targetType?.dbType);
+  const sinkId = Form.useWatch('sinkId', form);
+  const targetDatabase = Form.useWatch<string>('targetDatabase', form);
+  const targetSchemaName = Form.useWatch<string>('targetSchemaName', form);
+  const catalogSinkId = targetSchemaScoped && sinkId ? String(sinkId) : undefined;
+  const targetDatabases = useTargetCatalogOptions('databases', catalogSinkId);
+  const targetSchemas = useTargetCatalogOptions('schemas', catalogSinkId, targetDatabase);
 
   const [sourceOption, setSourceOption] = useState<any[]>([]);
   const [targetOption, setTargetOption] = useState<any[]>([]);
@@ -335,6 +380,8 @@ export function useMultiWorkflowState({
         dbType: targetType?.dbType,
         connectorType: targetType?.connectorType,
         datasourceId: formValues.sinkId,
+        database: targetSchemaScoped ? targetDatabase : undefined,
+        schemaName: targetSchemaScoped ? targetSchemaName : undefined,
         pluginName: targetType?.pluginName,
         dataSaveMode: formValues.dataSaveMode,
         batchSize: formValues.batchSize,
@@ -350,7 +397,8 @@ export function useMultiWorkflowState({
           matchMode === '2' || matchMode === '3' ? tableKeyword : undefined,
       },
     };
-  }, [form, sourceType, targetType, matchMode, multiTableList, tableKeyword, selectedSchema]);
+  }, [form, sourceType, targetType, matchMode, multiTableList, tableKeyword, selectedSchema,
+    sinkId, targetSchemaScoped, targetDatabase, targetSchemaName]);
 
   const buildFinalPayload = useCallback(() => {
     return {
@@ -445,6 +493,8 @@ export function useMultiWorkflowState({
         form.setFieldsValue({
           sourceId,
           sinkId,
+          targetDatabase: workflow?.target?.database || undefined,
+          targetSchemaName: workflow?.target?.schemaName || workflow?.target?.schema || undefined,
           matchMode: nextMatchMode,
           sourceTable: nextKeyword,
 
@@ -809,6 +859,9 @@ export function useMultiWorkflowState({
     sourceOption,
     targetOption,
     sourceType,
+    targetSchemaScoped,
+    targetDatabases,
+    targetSchemas,
 
     tableData,
     schemaOptions,

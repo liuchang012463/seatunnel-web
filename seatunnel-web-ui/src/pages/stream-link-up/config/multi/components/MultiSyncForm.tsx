@@ -13,6 +13,9 @@ interface Props {
   sourceType?: DbTypeValue;
   schemaOptions?: string[];
   selectedSchema?: string;
+  targetSchemaScoped: boolean;
+  targetDatabases: { options: { label: string; value: string }[]; loading: boolean };
+  targetSchemas: { options: { label: string; value: string }[]; loading: boolean };
   onSourceIdChange: (value: string) => void;
   onSchemaChange?: (value: string) => void;
   onMatchModeChange: (value: string) => void;
@@ -29,6 +32,9 @@ const MultiSyncForm: React.FC<Props> = ({
   sourceType,
   schemaOptions = [],
   selectedSchema,
+  targetSchemaScoped,
+  targetDatabases,
+  targetSchemas,
   onSourceIdChange,
   onSchemaChange,
   onMatchModeChange,
@@ -37,6 +43,8 @@ const MultiSyncForm: React.FC<Props> = ({
   const isPostgreSqlCdc = sourceType?.pluginName?.toUpperCase() === "POSTGRESQL-CDC";
   const schemaScoped = supportsSchemaScope(sourceType?.dbType);
   const showSchemaSelector = schemaScoped && matchMode === "4";
+  const sinkId = Form.useWatch("sinkId");
+  const targetDatabase = Form.useWatch("targetDatabase");
 
   return (
     <div className="rounded-2xl ">
@@ -92,6 +100,35 @@ const MultiSyncForm: React.FC<Props> = ({
                 className="st-round-select"
               />
             </Form.Item>
+            {targetSchemaScoped && (
+              <>
+                <Form.Item label="目标数据库" name="targetDatabase" className={formItemClass}>
+                  <Select
+                    className="st-round-select"
+                    placeholder="请选择目标数据库"
+                    options={targetDatabases.options}
+                    loading={targetDatabases.loading}
+                    disabled={!sinkId || targetDatabases.loading}
+                    showSearch
+                    optionFilterProp="label"
+                    allowClear
+                  />
+                </Form.Item>
+                <Form.Item label="目标 Schema" name="targetSchemaName" className={formItemClass}>
+                  <Select
+                    className="st-round-select"
+                    placeholder={targetDatabase ? "请选择目标 Schema" : "请先选择目标数据库"}
+                    options={targetSchemas.options}
+                    loading={targetSchemas.loading}
+                    disabled={!targetDatabase || targetSchemas.loading}
+                    notFoundContent="当前数据库没有可选 Schema"
+                    showSearch
+                    optionFilterProp="label"
+                    allowClear
+                  />
+                </Form.Item>
+              </>
+            )}
           </Col>
         </Row>
 

@@ -55,6 +55,9 @@ export default function MultiWorkflow({
     sourceOption,
     targetOption,
     sourceType,
+    targetSchemaScoped,
+    targetDatabases,
+    targetSchemas,
     tableData,
     schemaOptions,
     selectedSchema,
@@ -287,6 +290,16 @@ export default function MultiWorkflow({
                       form={form}
                       initialValues={{ matchMode: "1" }}
                       layout="vertical"
+                      onValuesChange={(changedValues) => {
+                        if ("sinkId" in changedValues) {
+                          form.setFieldsValue({ targetDatabase: undefined, targetSchemaName: undefined });
+                        } else if ("targetDatabase" in changedValues) {
+                          form.setFieldValue("targetSchemaName", undefined);
+                        } else if (!("targetSchemaName" in changedValues)) {
+                          return;
+                        }
+                        markCurrentDefinitionDirty();
+                      }}
                     >
                       <div className="rounded-2xl">
                         <WholeSyncForm
@@ -295,6 +308,9 @@ export default function MultiWorkflow({
                           matchMode={matchMode}
                           tableKeyword={tableKeyword}
                           sourceType={sourceType}
+                          targetSchemaScoped={targetSchemaScoped}
+                          targetDatabases={targetDatabases}
+                          targetSchemas={targetSchemas}
                           schemaOptions={schemaOptions}
                           selectedSchema={selectedSchema}
                           onSourceIdChange={handleSourceIdChangeWithDirty}
