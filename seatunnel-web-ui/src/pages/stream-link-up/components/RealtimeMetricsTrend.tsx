@@ -3,12 +3,21 @@ import { Tooltip } from "antd";
 import * as echarts from "echarts";
 import React, { useEffect, useMemo, useRef } from "react";
 
+import {
+  getThroughputMegabytesPerSecond,
+  isTerminalThroughputStatus,
+} from "@/pages/common/utils/throughput";
+
 interface MetricPoint {
   date?: string;
   readRowCount?: number;
   writeRowCount?: number;
   readQps?: number;
   writeQps?: number;
+  readBytes?: number;
+  writeBytes?: number;
+  readBps?: number;
+  writeBps?: number;
 }
 
 interface RealtimeMetricsTrendProps {
@@ -24,6 +33,9 @@ const toNumber = (value: any, fallback = 0) => {
 const formatNumber = (value: any) => {
   return toNumber(value).toLocaleString();
 };
+
+const formatMegabytesPerSecond = (value?: number) =>
+  value === undefined ? "—" : `${value.toFixed(2)} MB/s`;
 
 const dashboardIconClass =
   [
@@ -67,6 +79,43 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   const latestReadQps = hasCurrentMetrics ? latest.readQps ?? 0 : undefined;
   const latestWriteQps = hasCurrentMetrics ? latest.writeQps : undefined;
 
+  // 负载情况列同时展示 MB/s；终态任务用累计字节 / 运行时长计算平均吞吐。
+  const status =
+    record?.jobStatus || record?.lastJobStatus || record?.latestMetrics?.jobStatus;
+  const terminal = isTerminalThroughputStatus(status);
+  const startTime = new Date(
+    String(
+      record?.lastStartTime ||
+        record?.startTime ||
+        record?.lastSubmitTime ||
+        record?.submitTime ||
+        "",
+    ).replace(" ", "T"),
+  ).getTime();
+  const endTime = new Date(
+    String(record?.lastEndTime || record?.endTime || "").replace(" ", "T"),
+  ).getTime();
+  const runtimeMillis =
+    Number.isFinite(startTime) && Number.isFinite(endTime) && endTime > startTime
+      ? endTime - startTime
+      : 0;
+  const latestReadMBps = hasCurrentMetrics
+    ? getThroughputMegabytesPerSecond(
+        latest.readBps,
+        latest.readBytes,
+        runtimeMillis,
+        terminal,
+      )
+    : undefined;
+  const latestWriteMBps = hasCurrentMetrics
+    ? getThroughputMegabytesPerSecond(
+        latest.writeBps,
+        latest.writeBytes,
+        runtimeMillis,
+        terminal,
+      )
+    : undefined;
+
   const handleOpenDashboard = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     onView?.(record);
@@ -98,11 +147,25 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         formatter: (params: any[]) => {
           const rowItem = params?.find((item) => item.seriesName === "条数");
           const qpsItem = params?.find((item) => item.seriesName === "速度");
+          const point = points[params?.[0]?.dataIndex] || {};
+          const readMBps = getThroughputMegabytesPerSecond(
+            point.readBps,
+            point.readBytes,
+            runtimeMillis,
+            terminal,
+          );
+          const writeMBps = getThroughputMegabytesPerSecond(
+            point.writeBps,
+            point.writeBytes,
+            runtimeMillis,
+            terminal,
+          );
 
           return `
             <div style="color:#fff;line-height:1.6;">
               <div>条数：${formatNumber(rowItem?.value ?? 0)}</div>
-              <div>速度：${formatNumber(qpsItem?.value ?? 0)} r/s</div>
+              <div>吞吐：R ${formatMegabytesPerSecond(readMBps)} / W ${formatMegabytesPerSecond(writeMBps)}</div>
+              <div>QPS：R ${formatNumber(qpsItem?.value ?? 0)} / W ${formatNumber(point.writeQps)} r/s</div>
             </div>
           `;
         },
@@ -172,7 +235,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
       window.removeEventListener("resize", handleResize);
       chart.dispose();
     };
-  }, [points, rowValues, qpsValues]);
+  }, [points, rowValues, qpsValues, runtimeMillis, terminal]);
 
   const renderDashboardIcon = () => {
     if (!onView) return null;
@@ -223,18 +286,26 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
 
         <div className="min-w-0 text-right">
           <div className="text-sm font-bold text-slate-700">速度</div>
-          <div className="truncate text-sm text-[#D5D5D5]">
-            {!hasCurrentMetrics ? (
-              "当前指标暂不可用"
-            ) : latestWriteQps !== undefined ? (
-              <>
-                R {formatNumber(latestReadQps)} / W{" "}
-                {formatNumber(latestWriteQps)} r/s
-              </>
-            ) : (
-              <>{formatNumber(latestReadQps)} r/s</>
-            )}
-          </div>
+          <Tooltip
+            title={
+              hasCurrentMetrics
+                ? `QPS R ${formatNumber(latestReadQps)} / W ${formatNumber(
+                    latestWriteQps,
+                  )}`
+                : undefined
+            }
+          >
+            <div className="truncate text-sm text-[#D5D5D5]">
+              {!hasCurrentMetrics ? (
+                "当前指标暂不可用"
+              ) : (
+                <>
+                  R {formatMegabytesPerSecond(latestReadMBps)} / W{" "}
+                  {formatMegabytesPerSecond(latestWriteMBps)}
+                </>
+              )}
+            </div>
+          </Tooltip>
         </div>
       </div>
 
