@@ -5,7 +5,7 @@ import {
   isTerminalThroughputStatus,
   toMegabytes,
 } from "@/pages/common/utils/throughput";
-import { Empty, Modal, Select, Spin, message } from "antd";
+import { Button, Card, Empty, Modal, Select, Spin, Table, Tag, message } from "antd";
 import ReactECharts from "echarts-for-react";
 import { Activity, Clock3, Gauge, RefreshCw, Zap } from "lucide-react";
 import React, {
@@ -19,7 +19,7 @@ import React, {
 } from "react";
 import CountUp from "react-countup";
 import TaskStatus from "./TaskStatus";
-import "./realtime-metrics-overview.less";
+import { ST_CHART_ACCENT, ST_CHART_ACCENT_STRONG } from "@/utils/echarts-theme-st";
 
 type RealtimeGrafanaLightModalRef = {
   onOpen: (visible: boolean, record?: Partial<JobInstanceVO>) => void;
@@ -155,16 +155,6 @@ type ApiResult<T> = {
 };
 
 const REFRESH_INTERVAL = 5000;
-const overviewClassName = "streaming-metrics-overview";
-const rangeSelectClassName = [
-  "w-[224px]",
-  "[&_.ant-select-arrow]:!text-[var(--st-color-text-secondary)]",
-].join(" ");
-const refreshButtonClassName = [
-  "flex items-center gap-2 border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] px-3 py-1.5",
-  "text-base text-[var(--st-color-text-secondary)] transition hover:bg-[var(--st-color-bg-hover)] hover:text-white",
-].join(" ");
-
 const RealtimeGrafanaLightModal = forwardRef<
   RealtimeGrafanaLightModalRef,
   RealtimeGrafanaLightModalProps
@@ -319,12 +309,12 @@ const RealtimeGrafanaLightModal = forwardRef<
       series: [
         {
           name: "读取 QPS (Read QPS)",
-          color: "#55dfd1",
+          color: ST_CHART_ACCENT,
           data: trends.map((item) => toNumber(item.readQps)),
         },
         {
           name: "写入 QPS (Write QPS)",
-          color: "#a9e882",
+          color: ST_CHART_ACCENT_STRONG,
           dashed: true,
           data: trends.map((item) => toNumber(item.writeQps)),
         },
@@ -345,12 +335,12 @@ const RealtimeGrafanaLightModal = forwardRef<
       series: [
         {
           name: "读取行数 (Read Rows)",
-          color: "#55dfd1",
+          color: ST_CHART_ACCENT,
           data: trends.map((item) => toNumber(item.readRowCount)),
         },
         {
           name: "写入行数 (Write Rows)",
-          color: "#a9e882",
+          color: ST_CHART_ACCENT_STRONG,
           dashed: true,
           data: trends.map((item) => toNumber(item.writeRowCount)),
         },
@@ -376,287 +366,244 @@ const RealtimeGrafanaLightModal = forwardRef<
   return (
     <Modal
       open={open}
-      className={overviewClassName}
       footer={null}
-      title={null}
+      title={
+        <header className="flex shrink-0 items-center justify-between border-b border-[var(--st-color-border)] bg-[var(--st-color-header)] py-4 pl-5 pr-14">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-hover)] text-[var(--st-color-accent)]">
+              <Gauge className="h-5 w-5" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <h1 className="m-0 truncate text-lg font-bold text-[var(--st-color-text-primary)]">
+                  {viewData.jobName}
+                </h1>
+
+                <TaskStatus status={viewData.status} />
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-[var(--st-color-text-secondary)]">
+                <span>实例 (Instance)：{viewData.jobInstanceId}</span>
+                <span>引擎 (Engine)：{viewData.engineJobId}</span>
+                <span>模式 (Mode)：{viewData.syncMode}</span>
+                <span>开始时间 (Start)：{viewData.startTime}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <Select
+              value={range}
+              onChange={setRange}
+              className="w-[224px]"
+              aria-label="统计时间范围"
+              options={[
+                { label: "最近 15 分钟 (Last 15 min)", value: "15m" },
+                { label: "最近 1 小时 (Last 1 hour)", value: "1h" },
+                { label: "最近 6 小时 (Last 6 hours)", value: "6h" },
+                { label: "最近 24 小时 (Last 24 hours)", value: "24h" },
+              ]}
+            />
+
+            <Button
+              icon={<RefreshCw size={16} />}
+              onClick={() => fetchDashboard(false)}
+              loading={loading}
+            >
+              5 秒刷新
+            </Button>
+          </div>
+        </header>
+      }
       destroyOnHidden
       maskClosable={false}
       centered={false}
-      closeIcon={null}
       onCancel={handleClose}
       width="98vw"
       style={{ top: 16 }}
       styles={{
-        mask: {
-          background: "rgba(0, 24, 25, 0.82)",
-        },
+        header: { flexShrink: 0, marginBottom: 0, padding: 0 },
         content: {
           padding: 0,
+          maxHeight: "calc(100vh - 32px)",
+          display: "flex",
+          flexDirection: "column",
           overflow: "hidden",
-          borderRadius: 18,
         },
         body: {
           padding: 0,
+          minHeight: 0,
+          overflow: "auto",
         },
       }}
     >
-      <div className="h-[calc(100vh-45px)] overflow-hidden bg-[var(--st-color-bg-secondary)] text-[var(--st-color-text-primary)]">
-        <div className="flex h-full flex-col">
-          <header className="flex shrink-0 items-center justify-between border-b border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] px-5 py-4">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-hover)] text-[var(--st-color-accent)]">
-                <Gauge className="h-5 w-5" />
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <h1 className="m-0 truncate text-lg font-bold text-white">
-                    {viewData.jobName}
-                  </h1>
-
-                  <TaskStatus status={viewData.status} />
-                </div>
-
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-[var(--st-color-text-secondary)]">
-                  <span>实例 (Instance)：{viewData.jobInstanceId}</span>
-                  <span>引擎 (Engine)：{viewData.engineJobId}</span>
-                  <span>模式 (Mode)：{viewData.syncMode}</span>
-                  <span>开始时间 (Start)：{viewData.startTime}</span>
-                </div>
-              </div>
+      <main className="p-5">
+        <Spin spinning={loading && !dashboard}>
+          {!instanceId ? (
+            <div className="flex h-[520px] items-center justify-center rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)]">
+              <Empty description="缺少 instanceId，无法加载实时监控数据" />
             </div>
-
-            <div
-              className="flex shrink-0 items-center gap-3"
-              style={{ marginRight: "3rem" }}
-            >
-              <Select
-                value={range}
-                onChange={setRange}
-                className={rangeSelectClassName}
-                classNames={{ popup: { root: overviewClassName } }}
-                options={[
-                  { label: "最近 15 分钟 (Last 15 min)", value: "15m" },
-                  { label: "最近 1 小时 (Last 1 hour)", value: "1h" },
-                  { label: "最近 6 小时 (Last 6 hours)", value: "6h" },
-                  { label: "最近 24 小时 (Last 24 hours)", value: "24h" },
-                ]}
+          ) : (
+            <div className="grid grid-cols-12 gap-4">
+              <LightStatPanel
+                className="col-span-12 md:col-span-6 xl:col-span-3"
+                title="读取行数 (Read Rows)"
+                value={viewData.readRows}
+                unit="行 (rows)"
+                icon={<Activity className="h-4 w-4" />}
+                secondaryLabel="累计读取数据量"
+                secondaryValue={formatMetric(viewData.readMegabytes, "MB")}
               />
 
-              <button
-                type="button"
-                onClick={() => fetchDashboard(false)}
-                className={refreshButtonClassName}
-                style={{ borderRadius: "16px", height: 33 }}
-              >
-                <RefreshCw
-                  className={["h-4 w-4", loading ? "animate-spin" : ""].join(
-                    " "
-                  )}
-                />
-                <span>5 秒刷新 (5s refresh)</span>
-              </button>
+              <LightStatPanel
+                className="col-span-12 md:col-span-6 xl:col-span-3"
+                title="写入行数 (Write Rows)"
+                value={viewData.writeRows}
+                unit="行 (rows)"
+                icon={<Zap className="h-4 w-4" />}
+                secondaryLabel="累计写入数据量"
+                secondaryValue={formatMetric(viewData.writeMegabytes, "MB")}
+              />
 
-              <button
-                type="button"
-                aria-label="Close"
-                className="ant-modal-close"
-                style={{ top: "22px", color: "#b7ded8" }}
-                onClick={handleClose}
+              <LightStatPanel
+                className="col-span-12 md:col-span-6 xl:col-span-3"
+                title="读取 QPS (Read QPS)"
+                value={viewData.readQps}
+                unit="行/秒 (rows/s)"
+                icon={<Gauge className="h-4 w-4" />}
+                secondaryLabel={viewData.terminal ? "平均读取吞吐" : "读取吞吐"}
+                secondaryValue={formatMetric(viewData.readMBps, "MB/s")}
+              />
+
+              <LightStatPanel
+                className="col-span-12 md:col-span-6 xl:col-span-3"
+                title="写入 QPS (Write QPS)"
+                value={viewData.writeQps}
+                unit="行/秒 (rows/s)"
+                icon={<Clock3 className="h-4 w-4" />}
+                secondaryLabel={viewData.terminal ? "平均写入吞吐" : "写入吞吐"}
+                secondaryValue={formatMetric(viewData.writeMBps, "MB/s")}
+              />
+
+              <LightPanel
+                className="col-span-12 xl:col-span-8"
+                title="吞吐量 (Throughput)"
+                description="读取 QPS / 写入 QPS (Read QPS / Write QPS)"
               >
-                <span className="ant-modal-close-x" aria-label="关闭">
-                  <span
-                    role="img"
-                    aria-label="close"
-                    className="anticon anticon-close ant-modal-close-icon"
-                  >
-                    <svg
-                      fill-rule="evenodd"
-                      viewBox="64 64 896 896"
-                      focusable="false"
-                      data-icon="close"
-                      width="1em"
-                      height="1em"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path d="M799.86 166.31c.02 0 .04.02.08.06l57.69 57.7c.04.03.05.05.06.08a.12.12 0 010 .06c0 .03-.02.05-.06.09L569.93 512l287.7 287.7c.04.04.05.06.06.09a.12.12 0 010 .07c0 .02-.02.04-.06.08l-57.7 57.69c-.03.04-.05.05-.07.06a.12.12 0 01-.07 0c-.03 0-.05-.02-.09-.06L512 569.93l-287.7 287.7c-.04.04-.06.05-.09.06a.12.12 0 01-.07 0c-.02 0-.04-.02-.08-.06l-57.69-57.7c-.04-.03-.05-.05-.06-.07a.12.12 0 010-.07c0-.03.02-.05.06-.09L454.07 512l-287.7-287.7c-.04-.04-.05-.06-.06-.09a.12.12 0 010-.07c0-.02.02-.04.06-.08l57.7-57.69c.03-.04.05-.05.07-.06a.12.12 0 01.07 0c.03 0 .05.02.09.06L512 454.07l287.7-287.7c.04-.04.06-.05.09-.06a.12.12 0 01.07 0z"></path>
-                    </svg>
-                  </span>
-                </span>
-              </button>
+                <ChartOrEmpty hasData={trends.length > 0}>
+                  <ReactECharts
+                    theme="st"
+                    option={throughputOption}
+                    notMerge
+                    lazyUpdate
+                    style={{ height: 330 }}
+                  />
+                </ChartOrEmpty>
+              </LightPanel>
+
+              <LightPanel
+                className="col-span-12 xl:col-span-4"
+                title="任务概览 (Job Summary)"
+                description="当前运行状态 (Current runtime status)"
+              >
+                <div className="grid h-[330px] grid-cols-2 gap-3">
+                  <MiniInfo
+                    label="表数量 (Tables)"
+                    value={viewData.tableCount}
+                  />
+                  <MiniInfo
+                    label="Pipeline 数 (Pipelines)"
+                    value={viewData.pipelineCount}
+                  />
+                  <MiniInfo
+                    label="队列大小 (Queue Size)"
+                    value={formatNumber(viewData.queueSize)}
+                  />
+                  <MiniInfo
+                    label="运行时长 (Duration)"
+                    value={viewData.runningDuration}
+                  />
+                  <MiniInfo
+                    label="引接引擎 ID"
+                    value={viewData.clientId}
+                  />
+                  <MiniInfo
+                    label="最近采集时间 (Last Collect)"
+                    value={viewData.lastCollectTime}
+                  />
+                </div>
+              </LightPanel>
+
+              <LightPanel
+                className="col-span-12 xl:col-span-8"
+                title="行数 (Rows)"
+                description="读取行数 / 写入行数 (Read Rows / Write Rows)"
+              >
+                <ChartOrEmpty hasData={trends.length > 0}>
+                  <ReactECharts
+                    theme="st"
+                    option={rowsOption}
+                    notMerge
+                    lazyUpdate
+                    style={{ height: 310 }}
+                  />
+                </ChartOrEmpty>
+              </LightPanel>
+
+              <LightPanel
+                className="col-span-12 xl:col-span-4"
+                title="最大行差 (Top Row Diff)"
+                description="按表统计读取行数 - 写入行数 (Read rows - Write rows by table)"
+              >
+                <ChartOrEmpty hasData={tableMetrics.length > 0}>
+                  <ReactECharts
+                    theme="st"
+                    option={rowDiffBarOption}
+                    notMerge
+                    lazyUpdate
+                    style={{ height: 310 }}
+                  />
+                </ChartOrEmpty>
+              </LightPanel>
+
+              {/* <LightPanel
+                className="col-span-12 xl:col-span-5"
+                title="基本信息 (Basic Info)"
+                description="来源 / 去向 (Source / Sink)"
+              >
+                <div className="grid gap-3 text-base">
+                  <BasicRow
+                    label="来源 (Source)"
+                    value={viewData.source}
+                  />
+                  <BasicRow label="去向 (Sink)" value={viewData.sink} />
+                  <BasicRow
+                    label="同步模式 (Sync Mode)"
+                    value={viewData.syncMode}
+                  />
+                  <BasicRow
+                    label="引擎任务 ID (Engine Job ID)"
+                    value={viewData.engineJobId}
+                  />
+                  <BasicRow
+                    label="任务状态 (Job Status)"
+                    value={viewData.status}
+                  />
+                </div>
+              </LightPanel> */}
+
+              <LightPanel
+                className="col-span-12 xl:col-span-12"
+                title="表级指标 (Table Metrics)"
+                description="表级读写进度 (Table level read/write progress)"
+              >
+                <TableMetricsView rows={tableMetrics} />
+              </LightPanel>
             </div>
-          </header>
-
-          <main className="flex-1 overflow-auto p-5">
-            <Spin spinning={loading && !dashboard}>
-              {!instanceId ? (
-                <div className="flex h-[520px] items-center justify-center rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)]">
-                  <Empty description="缺少 instanceId，无法加载实时监控数据" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-12 gap-4">
-                  <LightStatPanel
-                    className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="读取行数 (Read Rows)"
-                    value={viewData.readRows}
-                    unit="行 (rows)"
-                    icon={<Activity className="h-4 w-4" />}
-                    accent="read"
-                    secondaryLabel="累计读取数据量"
-                    secondaryValue={formatMetric(viewData.readMegabytes, "MB")}
-                  />
-
-                  <LightStatPanel
-                    className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="写入行数 (Write Rows)"
-                    value={viewData.writeRows}
-                    unit="行 (rows)"
-                    icon={<Zap className="h-4 w-4" />}
-                    accent="write"
-                    secondaryLabel="累计写入数据量"
-                    secondaryValue={formatMetric(viewData.writeMegabytes, "MB")}
-                  />
-
-                  <LightStatPanel
-                    className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="读取 QPS (Read QPS)"
-                    value={viewData.readQps}
-                    unit="行/秒 (rows/s)"
-                    icon={<Gauge className="h-4 w-4" />}
-                    accent="read"
-                    secondaryLabel={viewData.terminal ? "平均读取吞吐" : "读取吞吐"}
-                    secondaryValue={formatMetric(viewData.readMBps, "MB/s")}
-                  />
-
-                  <LightStatPanel
-                    className="col-span-12 md:col-span-6 xl:col-span-3"
-                    title="写入 QPS (Write QPS)"
-                    value={viewData.writeQps}
-                    unit="行/秒 (rows/s)"
-                    icon={<Clock3 className="h-4 w-4" />}
-                    accent="write"
-                    secondaryLabel={viewData.terminal ? "平均写入吞吐" : "写入吞吐"}
-                    secondaryValue={formatMetric(viewData.writeMBps, "MB/s")}
-                  />
-
-                  <LightPanel
-                    className="col-span-12 xl:col-span-8"
-                    title="吞吐量 (Throughput)"
-                    description="读取 QPS / 写入 QPS (Read QPS / Write QPS)"
-                  >
-                    <ChartOrEmpty hasData={trends.length > 0}>
-                      <ReactECharts
-                        option={throughputOption}
-                        notMerge
-                        lazyUpdate
-                        style={{ height: 330 }}
-                      />
-                    </ChartOrEmpty>
-                  </LightPanel>
-
-                  <LightPanel
-                    className="col-span-12 xl:col-span-4"
-                    title="任务概览 (Job Summary)"
-                    description="当前运行状态 (Current runtime status)"
-                  >
-                    <div className="grid h-[330px] grid-cols-2 gap-3">
-                      <MiniInfo
-                        label="表数量 (Tables)"
-                        value={viewData.tableCount}
-                      />
-                      <MiniInfo
-                        label="Pipeline 数 (Pipelines)"
-                        value={viewData.pipelineCount}
-                      />
-                      <MiniInfo
-                        label="队列大小 (Queue Size)"
-                        value={formatNumber(viewData.queueSize)}
-                      />
-                      <MiniInfo
-                        label="运行时长 (Duration)"
-                        value={viewData.runningDuration}
-                      />
-                      <MiniInfo
-                        label="引接引擎 ID"
-                        value={viewData.clientId}
-                      />
-                      <MiniInfo
-                        label="最近采集时间 (Last Collect)"
-                        value={viewData.lastCollectTime}
-                      />
-                    </div>
-                  </LightPanel>
-
-                  <LightPanel
-                    className="col-span-12 xl:col-span-8"
-                    title="行数 (Rows)"
-                    description="读取行数 / 写入行数 (Read Rows / Write Rows)"
-                  >
-                    <ChartOrEmpty hasData={trends.length > 0}>
-                      <ReactECharts
-                        option={rowsOption}
-                        notMerge
-                        lazyUpdate
-                        style={{ height: 310 }}
-                      />
-                    </ChartOrEmpty>
-                  </LightPanel>
-
-                  <LightPanel
-                    className="col-span-12 xl:col-span-4"
-                    title="最大行差 (Top Row Diff)"
-                    description="按表统计读取行数 - 写入行数 (Read rows - Write rows by table)"
-                  >
-                    <ChartOrEmpty hasData={tableMetrics.length > 0}>
-                      <ReactECharts
-                        option={rowDiffBarOption}
-                        notMerge
-                        lazyUpdate
-                        style={{ height: 310 }}
-                      />
-                    </ChartOrEmpty>
-                  </LightPanel>
-
-                  {/* <LightPanel
-                    className="col-span-12 xl:col-span-5"
-                    title="基本信息 (Basic Info)"
-                    description="来源 / 去向 (Source / Sink)"
-                  >
-                    <div className="grid gap-3 text-base">
-                      <BasicRow
-                        label="来源 (Source)"
-                        value={viewData.source}
-                      />
-                      <BasicRow label="去向 (Sink)" value={viewData.sink} />
-                      <BasicRow
-                        label="同步模式 (Sync Mode)"
-                        value={viewData.syncMode}
-                      />
-                      <BasicRow
-                        label="引擎任务 ID (Engine Job ID)"
-                        value={viewData.engineJobId}
-                      />
-                      <BasicRow
-                        label="任务状态 (Job Status)"
-                        value={viewData.status}
-                      />
-                    </div>
-                  </LightPanel> */}
-
-                  <LightPanel
-                    className="col-span-12 xl:col-span-12"
-                    title="表级指标 (Table Metrics)"
-                    description="表级读写进度 (Table level read/write progress)"
-                  >
-                    <TableMetricsView rows={tableMetrics} />
-                  </LightPanel>
-                </div>
-              )}
-            </Spin>
-          </main>
-        </div>
-      </div>
+          )}
+        </Spin>
+      </main>
     </Modal>
   );
 });
@@ -672,25 +619,21 @@ const LightPanel: React.FC<{
   children: React.ReactNode;
 }> = ({ title, description, className = "", children }) => {
   return (
-    <section
-      className={[
-        "rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] ",
-        className,
-      ].join(" ")}
-    >
-      <div className="border-b border-[var(--st-color-border)] px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="m-0 text-base font-bold text-white">{title}</h2>
-            {description ? (
-              <div className="mt-1 text-base text-[var(--st-color-text-secondary)]">{description}</div>
-            ) : null}
-          </div>
+    <Card
+      className={className}
+      size="small"
+      title={
+        <div className="py-3">
+          <h2 className="m-0">{title}</h2>
+          {description && (
+            <div className="mt-1 text-base font-normal text-[var(--st-color-text-secondary)]">{description}</div>
+          )}
         </div>
-      </div>
-
-      <div className="p-4">{children}</div>
-    </section>
+      }
+      styles={{ body: { padding: 16 } }}
+    >
+      {children}
+    </Card>
   );
 };
 
@@ -699,37 +642,21 @@ const LightStatPanel: React.FC<{
   value: number | string;
   unit?: string;
   icon: React.ReactNode;
-  accent: "read" | "write";
   className?: string;
   secondaryLabel: string;
   secondaryValue: string;
-}> = ({ title, value, unit, icon, accent, className = "", secondaryLabel, secondaryValue }) => {
-  const accentMap = {
-    read: "border-teal-300/30 bg-teal-300/10 text-teal-200",
-    write: "border-lime-300/30 bg-lime-300/10 text-lime-200",
-  };
-
+}> = ({ title, value, unit, icon, className = "", secondaryLabel, secondaryValue }) => {
   return (
-    <section
-      className={[
-        "rounded-xl border border-[var(--st-color-border)] bg-[var(--st-color-bg-elevated)] p-4 ",
-        className,
-      ].join(" ")}
-    >
+    <Card className={className} size="small" styles={{ body: { padding: 16 } }}>
       <div className="mb-6 flex items-center justify-between">
         <div className="text-base font-semibold text-[var(--st-color-text-secondary)]">{title}</div>
-        <div
-          className={[
-            "flex h-8 w-8 items-center justify-center rounded-lg border",
-            accentMap[accent],
-          ].join(" ")}
-        >
+        <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--st-color-border)] bg-[var(--st-color-bg-control)] text-[var(--st-color-accent)]">
           {icon}
         </div>
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <div className="text-4xl font-bold tracking-tight text-white">
+        <div className="text-4xl font-bold tracking-tight text-[var(--st-color-text-primary)]">
           {typeof value === "number" ? (
             <CountUp
               key={`${title}-${value}`}
@@ -752,7 +679,7 @@ const LightStatPanel: React.FC<{
         <span>{secondaryLabel}</span>
         <strong className="whitespace-nowrap text-[var(--st-color-text-primary)]">{secondaryValue}</strong>
       </div>
-    </section>
+    </Card>
   );
 };
 
@@ -763,7 +690,7 @@ const MiniInfo: React.FC<{
   return (
     <div className="rounded-lg border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-control)] p-3">
       <div className="text-base text-[var(--st-color-text-secondary)]">{label}</div>
-      <div className="mt-2 truncate text-lg font-bold text-white">
+      <div className="mt-2 truncate text-lg font-bold text-[var(--st-color-text-primary)]">
         {value || "-"}
       </div>
     </div>
@@ -777,7 +704,7 @@ const BasicRow: React.FC<{
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--st-color-line-strong)] bg-[var(--st-color-bg-control)] px-3 py-2">
       <span className="text-[var(--st-color-text-secondary)]">{label}</span>
-      <span className="truncate text-right font-semibold text-white">
+      <span className="truncate text-right font-semibold text-[var(--st-color-text-primary)]">
         {value || "-"}
       </span>
     </div>
@@ -805,85 +732,24 @@ const ChartOrEmpty: React.FC<{
 const TableMetricsView: React.FC<{
   rows: JobTableMetricsVO[];
 }> = ({ rows }) => {
-  if (!rows || rows.length === 0) {
-    return (
-      <div className="flex h-[220px] items-center justify-center">
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无表级指标 (Table Metrics)"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--st-color-border)]">
-      <table className="w-full text-left text-base">
-        <thead className="bg-[var(--st-color-bg-control)] text-base text-[var(--st-color-text-secondary)]">
-          <tr>
-            <th className="px-4 py-3 font-semibold">表 (Table)</th>
-            <th className="px-4 py-3 text-right font-semibold">
-              读取行数 (Read Rows)
-            </th>
-            <th className="px-4 py-3 text-right font-semibold">
-              写入行数 (Write Rows)
-            </th>
-            <th className="px-4 py-3 text-right font-semibold">
-              行差 (Row Diff)
-            </th>
-            <th className="px-4 py-3 text-right font-semibold">
-              读取 QPS (Read QPS)
-            </th>
-            <th className="px-4 py-3 text-right font-semibold">
-              写入 QPS (Write QPS)
-            </th>
-            <th className="px-4 py-3 text-right font-semibold">
-              状态 (Status)
-            </th>
-          </tr>
-        </thead>
-
-        <tbody className="divide-y divide-[var(--st-color-border)]">
-          {rows.map((item, index) => {
-            const tableName = buildTableName(item);
-            const rowDiff = calcRowDiff(item);
-
-            return (
-              <tr
-                key={`${tableName}-${item.pipelineId || index}`}
-                className="bg-[var(--st-color-bg-elevated)] text-[var(--st-color-text-secondary)] hover:bg-[var(--st-color-bg-hover)]"
-              >
-                <td className="max-w-[220px] truncate px-4 py-3 font-semibold text-white">
-                  {tableName}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {formatNumber(item.readRowCount)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {formatNumber(item.writeRowCount)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-orange-500/15 px-2 py-1 text-base font-semibold text-orange-300">
-                    {formatNumber(rowDiff)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {formatMetric(item.readQps)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {formatMetric(item.writeQps)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <span className="rounded-md bg-white/5 px-2 py-1 text-base font-semibold text-[var(--st-color-text-secondary)]">
-                    {item.status || "-"}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <Table<JobTableMetricsVO>
+      size="small"
+      pagination={false}
+      scroll={{ x: 850 }}
+      dataSource={rows}
+      rowKey={(item) => String(item.id ?? `${item.pipelineId}-${buildTableName(item)}`)}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无表级指标" /> }}
+      columns={[
+        { title: "表", key: "table", width: 260, ellipsis: true, render: (_, item) => buildTableName(item) },
+        { title: "读取行数", dataIndex: "readRowCount", align: "right", render: formatNumber },
+        { title: "写入行数", dataIndex: "writeRowCount", align: "right", render: formatNumber },
+        { title: "行差", key: "rowDiff", align: "right", render: (_, item) => formatNumber(calcRowDiff(item)) },
+        { title: "读取 QPS", dataIndex: "readQps", align: "right", render: (value) => formatMetric(value) },
+        { title: "写入 QPS", dataIndex: "writeQps", align: "right", render: (value) => formatMetric(value) },
+        { title: "状态", dataIndex: "status", align: "right", render: (status) => status ? <Tag>{status}</Tag> : "—" },
+      ]}
+    />
   );
 };
 
@@ -902,12 +768,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(4, 39, 40, 0.96)",
-      borderWidth: 0,
-      textStyle: {
-        color: "#fff",
-        fontSize: 14,
-      },
+      textStyle: { fontSize: 14 },
       formatter: (params: any[]) => {
         const item = params?.[0];
         if (!item) {
@@ -920,8 +781,6 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
     xAxis: {
       type: "value",
       axisLabel: {
-        color: "#a0c9c3",
-        fontSize: 14,
         formatter: formatShortNumber,
       },
       axisLine: {
@@ -930,18 +789,11 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
       axisTick: {
         show: false,
       },
-      splitLine: {
-        lineStyle: {
-          color: "rgba(125, 200, 187, 0.34)",
-        },
-      },
     },
     yAxis: {
       type: "category",
       data: yAxis,
       axisLabel: {
-        color: "#a0c9c3",
-        fontSize: 14,
         width: 82,
         overflow: "truncate",
       },
@@ -959,7 +811,7 @@ const buildRowDiffBarOption = (rows: JobTableMetricsVO[]) => {
         data: values,
         barWidth: 12,
         itemStyle: {
-          color: "#f97316",
+          color: ST_CHART_ACCENT,
           borderRadius: [0, 8, 8, 0],
         },
       },
@@ -997,12 +849,7 @@ const buildLightLineOption = ({
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(4, 39, 40, 0.96)",
-      borderWidth: 0,
-      textStyle: {
-        color: "#fff",
-        fontSize: 14,
-      },
+      textStyle: { fontSize: 14 },
       valueFormatter: isRate ? (value: unknown) => formatMetric(value, unit) : undefined,
     },
     legend: {
@@ -1011,7 +858,7 @@ const buildLightLineOption = ({
       itemWidth: 12,
       itemHeight: 8,
       textStyle: {
-        color: "#b7ded8",
+        color: "#c4d1de",
         fontSize: 14,
       },
     },
@@ -1019,17 +866,8 @@ const buildLightLineOption = ({
       type: "category",
       boundaryGap: false,
       data: xAxis,
-      axisLine: {
-        lineStyle: {
-          color: "rgba(125, 200, 187, 0.4)",
-        },
-      },
       axisTick: {
         show: false,
-      },
-      axisLabel: {
-        color: "#a0c9c3",
-        fontSize: 14,
       },
     },
     yAxis: {
@@ -1037,19 +875,10 @@ const buildLightLineOption = ({
       minInterval: isRate ? 0.1 : undefined,
       name: unit,
       nameTextStyle: {
-        color: "#a0c9c3",
-        fontSize: 14,
         padding: [0, 0, 0, -28],
       },
       axisLabel: {
-        color: "#a0c9c3",
-        fontSize: 14,
         formatter,
-      },
-      splitLine: {
-        lineStyle: {
-          color: "rgba(125, 200, 187, 0.28)",
-        },
       },
     },
     series: series.map((item) => ({
