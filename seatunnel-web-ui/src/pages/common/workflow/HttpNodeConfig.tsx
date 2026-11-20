@@ -6,6 +6,7 @@ import {
 import {
   Button,
   Collapse,
+  DatePicker,
   Input,
   InputNumber,
   message,
@@ -14,6 +15,7 @@ import {
   Switch,
   Tooltip,
 } from 'antd';
+import dayjs from 'dayjs';
 import { useEffect, useRef, useState } from 'react';
 import { dataSourceCatalogApi } from '@/pages/data-source/service';
 import './HttpNodeConfig.less';
@@ -28,6 +30,7 @@ import {
   buildHttpSchemaFieldCandidates,
   findHttpContentFields,
   formatHttpSchemaSample,
+  mergeHttpSchemaFieldTypes,
   SEATUNNEL_HTTP_SCHEMA_TYPES,
   type HttpContentFieldOption,
   type HttpSchemaFieldCandidate,
@@ -237,6 +240,9 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
     if (!incrementalConfig.timeFormat) {
       patch.timeFormat = DEFAULT_HTTP_TIME_FORMAT;
     }
+    if (incrementalConfig.startValue === undefined || incrementalConfig.startValue === null) {
+      patch.startValue = '1970-01-01 00:00:00';
+    }
     if (Object.keys(patch).length || Object.keys(requestDefaults).length) {
       onChange({
         ...requestDefaults,
@@ -273,12 +279,21 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
   });
   const selectedContentField = String(config.contentField || '');
   const selectedSchemaFields = asRecord(schemaFields);
-  const timeFieldOptions = schemaCandidates
-    .filter((field) => /date|time|timestamp/i.test(String(selectedSchemaFields[field.name] || '')))
-    .map((field) => ({
-      label: `${field.name}（${selectedSchemaFields[field.name]}）`,
-      value: field.name,
+  const timeFieldOptions = Object.entries(selectedSchemaFields)
+    .filter(([, type]) => /date|time|timestamp/i.test(String(type || '')))
+    .map(([name, type]) => ({
+      label: `${name}（${type}）`,
+      value: name,
     }));
+  // Render the saved schema even when the endpoint cannot be parsed again,
+  // so opening an existing task never hides the recognized fields.
+  const savedSchemaCandidates = Object.entries(selectedSchemaFields).map(([name, type]) => ({
+    name,
+    sample: undefined,
+    inferredType: String(type || 'string'),
+  }));
+  const schemaFieldRows = schemaCandidates.length ? schemaCandidates : savedSchemaCandidates;
+  const isSavedSchemaOnly = schemaCandidates.length === 0 && savedSchemaCandidates.length > 0;
 
   useEffect(() => {
     if (format !== 'json' || !selectedContentField) {
@@ -333,6 +348,20 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         setContentFieldOptions(options);
         const responseCandidates = buildHttpSchemaFieldCandidates(responseJson, selectedContentField);
         setSchemaCandidates(responseCandidates.length ? responseCandidates : persistedCandidates);
+        // Fill types that were never saved (for example tasks created before
+        // type inference existed) with the recommended type from the sample.
+        const recommendedTypes = responseCandidates.reduce<Record<string, string>>(
+          (patch, candidate) => {
+            if (!String(selectedSchemaFields[candidate.name] || '').trim() && candidate.inferredType) {
+              patch[candidate.name] = candidate.inferredType;
+            }
+            return patch;
+          },
+          {},
+        );
+        if (Object.keys(recommendedTypes).length) {
+          onChange({ schema: { fields: { ...selectedSchemaFields, ...recommendedTypes } } });
+        }
       } catch {
         // Keep the persisted field names and types visible when the endpoint
         // is temporarily unavailable while opening the edit page.
@@ -409,10 +438,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
 
   const handleContentFieldChange = (value: string) => {
     const candidates = buildHttpSchemaFieldCandidates(parsedJson, value);
-    const nextFields = candidates.reduce<Record<string, string>>((fields, candidate) => {
-      fields[candidate.name] = String(selectedSchemaFields[candidate.name] || '');
-      return fields;
-    }, {});
+    const nextFields = mergeHttpSchemaFieldTypes(candidates, selectedSchemaFields);
     setSchemaCandidates(candidates);
     onChange({
       contentField: value,
@@ -473,7 +499,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       <Field
         label="请求相对路径"
         required
-        hint="只填写相对 Base URL 的接口路径，例如 /v1/orders；不要再填写 http:// 或 https://。"
+        hint="只填相对路径，例如 /v1/orders。"
       >
         <Input
           value={config.path || ''}
@@ -482,7 +508,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         />
       </Field>
 
-      <Field label="请求方法" required hint="Aircas HTTP Source 支持 GET 和 POST。">
+      <Field label="请求方法" required hint="支持 GET 和 POST。">
         <ChoiceGroup
           value={method}
           options={[
@@ -496,7 +522,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
       <Field
         label="响应格式"
         required
-        hint="JSON 响应需要在下方填写 Schema；纯文本响应会输出 content 字段。"
+        hint="JSON 需配置 Schema；文本输出 content 字段。"
       >
         <ChoiceGroup
           value={format}
@@ -513,7 +539,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           <Field
             label="增量时间格式"
             required
-            hint="填写响应代表时间字段的格式，例如 yyyy-MM-dd HH:mm:ss；新建任务会自动填充 from/to 时间窗口参数，也可以按接口文档修改。"
+            hint="时间字段的格式，例如 yyyy-MM-dd HH:mm:ss。"
           >
             <Input
               value={incrementalConfig.timeFormat || DEFAULT_HTTP_TIME_FORMAT}
@@ -531,7 +557,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           </Field>
           <Field
             label="粘贴时间样例"
-            hint="识别本地日期时间及 1–9 位小数秒；时区和 Unix 时间戳不会自动转换。"
+            hint="自动识别本地日期时间格式。"
           >
             <div className="flex gap-2">
               <Input
@@ -552,8 +578,8 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
         label="Query Params"
         hint={
           isIncremental
-            ? '新建单表增量任务默认填充 from=${window_start}、to=${window_end}；可按接口文档修改，调度时系统会自动替换时间值。'
-            : '每行一个键值对；值可以使用 ${window_start} 和 ${window_end} 动态时间占位符。'
+            ? '键名按接口文档；时间值用 ${window_start}/${window_end}。首次 start 为起始时间、end 为调度时间，之后自动接续上次 end。'
+            : '每行一个键值对；值支持 ${window_start}/${window_end}。'
         }
       >
         <KeyValueEditor
@@ -566,7 +592,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
 
       <Field
         label="Headers"
-        hint="每行一个键值对；认证 Header 由数据源认证方式统一生成，不需要在这里重复填写。"
+        hint="认证 Header 由数据源统一生成，无需重复填写。"
       >
         <KeyValueEditor
           value={config.headers}
@@ -581,8 +607,8 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           label="请求体 Body"
           hint={
             isIncremental
-              ? '新建单表增量任务默认填充 from/to 时间窗口；请求体中的占位符会在解析预览和调度执行时自动替换。'
-              : '按接口要求填写 JSON 或文本；值可以使用 ${window_start} 和 ${window_end}。'
+              ? '键名按接口文档；时间值用 ${window_start}/${window_end}。首次 start 为起始时间、end 为调度时间，之后自动接续上次 end。'
+              : '按接口要求填写；值支持 ${window_start}/${window_end}。'
           }
         >
           <Input.TextArea
@@ -603,7 +629,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
           <div className="workflow-panel__label">
             <span className="mr-1 text-rose-500">*</span>
             响应字段与 Schema
-            <Tooltip title="先解析接口响应，再选择内容字段，最后为每个字段选择 Aircas 类型。">
+            <Tooltip title="先解析响应，再选内容字段和类型。">
               <InfoCircleOutlined className="ml-1 text-slate-400" />
             </Tooltip>
           </div>
@@ -611,18 +637,21 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
             <Button type="primary" loading={parseLoading} onClick={handleParseHttp}>
               解析接口
             </Button>
-            <span>填写完路径、方法、参数和请求体后执行一次请求。</span>
+            <span>填好请求参数后执行一次请求。</span>
           </div>
 
           {parsedJson !== undefined && (
+            <div className="http-node-config__parse-result">
+              接口返回 {parsedStatus ? `HTTP ${parsedStatus}` : 'JSON'}，请选择记录所在的内容字段。
+            </div>
+          )}
+
+          {(parsedJson !== undefined || selectedContentField || schemaFieldRows.length > 0) && (
             <>
-              <div className="http-node-config__parse-result">
-                接口返回 {parsedStatus ? `HTTP ${parsedStatus}` : 'JSON'}，请选择记录所在的内容字段。
-              </div>
               <Field
                 label="内容字段"
                 required
-                hint="选择响应中代表记录数组的 JSONPath，例如 $.data.*。"
+                hint="选择记录数组的路径，例如 $.data.*。"
               >
                 <Select
                   value={selectedContentField || undefined}
@@ -633,14 +662,16 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                 />
               </Field>
               {selectedContentField && (
-                <Field label="Schema 字段" required hint="为每个解析出的字段逐一选择 Aircas 类型。">
-                  {schemaCandidates.length > 0 ? (
+                <Field label="Schema 字段" required hint="已按样例预填类型，可手动修改。">
+                  {schemaFieldRows.length > 0 ? (
                     <div className="http-node-config__schema-list">
-                      {schemaCandidates.map((field) => (
+                      {schemaFieldRows.map((field) => (
                         <div className="http-node-config__schema-row" key={field.name}>
                           <div className="http-node-config__schema-name">{field.name}</div>
                           <div className="http-node-config__schema-sample">
-                            示例：{formatHttpSchemaSample(field.sample)} · 建议 {field.inferredType}
+                            {isSavedSchemaOnly
+                              ? `已保存类型 ${selectedSchemaFields[field.name] || 'string'}`
+                              : `示例：${formatHttpSchemaSample(field.sample)} · 建议 ${field.inferredType}`}
                           </div>
                           <Select
                             value={selectedSchemaFields[field.name] || undefined}
@@ -662,15 +693,16 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
               )}
               {isIncremental && selectedContentField && (
                 <Field
-                  label="代表时间字段"
-                  required
-                  hint="选择响应记录中用于增量水位判断的时间字段；请求参数名和位置由上方 Query Params 或 Body 自行配置。"
+                  label="代表时间字段（可选）"
+                  hint="不选时按调度窗口取数，不依赖响应时间字段。"
                 >
                   <Select
-                    value={incrementalConfig.fieldName || undefined}
-                    options={timeFieldOptions}
-                    disabled={!String(incrementalConfig.timeFormat || '').trim() || timeFieldOptions.length === 0}
-                    placeholder="请先为时间字段选择 date / time / timestamp 类型"
+                    value={incrementalConfig.fieldName ?? ''}
+                    options={[
+                      { label: '不指定（按调度窗口）', value: '' },
+                      ...timeFieldOptions,
+                    ]}
+                    placeholder="不指定（按调度窗口）"
                     onChange={(value) =>
                       onChange({
                         incrementalConfig: {
@@ -684,15 +716,44 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                   />
                   {timeFieldOptions.length === 0 && (
                     <div className="mt-1 text-xs text-slate-400">
-                      请先在上方为响应中的时间字段选择 date、time 或 timestamp 类型。
+                      如需按响应时间增量，请先把上方时间字段类型设为 date、time 或 timestamp。
                     </div>
                   )}
                 </Field>
               )}
-              <details className="http-node-config__response-details">
-                <summary>查看响应样例</summary>
-                <pre>{JSON.stringify(parsedJson, null, 2)}</pre>
-              </details>
+              {isIncremental && selectedContentField && incrementalConfig.fieldName && (
+                <Field
+                  label="增量起始时间"
+                  hint="首次请求的 window_start；之后自动接续上次 window_end。"
+                >
+                  <DatePicker
+                    showTime
+                    format="YYYY-MM-DD HH:mm:ss"
+                    style={{ width: '100%' }}
+                    value={
+                      incrementalConfig.startValue
+                        ? dayjs(incrementalConfig.startValue, 'YYYY-MM-DD HH:mm:ss')
+                        : null
+                    }
+                    placeholder="请选择首次请求的起始时间"
+                    onChange={(value) =>
+                      onChange({
+                        incrementalConfig: {
+                          ...incrementalConfig,
+                          enabled: true,
+                          startValue: value ? value.format('YYYY-MM-DD HH:mm:ss') : '',
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              )}
+              {parsedJson !== undefined && (
+                <details className="http-node-config__response-details">
+                  <summary>查看响应样例</summary>
+                  <pre>{JSON.stringify(parsedJson, null, 2)}</pre>
+                </details>
+              )}
             </>
           )}
         </div>
@@ -708,8 +769,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
               <div className="workflow-panel__form-grid">
                 {format === 'json' && (
                   <>
-                    <Field label="JSON 字段映射" hint="把响应 JSONPath 映射为输出字段。">
-                      <KeyValueEditor
+                    <Field label="JSON 字段映射" hint="把响应 JSONPath 映射为输出字段。">                      <KeyValueEditor
                         value={config.jsonField}
                         keyPlaceholder="输出字段名，例如 order_id"
                         valuePlaceholder="JSONPath，例如 $.orderId"
@@ -725,7 +785,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                   </>
                 )}
 
-                <Field label="分页方式" hint="分页参数可以放在 Params、Headers 或 Body 中，并使用 ${page}。">
+                <Field label="分页方式" hint="分页参数用 ${page} 传递。">
                   <Select
                     value={pageType}
                     style={{ width: '100%' }}
@@ -765,7 +825,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                         />
                       </div>
                     </Field>
-                    <Field label="启用占位符替换" hint="将 ${page} 替换为当前页码。">
+                    <Field label="启用占位符替换" hint="把 ${page} 替换为当前页码。">
                       <Switch
                         checked={pageConfig.use_placeholder_replacement ?? true}
                         onChange={(checked) => patchPageing({ use_placeholder_replacement: checked })}
@@ -793,7 +853,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                   </>
                 )}
 
-                <Field label="重试次数" hint="请求失败后的重试次数，默认 3 次。">
+                <Field label="重试次数" hint="失败后的重试次数，默认 3 次。">
                   <InputNumber
                     value={config.retry ?? DEFAULT_HTTP_CONFIG.retry}
                     min={0}
@@ -835,7 +895,7 @@ export default function HttpNodeConfig({ streaming, isIncremental = false, confi
                     onChange={(checked) => onChange({ enableMultiLines: checked })}
                   />
                 </Field>
-                <Field label="兼容请求参数模式" hint="仅在接口兼容旧版 Aircas 参数行为时开启。">
+                <Field label="兼容请求参数模式" hint="仅兼容旧版参数行为时开启。">
                   <div className="flex flex-wrap gap-4">
                     <Switch
                       checked={config.keepParamsAsForm ?? DEFAULT_HTTP_CONFIG.keepParamsAsForm}

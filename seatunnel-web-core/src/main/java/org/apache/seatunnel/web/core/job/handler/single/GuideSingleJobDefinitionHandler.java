@@ -355,17 +355,18 @@ public class GuideSingleJobDefinitionHandler implements JobDefinitionModeHandler
         }
 
         String fieldName = firstNonBlank(sourceIncremental.get("fieldName"));
-        if (StringUtils.isBlank(fieldName)) {
-            throw new IllegalArgumentException("请选择 HTTP 响应中的代表时间字段");
+        // A response may not expose a time field. In that case the runtime
+        // uses the schedule window as start/end and no watermark is needed.
+        if (StringUtils.isNotBlank(fieldName)) {
+            String format = firstNonBlank(source.get("format"), "text").toLowerCase(Locale.ROOT);
+            if (!"json".equals(format)) {
+                throw new IllegalArgumentException("HTTP 增量任务响应格式必须为 JSON，才能识别代表时间字段");
+            }
+            if (StringUtils.isBlank(firstNonBlank(source.get("contentField"), source.get("content_field")))) {
+                throw new IllegalArgumentException("HTTP 增量任务必须配置响应内容字段");
+            }
+            validateHttpTemporalField(source, fieldName);
         }
-        String format = firstNonBlank(source.get("format"), "text").toLowerCase(Locale.ROOT);
-        if (!"json".equals(format)) {
-            throw new IllegalArgumentException("HTTP 增量任务响应格式必须为 JSON，才能识别代表时间字段");
-        }
-        if (StringUtils.isBlank(firstNonBlank(source.get("contentField"), source.get("content_field")))) {
-            throw new IllegalArgumentException("HTTP 增量任务必须配置响应内容字段");
-        }
-        validateHttpTemporalField(source, fieldName);
 
         String method = firstNonBlank(source.get("method"), "GET").toUpperCase(Locale.ROOT);
         if (!"GET".equals(method) && !"POST".equals(method)) {

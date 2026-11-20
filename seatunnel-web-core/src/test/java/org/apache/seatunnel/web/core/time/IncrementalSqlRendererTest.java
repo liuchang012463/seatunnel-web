@@ -6,6 +6,7 @@ import org.apache.seatunnel.web.spi.bean.dto.config.JobScheduleConfig;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.List;
 
@@ -226,6 +227,39 @@ class IncrementalSqlRendererTest {
         assertEquals(
                 "{\"start_time\":\"2024-01-01 00:00:00\",\"end_time\":\"2024-01-01 00:05:00\"}",
                 rendered.getString("body"));
+    }
+
+    @Test
+    void previewsScheduleWindowWhenHttpHasNoResponseTimeField() {
+        JobScheduleConfig schedule = new JobScheduleConfig();
+        schedule.setScheduleType("minute");
+        schedule.setMinuteValue(Map.of("intervalMinute", 5));
+
+        Map<String, Object> sourceConfig = Map.of(
+                "dbType", "HTTP",
+                "incrementalConfig", Map.of(
+                        "enabled", true,
+                        "timeFormat", "yyyy-MM-dd HH:mm:ss"));
+        Map<String, Object> sourceData = Map.of("nodeType", "source", "config", sourceConfig);
+        IncrementalConfigResolver.resolve(
+                Map.of("nodes", List.of(Map.of("data", sourceData))),
+                schedule
+        );
+
+        Config rendered = IncrementalSqlRenderer.render(
+                ConfigFactory.parseMap(Map.of(
+                        "dbType", "HTTP",
+                        "method", "GET",
+                        "params", Map.of(
+                                "from", "${window_start}",
+                                "to", "${window_end}"))),
+                schedule);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        LocalDateTime start = LocalDateTime.parse(rendered.getString("params.from"), formatter);
+        LocalDateTime end = LocalDateTime.parse(rendered.getString("params.to"), formatter);
+        assertEquals(5, java.time.Duration.between(start, end).toMinutes());
+        assertTrue(Math.abs(java.time.Duration.between(end, LocalDateTime.now()).toSeconds()) < 10);
     }
 
     @Test

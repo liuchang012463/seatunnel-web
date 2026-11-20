@@ -126,26 +126,55 @@ function inferType(value: unknown): string {
   if (Array.isArray(value)) return 'string';
   if (isRecord(value)) return 'string';
   if (typeof value !== 'string') return 'string';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'date';
-  if (/^\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)) return 'time';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/.test(value)) return 'timestamp';
+
+  const text = value.trim();
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(text)) return 'date';
+  if (/^\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?$/.test(text)) return 'time';
+  // Accept common API timestamp shapes, including ISO-8601 with a timezone.
+  if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}[T ]\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/.test(text)) {
+    return 'timestamp';
+  }
   return 'string';
 }
-
-const sampleValue = (values: unknown[]) => values.find((value) => value !== null && value !== undefined);
 
 export function buildHttpSchemaFieldCandidates(
   root: unknown,
   contentField: string,
 ): HttpSchemaFieldCandidate[] {
-  const records = resolveHttpContentRecords(root, contentField).slice(0, 50);
-  const fieldNames = new Set<string>();
-  records.forEach((record) => Object.keys(record).forEach((name) => fieldNames.add(name)));
+  const records = resolveHttpContentRecords(root, contentField);
+  // Scan every record for field names so fields that only appear in later
+  // records are not missing from the schema editor. Keep the first non-null
+  // value as the sample used for type inference.
+  const fieldNames: string[] = [];
+  const samples = new Map<string, unknown>();
+  records.forEach((record) => {
+    Object.entries(record).forEach(([name, value]) => {
+      if (!samples.has(name)) {
+        fieldNames.push(name);
+        samples.set(name, undefined);
+      }
+      if (samples.get(name) === undefined && value !== null && value !== undefined) {
+        samples.set(name, value);
+      }
+    });
+  });
 
-  return Array.from(fieldNames).map((name) => {
-    const sample = sampleValue(records.map((record) => record[name]));
+  return fieldNames.map((name) => {
+    const sample = samples.get(name);
     return { name, sample, inferredType: inferType(sample) };
   });
+}
+
+export function mergeHttpSchemaFieldTypes(
+  candidates: HttpSchemaFieldCandidate[],
+  current: Record<string, string>,
+): Record<string, string> {
+  return candidates.reduce<Record<string, string>>((fields, candidate) => {
+    // Keep an explicit user choice; otherwise prefill the recommended type
+    // inferred from the response sample.
+    fields[candidate.name] = String(current[candidate.name] || candidate.inferredType || '');
+    return fields;
+  }, {});
 }
 
 export function formatHttpSchemaSample(value: unknown): string {

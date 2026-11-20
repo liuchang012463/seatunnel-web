@@ -131,7 +131,7 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
     }
 
     @Test
-    void rejectsHttpIncrementalWithoutResponseTimeField() {
+    void acceptsHttpIncrementalWithoutResponseTimeField() {
         BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand(
                 "{\"status\":\"active\"}");
         Map<String, Object> sourceConfig = sourceConfig(command);
@@ -140,11 +140,22 @@ class GuideSingleJobDefinitionHandlerIncrementalTest {
         incremental.put("fieldName", "");
         sourceConfig.put("incrementalConfig", incremental);
 
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class,
-                () -> handler.validate(command)
-        );
-        assertTrue(error.getMessage().contains("代表时间字段"));
+        assertDoesNotThrow(() -> handler.validate(command));
+    }
+
+    @Test
+    void acceptsHttpTextIncrementalWithoutResponseTimeField() {
+        BatchGuideSingleIncrementalJobSaveCommand command = validHttpCommand("status=active");
+        Map<String, Object> sourceConfig = sourceConfig(command);
+        sourceConfig.put("format", "text");
+        sourceConfig.remove("schema");
+        sourceConfig.remove("contentField");
+        Map<String, Object> incremental = new java.util.HashMap<>(
+                (Map<String, Object>) sourceConfig.get("incrementalConfig"));
+        incremental.put("fieldName", "");
+        sourceConfig.put("incrementalConfig", incremental);
+
+        assertDoesNotThrow(() -> handler.validate(command));
     }
 
     @Test

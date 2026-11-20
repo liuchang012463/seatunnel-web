@@ -18,9 +18,10 @@ import java.util.Map;
 /**
  * Renders the four runtime values used by a bounded incremental batch.
  *
- * <p>Preview/build-config calls have no runtime context, so they use a
- * deterministic window derived from the configured initial watermark. Actual
- * execution supplies the fixed window through {@code runtimeParams}.</p>
+ * <p>Preview/build-config calls have no runtime context, so they use the
+ * configured initial watermark. When an HTTP source has no response time
+ * field, they use a recent schedule-sized window instead. Actual execution
+ * supplies the fixed window through {@code runtimeParams}.</p>
  */
 public final class IncrementalSqlRenderer {
 
@@ -38,7 +39,10 @@ public final class IncrementalSqlRenderer {
 
         JobScheduleConfig.IncrementalConfig incremental = schedule.getIncremental();
         boolean httpSource = isHttpSource(config);
-        Map<String, String> values = resolveValues(incremental, schedule.getRuntimeParams());
+        boolean scheduleWindowOnly = httpSource
+                && StringUtils.isBlank(incremental.getWatermarkColumn());
+        Map<String, String> values = resolveValues(
+                incremental, schedule.getRuntimeParams(), scheduleWindowOnly);
         Map<String, Object> overrides = new HashMap<>();
 
         renderTokenizedValue(config, "sql", values, overrides);
@@ -70,7 +74,8 @@ public final class IncrementalSqlRenderer {
 
     private static Map<String, String> resolveValues(
             JobScheduleConfig.IncrementalConfig incremental,
-            Map<String, String> runtimeParams) {
+            Map<String, String> runtimeParams,
+            boolean scheduleWindowOnly) {
         Map<String, String> values = new HashMap<>();
         if (runtimeParams != null) {
             values.putAll(runtimeParams);
@@ -80,12 +85,21 @@ public final class IncrementalSqlRenderer {
             return values;
         }
 
-        LocalDateTime start = parse(incremental.getInitialWatermark());
         int maxWindow = incremental.getMaxWindowSeconds() == null
                 ? 1800 : incremental.getMaxWindowSeconds();
         int overlap = incremental.getOverlapSeconds() == null
                 ? 0 : incremental.getOverlapSeconds();
-        LocalDateTime end = start.plusSeconds(maxWindow);
+        LocalDateTime start;
+        LocalDateTime end;
+        if (scheduleWindowOnly) {
+            // No response time field: preview the same schedule-based window
+            // that the runtime uses instead of the legacy 1970 watermark.
+            end = LocalDateTime.now().withNano(0);
+            start = end.minusSeconds(maxWindow);
+        } else {
+            start = parse(incremental.getInitialWatermark());
+            end = start.plusSeconds(maxWindow);
+        }
         String timeFormat = StringUtils.defaultIfBlank(
                 incremental.getTimeFormat(),
                 IncrementalConfigResolver.DEFAULT_TIME_FORMAT);

@@ -68,9 +68,10 @@
 }
 
 .http-node-config__schema-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
   align-items: center;
-  gap: 8px;
+  gap: 2px 8px;
   min-width: 0;
   padding: 8px;
   border: 1px solid var(--st-color-divider);
@@ -79,20 +80,24 @@
 }
 
 .http-node-config__schema-name {
-  min-width: 120px;
+  grid-column: 1;
+  min-width: 0;
   color: var(--st-color-text-primary);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
 .http-node-config__schema-sample {
+  grid-column: 1;
   min-width: 0;
-  flex: 1;
   color: var(--st-color-text-secondary);
   font-size: var(--st-type-caption-size);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.http-node-config__schema-row .ant-select {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 .http-node-config__response-details {
@@ -120,8 +125,7 @@
 
 @media (max-width: 520px) {
   .http-node-config__schema-row {
-    align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .http-node-config__schema-sample {
@@ -129,6 +133,8 @@
   }
 
   .http-node-config__schema-row .ant-select {
+    grid-column: 1;
+    grid-row: auto;
     width: 100% !important;
   }
 }

@@ -97,7 +97,12 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         Map<String, Object> workflow = loadWorkflow(jobDefinitionId);
         IncrementalConfigResolver.resolve(workflow, config);
         JobScheduleConfig.IncrementalConfig incremental = config.getIncremental();
-        validateRuntimeConfig(incremental);
+        boolean httpSource = IncrementalConfigResolver.isHttpSource(workflow);
+        // HTTP responses do not always contain a time field. Without a
+        // watermark column the batch window is the schedule window.
+        boolean scheduleWindowOnly = httpSource
+                && StringUtils.isBlank(incremental.getWatermarkColumn());
+        validateRuntimeConfig(incremental, scheduleWindowOnly);
         boolean bootstrap = control == null;
 
         IncrementalBatchRecord running = recordDao.queryRunningByDefinitionId(jobDefinitionId);
@@ -113,13 +118,23 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
             return reopenFailedBatch(control, retry, incremental.getTimeFormat());
         }
 
-        LocalDateTime start = control == null
-                ? parseDateTime(incremental.getInitialWatermark())
-                : toLocalDateTime(control.getCommittedWatermark());
         LocalDateTime sourceNow = querySourceNow(definition);
         int safetyDelay = valueOrDefault(incremental.getSafetyDelaySeconds(), 0);
         int maxWindow = valueOrDefault(incremental.getMaxWindowSeconds(), 1800);
         int overlap = valueOrDefault(incremental.getOverlapSeconds(), 0);
+        LocalDateTime start;
+        if (control == null) {
+            start = scheduleWindowOnly
+                    ? sourceNow.minusSeconds(maxWindow)
+                    : parseDateTime(incremental.getInitialWatermark());
+        } else {
+            start = toLocalDateTime(control.getCommittedWatermark());
+        }
+        if (scheduleWindowOnly && bootstrap) {
+            log.info("HTTP incremental batch has no response time field; using schedule window, "
+                    + "jobDefinitionId={}, windowStart={}, windowEnd={}",
+                    jobDefinitionId, start, sourceNow);
+        }
         IncrementalBatchWindowResolver.Window window = IncrementalBatchWindowResolver.resolve(
                 bootstrap, start, sourceNow, safetyDelay, overlap, maxWindow);
         if (window == null) {
@@ -343,11 +358,12 @@ public class IncrementalBatchServiceImpl implements IncrementalBatchService {
         }
     }
 
-    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental) {
+    private void validateRuntimeConfig(JobScheduleConfig.IncrementalConfig incremental,
+                                       boolean scheduleWindowOnly) {
         if (incremental == null || !Boolean.TRUE.equals(incremental.getEnabled())) {
             throw new IllegalArgumentException("incremental configuration is not enabled");
         }
-        if (StringUtils.isBlank(incremental.getWatermarkColumn())) {
+        if (!scheduleWindowOnly && StringUtils.isBlank(incremental.getWatermarkColumn())) {
             throw new IllegalArgumentException("incremental watermark column is empty");
         }
         if (valueOrDefault(incremental.getMaxWindowSeconds(), 1800) <= 0) {
