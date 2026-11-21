@@ -1,6 +1,7 @@
 package org.apache.seatunnel.web.api.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumn;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataColumnProfile;
@@ -30,7 +31,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,8 +48,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +74,116 @@ class DataExplorationServiceTest {
 
         assertEquals(1, service().listDatabases(42L).size());
         assertEquals("st_ds_42.orders", service().listDatabases(42L).get(0).getFullyQualifiedName());
+    }
+
+    @Test
+    void separatesExplorationPageAndProfileCachesByDomainScope() {
+        stubReadySource();
+        String databaseFqn = "st_ds_42.orders";
+        String schemaFqn = databaseFqn + ".public";
+        AtomicReference<String> scope = new AtomicReference<>("domain-a");
+        AtomicInteger databaseLoads = new AtomicInteger();
+        AtomicInteger schemaLoads = new AtomicInteger();
+        AtomicInteger tableLoads = new AtomicInteger();
+        AtomicInteger databaseTableLoads = new AtomicInteger();
+        AtomicInteger profileLoads = new AtomicInteger();
+        when(openMetadataClient.cacheScopeKey()).thenAnswer(invocation -> scope.get());
+        when(openMetadataClient.findDatabase(databaseFqn))
+                .thenReturn(Optional.of(new OpenMetadataDatabase("db-id", databaseFqn, "st_ds_42")));
+
+        doAnswer(invocation -> {
+            databaseLoads.incrementAndGet();
+            String label = scopeLabel(scope.get());
+            return new OpenMetadataPage<>(List.of(new OpenMetadataDatabase(
+                    "db-" + label, "st_ds_42." + label, "st_ds_42")), 1L, null);
+        }).when(openMetadataClient).listDatabasesPage("st_ds_42", 1000, null);
+        doAnswer(invocation -> {
+            schemaLoads.incrementAndGet();
+            return new OpenMetadataPage<>(List.of(schema(
+                    "schema-" + scopeLabel(scope.get()), schemaFqn)), 1L, null);
+        }).when(openMetadataClient).listSchemasPage(databaseFqn, 1000, null);
+        doAnswer(invocation -> {
+            tableLoads.incrementAndGet();
+            OpenMetadataTable table = table("table-" + scopeLabel(scope.get()), "orders");
+            OpenMetadataTableProfile profile = new OpenMetadataTableProfile();
+            profile.setTimestamp(1700000000000L);
+            table.setProfile(profile);
+            return new OpenMetadataPage<>(List.of(table), 1L, null);
+        }).when(openMetadataClient).listTablesPage(schemaFqn, true, 20, null);
+        doAnswer(invocation -> {
+            databaseTableLoads.incrementAndGet();
+            return new OpenMetadataPage<>(List.of(table(
+                    "diagram-" + scopeLabel(scope.get()), "orders")), 1L, null);
+        }).when(openMetadataClient).listTablesByDatabasePage(databaseFqn, true, 1000, null);
+        doAnswer(invocation -> {
+            profileLoads.incrementAndGet();
+            OpenMetadataTableProfile profile = new OpenMetadataTableProfile();
+            long metric = scopeMetric(scope.get());
+            profile.setTimestamp(1700000000000L + metric);
+            profile.setRowCount(metric);
+            return profile;
+        }).when(openMetadataClient).getLatestTableProfile("st_ds_42.orders.public.orders");
+        when(openMetadataClient.getTable("profile-table")).thenReturn(table("profile-table", "orders"));
+
+        DataExplorationService service = service(redisCache(new ConcurrentHashMap<>()));
+
+        assertEquals("db-a", service.listDatabases(42L).get(0).getId());
+        scope.set("domain-b");
+        assertEquals("db-b", service.listDatabases(42L).get(0).getId());
+        scope.set("");
+        assertEquals("db-all", service.listDatabases(42L).get(0).getId());
+        scope.set("domain-a");
+        assertEquals("db-a", service.listDatabases(42L).get(0).getId());
+        assertEquals(3, databaseLoads.get());
+
+        assertEquals("schema-a", service.listSchemas(42L, databaseFqn).get(0).getId());
+        scope.set("domain-b");
+        assertEquals("schema-b", service.listSchemas(42L, databaseFqn).get(0).getId());
+        scope.set("");
+        assertEquals("schema-all", service.listSchemas(42L, databaseFqn).get(0).getId());
+        scope.set("domain-a");
+        assertEquals("schema-a", service.listSchemas(42L, databaseFqn).get(0).getId());
+        assertEquals(3, schemaLoads.get());
+
+        assertEquals("table-a", service.listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords().get(0).getId());
+        scope.set("domain-b");
+        assertEquals("table-b", service.listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords().get(0).getId());
+        scope.set("");
+        assertEquals("table-all", service.listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords().get(0).getId());
+        scope.set("domain-a");
+        assertEquals("table-a", service.listTables(42L, databaseFqn, schemaFqn, 1, 20)
+                .getRecords().get(0).getId());
+        assertEquals(3, tableLoads.get());
+
+        assertEquals("diagram-a", service.getErDiagram(42L, databaseFqn, null).getNodes().get(0).getId());
+        scope.set("domain-b");
+        assertEquals("diagram-b", service.getErDiagram(42L, databaseFqn, null).getNodes().get(0).getId());
+        scope.set("");
+        assertEquals("diagram-all", service.getErDiagram(42L, databaseFqn, null).getNodes().get(0).getId());
+        scope.set("domain-a");
+        assertEquals("diagram-a", service.getErDiagram(42L, databaseFqn, null).getNodes().get(0).getId());
+        assertEquals(3, databaseTableLoads.get());
+
+        assertEquals(10L, service.getProfile(42L, "profile-table").getTable().getRowCount());
+        scope.set("domain-b");
+        assertEquals(20L, service.getProfile(42L, "profile-table").getTable().getRowCount());
+        scope.set("");
+        assertEquals(30L, service.getProfile(42L, "profile-table").getTable().getRowCount());
+        scope.set("domain-a");
+        assertEquals(10L, service.getProfile(42L, "profile-table").getTable().getRowCount());
+        assertEquals(3, profileLoads.get());
+
+        assertEquals(1700000000010L, service.getTable(42L, "profile-table").getProfileTime());
+        scope.set("domain-b");
+        assertEquals(1700000000020L, service.getTable(42L, "profile-table").getProfileTime());
+        scope.set("");
+        assertEquals(1700000000030L, service.getTable(42L, "profile-table").getProfileTime());
+        scope.set("domain-a");
+        assertEquals(1700000000010L, service.getTable(42L, "profile-table").getProfileTime());
+        assertEquals(3, profileLoads.get());
     }
 
     @Test
@@ -347,6 +467,54 @@ class DataExplorationServiceTest {
 
     private DataExplorationService service() {
         return new DataExplorationService(dataSourceDao, metadataBindingDao, openMetadataClient, catalogService);
+    }
+
+    private DataExplorationService service(OmReadCache omReadCache) {
+        OpenMetadataProperties properties = new OpenMetadataProperties();
+        properties.setEnabled(true);
+        properties.setBaseUrl("http://openmetadata.test/api");
+        properties.setToken("test-token");
+        return new DataExplorationService(
+                dataSourceDao,
+                metadataBindingDao,
+                openMetadataClient,
+                catalogService,
+                OpenMetadataConfigResolver.fixed(properties),
+                null,
+                omReadCache);
+    }
+
+    private OmReadCache redisCache(Map<String, String> values) {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> operations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(operations);
+        when(operations.get(anyString())).thenAnswer(invocation -> values.get(invocation.getArgument(0)));
+        when(operations.setIfAbsent(anyString(), anyString())).thenAnswer(invocation -> values.putIfAbsent(
+                invocation.getArgument(0), invocation.getArgument(1)) == null);
+        doAnswer(invocation -> {
+            values.put(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(operations).set(anyString(), anyString(), any(Duration.class));
+        return OmReadCache.redis(
+                new StringRedisMetadataStore(redisTemplate, new ObjectMapper()),
+                Duration.ofMinutes(10),
+                Duration.ofMinutes(15));
+    }
+
+    private static String scopeLabel(String scope) {
+        if ("domain-a".equals(scope)) {
+            return "a";
+        }
+        return "domain-b".equals(scope) ? "b" : "all";
+    }
+
+    private static long scopeMetric(String scope) {
+        return switch (scopeLabel(scope)) {
+            case "a" -> 10L;
+            case "b" -> 20L;
+            default -> 30L;
+        };
     }
 
     private void stubReadySource() {

@@ -142,10 +142,11 @@ public class DataExplorationService {
 
     public List<DataExplorationDatabaseVO> listDatabases(Long dataSourceId) {
         ExplorationContext context = context(dataSourceId);
+        String cacheScopeKey = openMetadataClient.cacheScopeKey();
         List<DataExplorationDatabaseVO> result = new ArrayList<>();
         for (OpenMetadataDatabase database : collectPages(
                 after -> omReadCache.databases(
-                        context.serviceFqn(), MAX_OM_PAGE_SIZE, after,
+                        context.serviceFqn(), cacheScopeKey, MAX_OM_PAGE_SIZE, after,
                         () -> openMetadataClient.listDatabasesPage(
                                 context.serviceFqn(), MAX_OM_PAGE_SIZE, after)))) {
             if (database == null || !context.serviceFqn().equals(database.serviceFullyQualifiedName())) {
@@ -163,10 +164,11 @@ public class DataExplorationService {
     public List<DataExplorationSchemaVO> listSchemas(Long dataSourceId, String databaseFqn) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataDatabase database = requireOwnedDatabase(context, databaseFqn);
+        String cacheScopeKey = openMetadataClient.cacheScopeKey();
         List<DataExplorationSchemaVO> result = new ArrayList<>();
         for (OpenMetadataDatabaseSchema schema : collectPages(
                 after -> omReadCache.schemas(
-                        database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after,
+                        database.fullyQualifiedName(), cacheScopeKey, MAX_OM_PAGE_SIZE, after,
                         () -> openMetadataClient.listSchemasPage(
                                 database.fullyQualifiedName(), MAX_OM_PAGE_SIZE, after)))) {
             if (schema == null
@@ -197,6 +199,7 @@ public class DataExplorationService {
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
         int offset = (safePageNo - 1) * safePageSize;
         int pageLimit = Math.min(MAX_OM_PAGE_SIZE, Math.max(safePageSize, safePageNo * safePageSize));
+        String cacheScopeKey = openMetadataClient.cacheScopeKey();
         List<OpenMetadataTable> selectedTables = new ArrayList<>();
         long[] matched = {0L};
         long[] total = {0L};
@@ -205,7 +208,7 @@ public class DataExplorationService {
         for (int pageNumber = 0; pageNumber < MAX_OM_PAGES; pageNumber++) {
             final String cursor = after;
             OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
-                    schemaFqn, true, pageLimit, cursor,
+                    schemaFqn, cacheScopeKey, true, pageLimit, cursor,
                     () -> openMetadataClient.listTablesPage(schemaFqn, true, pageLimit, cursor));
             if (page == null) {
                 break;
@@ -229,7 +232,7 @@ public class DataExplorationService {
         }
         List<CompletableFuture<DataExplorationTableVO>> tableRows = selectedTables.stream()
                 .map(table -> CompletableFuture.supplyAsync(
-                        () -> toTable(table, latestProfile(table)), PROFILE_LOOKUP_EXECUTOR))
+                        () -> toTable(table, latestProfile(table, cacheScopeKey)), PROFILE_LOOKUP_EXECUTOR))
                 .toList();
         List<DataExplorationTableVO> records = new ArrayList<>(tableRows.size());
         for (CompletableFuture<DataExplorationTableVO> tableRow : tableRows) {
@@ -246,7 +249,7 @@ public class DataExplorationService {
     public DataExplorationTableDetailVO getTable(Long dataSourceId, String tableId) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataTable table = requireOwnedTable(context, tableId);
-        return toTableDetail(table);
+        return toTableDetail(table, openMetadataClient.cacheScopeKey());
     }
 
     /** Updates only explicitly supplied governance fields on an owned table. */
@@ -299,7 +302,9 @@ public class DataExplorationService {
             throw invalid("metadata must contain at least one editable field");
         }
         OpenMetadataTable updated = openMetadataClient.patchTable(table.getId(), patch);
-        return toTableDetail(updated == null ? requireOwnedTable(context, tableId) : updated);
+        return toTableDetail(
+                updated == null ? requireOwnedTable(context, tableId) : updated,
+                openMetadataClient.cacheScopeKey());
     }
 
     /** Starts the asynchronous description completion task for one owned table. */
@@ -333,16 +338,17 @@ public class DataExplorationService {
             Long dataSourceId, String databaseFqn, String schemaFqn) {
         ExplorationContext context = context(dataSourceId);
         OpenMetadataDatabase database = requireOwnedDatabase(context, databaseFqn);
+        String cacheScopeKey = openMetadataClient.cacheScopeKey();
         List<OpenMetadataTable> tables;
         if (schemaFqn == null || schemaFqn.isBlank()) {
             tables = collectPages(after -> omReadCache.tablesByDatabase(
-                    database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after,
+                    database.fullyQualifiedName(), cacheScopeKey, true, MAX_OM_PAGE_SIZE, after,
                     () -> openMetadataClient.listTablesByDatabasePage(
                             database.fullyQualifiedName(), true, MAX_OM_PAGE_SIZE, after)));
         } else {
             requireOwnedSchema(context, database, schemaFqn);
             tables = collectPages(after -> omReadCache.tables(
-                    schemaFqn, true, MAX_OM_PAGE_SIZE, after,
+                    schemaFqn, cacheScopeKey, true, MAX_OM_PAGE_SIZE, after,
                     () -> openMetadataClient.listTablesPage(schemaFqn, true, MAX_OM_PAGE_SIZE, after)));
         }
 
@@ -418,6 +424,7 @@ public class DataExplorationService {
         OpenMetadataTable table = requireOwnedTable(context, tableId);
         OpenMetadataTableProfile profile = omReadCache.latestProfile(
                 table.getFullyQualifiedName(),
+                openMetadataClient.cacheScopeKey(),
                 () -> openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName()));
         return toProfile(table, profile);
     }
@@ -458,7 +465,7 @@ public class DataExplorationService {
         return result;
     }
 
-    private OpenMetadataTableProfile latestProfile(OpenMetadataTable table) {
+    private OpenMetadataTableProfile latestProfile(OpenMetadataTable table, String cacheScopeKey) {
         OpenMetadataTableProfile profile = table.getProfile();
         if (profile != null && profile.getTimestamp() != null) {
             return profile;
@@ -470,6 +477,7 @@ public class DataExplorationService {
         try {
             return omReadCache.latestProfile(
                     fullyQualifiedName,
+                    cacheScopeKey,
                     () -> openMetadataClient.getLatestTableProfile(fullyQualifiedName));
         } catch (Exception error) {
             log.warn("OpenMetadata table profile lookup failed: tableId={}, errorType={}",
@@ -577,7 +585,7 @@ public class DataExplorationService {
                 ? firstPart(table.getFullyQualifiedName()) : table.getServiceFullyQualifiedName();
     }
 
-    private DataExplorationTableDetailVO toTableDetail(OpenMetadataTable table) {
+    private DataExplorationTableDetailVO toTableDetail(OpenMetadataTable table, String cacheScopeKey) {
         DataExplorationTableDetailVO result = new DataExplorationTableDetailVO();
         result.setId(table.getId());
         result.setName(table.getName());
@@ -589,7 +597,7 @@ public class DataExplorationService {
         result.setServiceFullyQualifiedName(table.getServiceFullyQualifiedName());
         result.setDatabaseFullyQualifiedName(table.getDatabaseFullyQualifiedName());
         result.setSchemaFullyQualifiedName(table.getSchemaFullyQualifiedName());
-        OpenMetadataTableProfile profile = latestProfile(table);
+        OpenMetadataTableProfile profile = latestProfile(table, cacheScopeKey);
         result.setProfileAvailable(profile != null && profile.getTimestamp() != null);
         result.setProfileTime(profile == null ? null : profile.getTimestamp());
         result.setTags(new ArrayList<>(safe(table.getTags())));
