@@ -215,7 +215,7 @@ public class DataInventoryService {
     }
 
     private InventorySnapshotPayload snapshot(InventoryFilter filter) {
-        String key = filter.cacheKey();
+        String key = filter.cacheKey() + ":om:" + openMetadataClient.cacheScopeKey();
         return cache.getOrCompute(key, () -> buildSnapshot(filter));
     }
 
@@ -232,7 +232,7 @@ public class DataInventoryService {
                 long[] matchedDatabases = {0L};
                 long databaseTotal = walkPages(
                         after -> omReadCache.databases(
-                                serviceFqn(source), PAGE_SIZE, after,
+                                serviceFqn(source), openMetadataClient.cacheScopeKey(), PAGE_SIZE, after,
                                 () -> openMetadataClient.listDatabasesPage(
                                         serviceFqn(source), PAGE_SIZE, after)),
                         database -> {
@@ -243,7 +243,7 @@ public class DataInventoryService {
                             long[] matchedSchemas = {0L};
                             long schemaTotal = walkPages(
                                     after -> omReadCache.schemas(
-                                            database.fullyQualifiedName(), PAGE_SIZE, after,
+                                            database.fullyQualifiedName(), openMetadataClient.cacheScopeKey(), PAGE_SIZE, after,
                                             () -> openMetadataClient.listSchemasPage(
                                                     database.fullyQualifiedName(), PAGE_SIZE, after)),
                                     schema -> {
@@ -289,7 +289,7 @@ public class DataInventoryService {
         for (int pageNumber = 0; pageNumber < MAX_PAGES; pageNumber++) {
             final String cursor = after;
             OpenMetadataPage<OpenMetadataTable> page = omReadCache.tables(
-                    schema.getFullyQualifiedName(), true, PAGE_SIZE, cursor,
+                    schema.getFullyQualifiedName(), openMetadataClient.cacheScopeKey(), true, PAGE_SIZE, cursor,
                     () -> openMetadataClient.listTablesPage(
                             schema.getFullyQualifiedName(), true, PAGE_SIZE, cursor));
             if (page == null) {
@@ -494,6 +494,7 @@ public class DataInventoryService {
         try {
             return omReadCache.latestProfile(
                     table.getFullyQualifiedName(),
+                    openMetadataClient.cacheScopeKey(),
                     () -> openMetadataClient.getLatestTableProfile(table.getFullyQualifiedName()));
         } catch (Exception error) {
             log.debug("Could not read profile for table {}", table.getFullyQualifiedName(), error);

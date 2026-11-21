@@ -90,7 +90,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                     MetadataErrorCode.OM_CONNECTION_ERROR,
                     "无法连接 OpenMetadata，请检查 Base URL、Token 与版本契约");
         }
-        validateDefaultDomain(probeConfig, connectionTest);
+        validateDefaultDomain(probeConfig);
 
         OpenMetadataServerConfig target = current == null ? new OpenMetadataServerConfig() : current;
         if (current == null) {
@@ -151,7 +151,7 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         if (result.isConfigured()
                 && ConnStatus.CONNECTED_SUCCESS.getCode().equals(result.getConnStatus())) {
             try {
-                validateDefaultDomain(runtime, result);
+                validateDefaultDomain(runtime);
             } catch (MetadataIntegrationException exception) {
                 result.setConnStatus(ConnStatus.CONNECTED_FAILED.getCode());
                 result.setLastError(exception.getMessage());
@@ -325,10 +325,8 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
         }
     }
 
-    private void validateDefaultDomain(
-            OpenMetadataRuntimeConfig config, OpenMetadataServerConfigVO domainOptions) {
+    private void validateDefaultDomain(OpenMetadataRuntimeConfig config) {
         String requested = config.getDefaultDomainFqn();
-        List<String> botDomains = domainOptions.getBotDomainFqns();
         boolean requestedExists = false;
         if (StringUtils.isNotBlank(requested)) {
             try {
@@ -340,37 +338,15 @@ public class OpenMetadataServerServiceImpl implements OpenMetadataServerService 
                         exception.getClass().getSimpleName());
             }
         }
-        validateDefaultDomainSelection(
-                requested,
-                botDomains,
-                domainOptions.isBotDomainLookupAvailable(),
-                domainOptions.getAvailableDomainFqns(),
-                domainOptions.isDomainListAvailable(),
-                requestedExists);
+        validateDefaultDomainSelection(requested, requestedExists);
     }
 
     static void validateDefaultDomainSelection(
-            String requested,
-            List<String> botDomains,
-            boolean botLookupAvailable,
-            List<String> availableDomains,
-            boolean domainListAvailable,
-            boolean requestedExists) {
-        List<String> assigned = botDomains == null ? List.of() : botDomains;
-        List<String> visible = availableDomains == null ? List.of() : availableDomains;
-        if (!botLookupAvailable) {
-            throw invalid("botDomainFqns");
-        }
+            String requested, boolean requestedExists) {
         if (StringUtils.isBlank(requested)) {
-            if (assigned.size() > 1) {
-                throw invalid("defaultDomainFqn");
-            }
             return;
         }
-        if (!requestedExists || (!assigned.isEmpty() && !assigned.contains(requested))) {
-            throw invalid("defaultDomainFqn");
-        }
-        if (assigned.isEmpty() && (!domainListAvailable || !visible.contains(requested))) {
+        if (!requestedExists) {
             throw invalid("defaultDomainFqn");
         }
     }

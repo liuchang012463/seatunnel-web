@@ -13,8 +13,15 @@ import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
+import org.antlr.v4.runtime.BailErrorStrategy;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.FqnLexer;
+import org.openmetadata.schema.FqnParser;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -57,6 +64,8 @@ import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -66,6 +75,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.HexFormat;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -147,6 +157,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             }
         }
         return sdkHolder.get();
+    }
+
+    @Override
+    public String cacheScopeKey() {
+        OpenMetadataRuntimeConfig runtime = current();
+        String identity = sanitizeBaseUrl(runtime.getBaseUrl()) + "|"
+                + runtime.getConfigVersion() + "|"
+                + (blank(runtime.getDefaultDomainFqn()) ? "*" : runtime.getDefaultDomainFqn());
+        return digest(identity);
     }
 
     private static org.openmetadata.sdk.client.OpenMetadataClient createSdkClient(
@@ -270,7 +289,8 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             org.openmetadata.schema.EntityInterface service = findServiceEntity(category, fullyQualifiedName);
-            return service == null ? Optional.empty() : Optional.of(entity(service));
+            return service == null || !isInConfiguredDomain(service, null)
+                    ? Optional.empty() : Optional.of(entity(service));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return Optional.empty();
@@ -387,7 +407,10 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public Optional<OpenMetadataDatabase> findDatabase(String fullyQualifiedName) {
         validateBaseUrl();
         try {
-            Database database = sdk().databases().getByName(fullyQualifiedName);
+            Database database = sdk().databases().getByName(fullyQualifiedName, "domains,service");
+            if (database != null && !isInConfiguredDomain(database, null)) {
+                return Optional.empty();
+            }
             return Optional.ofNullable(toDatabase(database));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -407,9 +430,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataPage<OpenMetadataDatabase> listDatabasesPage(
             String serviceFullyQualifiedName, int limit, String after) {
         validateBaseUrl();
+        if (!isServiceInConfiguredDomain(serviceFullyQualifiedName)) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setService(serviceFullyQualifiedName)
+                .setFields("domains,service")
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (after != null && !after.isBlank()) {
@@ -423,7 +450,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 // omits the service reference even though the request is filtered
                 // by service. Keep the requested service as the ownership context.
                 OpenMetadataDatabase parsed = toDatabase(database, serviceFullyQualifiedName);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(database, serviceFullyQualifiedName, true)) {
                     data.add(parsed);
                 }
             }
@@ -443,9 +470,19 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataPage<OpenMetadataDatabaseSchema> listSchemasPage(
             String databaseFullyQualifiedName, int limit, String after) {
         validateBaseUrl();
+        Database parentDatabase = getDatabaseEntity(databaseFullyQualifiedName);
+        if (parentDatabase == null || !isInConfiguredDomain(parentDatabase, null)) {
+            return emptyPage();
+        }
+        String serviceFqn = referenceFqn(parentDatabase.getService());
+        boolean serviceAllowed = blank(serviceFqn) || isServiceInConfiguredDomain(serviceFqn);
+        if (!serviceAllowed) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setDatabase(databaseFullyQualifiedName)
+                .setFields("domains,service,database")
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (after != null && !after.isBlank()) {
@@ -458,7 +495,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 // The collection response is already filtered by database. Some
                 // OpenMetadata 2.0.4 deployments omit the database reference.
                 OpenMetadataDatabaseSchema parsed = toSchema(schema, databaseFullyQualifiedName);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(schema, serviceFqn, serviceAllowed)) {
                     data.add(parsed);
                 }
             }
@@ -479,43 +516,65 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataPage<OpenMetadataTable> listTablesPage(
             String schemaFullyQualifiedName, boolean includeColumns, int limit, String after) {
         validateBaseUrl();
+        DatabaseSchema parentSchema = getSchemaEntity(schemaFullyQualifiedName);
+        if (parentSchema == null || !isInConfiguredDomain(parentSchema, null)) {
+            return emptyPage();
+        }
+        String serviceFqn = referenceFqn(parentSchema.getService());
+        if (blank(serviceFqn) && parentSchema.getDatabase() != null) {
+            Database parentDatabase = getDatabaseEntity(referenceFqn(parentSchema.getDatabase()));
+            serviceFqn = parentDatabase == null ? null : referenceFqn(parentDatabase.getService());
+        }
+        boolean serviceAllowed = blank(serviceFqn) || isServiceInConfiguredDomain(serviceFqn);
+        if (!serviceAllowed) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setDatabaseSchema(schemaFullyQualifiedName)
-                .setFields(includeColumns ? "columns,tableConstraints" : "tableConstraints")
+                .setFields(includeColumns ? "columns,tableConstraints,domains,service" : "tableConstraints,domains,service")
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (after != null && !after.isBlank()) {
             params.setAfter(after);
         }
-        return listTables(params, "OpenMetadata table collection lookup failed");
+        return listTables(params, "OpenMetadata table collection lookup failed", serviceFqn, serviceAllowed);
     }
 
     @Override
     public OpenMetadataPage<OpenMetadataTable> listTablesByDatabasePage(
             String databaseFullyQualifiedName, boolean includeColumns, int limit, String after) {
         validateBaseUrl();
+        Database parentDatabase = getDatabaseEntity(databaseFullyQualifiedName);
+        if (parentDatabase == null || !isInConfiguredDomain(parentDatabase, null)) {
+            return emptyPage();
+        }
+        String serviceFqn = referenceFqn(parentDatabase.getService());
+        boolean serviceAllowed = blank(serviceFqn) || isServiceInConfiguredDomain(serviceFqn);
+        if (!serviceAllowed) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setDatabase(databaseFullyQualifiedName)
-                .setFields(includeColumns ? "columns,tableConstraints" : "tableConstraints")
+                .setFields(includeColumns ? "columns,tableConstraints,domains,service" : "tableConstraints,domains,service")
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (after != null && !after.isBlank()) {
             params.setAfter(after);
         }
-        return listTables(params, "OpenMetadata database table collection lookup failed");
+        return listTables(params, "OpenMetadata database table collection lookup failed", serviceFqn, serviceAllowed);
     }
 
     private OpenMetadataPage<OpenMetadataTable> listTables(
-            ListParams params, String failureMessage) {
+            ListParams params, String failureMessage, String serviceFqn, boolean serviceAllowed) {
         try {
             ListResponse<org.openmetadata.schema.entity.data.Table> response = sdk().tables().list(params);
             List<OpenMetadataTable> data = new ArrayList<>();
             for (org.openmetadata.schema.entity.data.Table table
                     : safeList(response == null ? null : response.getData())) {
                 OpenMetadataTable parsed = toTable(table);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(table, serviceFqn, serviceAllowed)) {
                     data.add(parsed);
                 }
             }
@@ -534,10 +593,13 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             int limit,
             String after) {
         validateBaseUrl();
+        if (!isServiceInConfiguredDomain(serviceFullyQualifiedName)) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setService(serviceFullyQualifiedName)
-                .setFields(type.listFields())
+                .setFields(withDomains(type.listFields()))
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (root) {
@@ -551,7 +613,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             List<OpenMetadataAsset> data = new ArrayList<>();
             for (Object entity : safeList(response == null ? null : response.getData())) {
                 OpenMetadataAsset parsed = toAsset(type, entity, serviceFullyQualifiedName);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(entity, serviceFullyQualifiedName, true)) {
                     data.add(parsed);
                 }
             }
@@ -573,8 +635,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataPage<OpenMetadataAsset> listContainerChildren(
             String parentFullyQualifiedName, int limit, int offset) {
         validateBaseUrl();
+        Container parent = getContainerEntity(parentFullyQualifiedName, "domains,service");
+        if (parent == null || !isInConfiguredDomain(parent, null)) {
+            return emptyPage();
+        }
+        String serviceFqn = referenceFqn(parent.getService());
+        boolean serviceAllowed = blank(serviceFqn) || isServiceInConfiguredDomain(serviceFqn);
+        if (!serviceAllowed) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
+                .setFields("domains,service,parent")
                 .setLimit(safeLimit)
                 .setOffset(Math.max(0, offset))
                 .addQueryParam("include", "non-deleted");
@@ -585,7 +657,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             for (Container container : safeList(response == null ? null : response.getData())) {
                 OpenMetadataAsset parsed =
                         toAsset(ExplorationAssetType.CONTAINER, container, null);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(container, serviceFqn, serviceAllowed)) {
                     data.add(parsed);
                 }
             }
@@ -600,10 +672,19 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataPage<OpenMetadataAsset> listFilesInDirectory(
             String directoryFullyQualifiedName, int limit, String after) {
         validateBaseUrl();
+        Directory parent = getDirectoryEntity(directoryFullyQualifiedName, "domains,service");
+        if (parent == null || !isInConfiguredDomain(parent, null)) {
+            return emptyPage();
+        }
+        String serviceFqn = referenceFqn(parent.getService());
+        boolean serviceAllowed = blank(serviceFqn) || isServiceInConfiguredDomain(serviceFqn);
+        if (!serviceAllowed) {
+            return emptyPage();
+        }
         int safeLimit = safeLimit(limit, 1000);
         ListParams params = new ListParams()
                 .setDirectory(directoryFullyQualifiedName)
-                .setFields(ExplorationAssetType.FILE.listFields())
+                .setFields(withDomains(ExplorationAssetType.FILE.listFields()))
                 .setLimit(safeLimit)
                 .addQueryParam("include", "non-deleted");
         if (after != null && !after.isBlank()) {
@@ -614,7 +695,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             List<OpenMetadataAsset> data = new ArrayList<>();
             for (File file : safeList(response == null ? null : response.getData())) {
                 OpenMetadataAsset parsed = toAsset(ExplorationAssetType.FILE, file, null);
-                if (parsed != null) {
+                if (parsed != null && isInConfiguredDomain(file, serviceFqn, serviceAllowed)) {
                     data.add(parsed);
                 }
             }
@@ -639,13 +720,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         try {
             entity = getAssetEntity(
                     type, resourceId,
-                    fields == null || fields.isBlank() ? type.detailFields() : fields);
+                    withDomains(fields == null || fields.isBlank() ? type.detailFields() : fields));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
             }
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata " + type.entityType() + " detail lookup failed", error);
+        }
+        if (entity != null && !isInConfiguredDomain(entity, null)) {
+            return null;
         }
         SampleResult sample = includeSample
                 ? readSample(type, resourceId, entity)
@@ -849,7 +933,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return null;
     }
 
-    private static OpenMetadataAssetDetail toAssetDetail(
+    private OpenMetadataAssetDetail toAssetDetail(
             ExplorationAssetType type, Object entity, SampleResult sample) {
         OpenMetadataAsset asset = toAsset(type, entity, null);
         if (asset == null) {
@@ -921,7 +1005,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
      * Directory children are direct references. Spreadsheets and any future family are
      * filtered out because this product only explores directories and files.
      */
-    private static List<OpenMetadataAsset> directoryChildren(Directory directory) {
+    private List<OpenMetadataAsset> directoryChildren(Directory directory) {
         List<OpenMetadataAsset> children = new ArrayList<>();
         for (EntityReference reference : safeList(directory.getChildren())) {
             if (reference == null) {
@@ -930,6 +1014,33 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             ExplorationAssetType childType = ExplorationAssetType.fromValue(reference.getType());
             if (childType != ExplorationAssetType.DIRECTORY
                     && childType != ExplorationAssetType.FILE) {
+                continue;
+            }
+            if (hasDomainScope()) {
+                if (reference.getId() == null) {
+                    continue;
+                }
+                String serviceFqn = referenceFqn(directory.getService());
+                Boolean serviceAllowed = blank(serviceFqn)
+                        ? null : isServiceInConfiguredDomain(serviceFqn);
+                try {
+                    Object child = getAssetEntity(
+                            childType,
+                            reference.getId().toString(),
+                            withDomains(childType.listFields()));
+                    if (child == null || !isInConfiguredDomain(child, serviceFqn, serviceAllowed)) {
+                        continue;
+                    }
+                    OpenMetadataAsset parsed = toAsset(childType, child, serviceFqn);
+                    if (parsed != null) {
+                        children.add(parsed);
+                    }
+                } catch (OpenMetadataException error) {
+                    if (!isNotFound(error)) {
+                        throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                                "OpenMetadata directory child lookup failed", error);
+                    }
+                }
                 continue;
             }
             children.add(new OpenMetadataAsset(
@@ -1123,18 +1234,22 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public List<EsLineageData> getAssetLineage(List<String> serviceFqns) {
-        if (serviceFqns.isEmpty()) {
+        List<String> scopedServices = safeList(serviceFqns).stream()
+                .filter(this::isServiceInConfiguredDomain)
+                .toList();
+        if (scopedServices.isEmpty()) {
             return List.of();
         }
         // OM indexes each directed edge on its target. Search only related assets and page
         // past the platform overview limit without loading their columns or unrelated metadata.
         int size = 250;
         String scope = OBJECT_MAPPER.valueToTree(Map.of("query", Map.of("bool", Map.of("filter", List.of(
-                Map.of("terms", Map.of("service.fullyQualifiedName", serviceFqns)),
+                Map.of("terms", Map.of("service.fullyQualifiedName", scopedServices)),
                 Map.of("exists", Map.of("field", "upstreamLineage.fromEntity.id"))))))).toString();
         String path = "/v1/search/query?index=all&q=*&size=" + size
                 + "&sort_field=fullyQualifiedName&sort_order=asc&include_aggregations=false"
                 + "&include_source_fields=id&include_source_fields=entityType&include_source_fields=fullyQualifiedName"
+                + "&include_source_fields=domains&include_source_fields=service"
                 + "&include_source_fields=upstreamLineage.fromEntity&include_source_fields=upstreamLineage.description"
                 + "&query_filter=" + encode(scope);
         List<EsLineageData> result = new ArrayList<>();
@@ -1147,11 +1262,21 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 }
                 for (JsonNode hit : hits) {
                     JsonNode asset = hit.path("_source");
+                    if (!isLineageAssetJsonInConfiguredDomain(asset, scopedServices)) {
+                        continue;
+                    }
                     var target = new RelationshipRef()
                             .withId(UUID.fromString(asset.path("id").asText()))
                             .withType(asset.path("entityType").asText(null))
                             .withFullyQualifiedName(asset.path("fullyQualifiedName").asText(null));
                     for (JsonNode edge : asset.path("upstreamLineage")) {
+                        if (hasDomainScope()) {
+                            EntityReference source = OBJECT_MAPPER.treeToValue(
+                                    edge.path("fromEntity"), EntityReference.class);
+                            if (!lineageReferenceInScope(source)) {
+                                continue;
+                            }
+                        }
                         result.add(OBJECT_MAPPER.treeToValue(edge, EsLineageData.class).withToEntity(target));
                     }
                 }
@@ -1188,6 +1313,18 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                 throw new MetadataIntegrationException(
                         MetadataErrorCode.OM_CONNECTION_ERROR, "OpenMetadata asset lineage response is invalid");
             }
+            if (hasDomainScope()) {
+                if (!lineageReferenceInScope(lineage.getEntity())) {
+                    return null;
+                }
+                List<EntityReference> visibleNodes = new ArrayList<>();
+                for (EntityReference node : safeList(lineage.getNodes())) {
+                    if (node != null && lineageReferenceInScope(node)) {
+                        visibleNodes.add(node);
+                    }
+                }
+                lineage.setNodes(visibleNodes);
+            }
             return lineage;
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -1204,8 +1341,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataTable getTable(String tableId) {
         validateBaseUrl();
         try {
-            return toTable(sdk().tables().get(
-                    tableId, "columns,tableConstraints,tags,domains", "non-deleted"));
+            org.openmetadata.schema.entity.data.Table table = sdk().tables().get(
+                    tableId, "columns,tableConstraints,tags,domains,service", "non-deleted");
+            return table == null || !isInConfiguredDomain(table, null) ? null : toTable(table);
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -1219,8 +1357,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     public OpenMetadataTable getTableByName(String fullyQualifiedName) {
         validateBaseUrl();
         try {
-            return toTable(sdk().tables().getByName(
-                    fullyQualifiedName, "columns,tableConstraints,tags,domains"));
+            org.openmetadata.schema.entity.data.Table table = sdk().tables().getByName(
+                    fullyQualifiedName, "columns,tableConstraints,tags,domains,service");
+            return table == null || !isInConfiguredDomain(table, null) ? null : toTable(table);
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -1233,6 +1372,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public JsonNode getTableSampleData(String tableId) {
         validateBaseUrl();
+        if (hasDomainScope() && getTable(tableId) == null) {
+            return null;
+        }
         try {
             org.openmetadata.schema.entity.data.Table response = sdk().tables().getSampleData(tableId);
             return response == null ? null : OBJECT_MAPPER.valueToTree(response);
@@ -1253,8 +1395,22 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
                     MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata table patch must be a JSON array");
         }
+        if (hasDomainScope()) {
+            org.openmetadata.schema.entity.data.Table currentTable = getTableEntity(tableId);
+            if (currentTable == null || !isInConfiguredDomain(currentTable, null)) {
+                throw domainScopeViolation("table update");
+            }
+            validateTableDomainPatch(patchDocument);
+        }
         try {
-            return toTable(sdk().tables().patch(tableId, patchDocument));
+            org.openmetadata.schema.entity.data.Table updated = sdk().tables().patch(tableId, patchDocument);
+            if (hasDomainScope()) {
+                updated = getTableEntity(tableId);
+            }
+            if (updated != null && !isInConfiguredDomain(updated, null)) {
+                throw domainScopeViolation("table update");
+            }
+            return toTable(updated);
         } catch (OpenMetadataException error) {
             throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata table metadata update failed", error);
@@ -1263,6 +1419,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public OpenMetadataTableProfile getLatestTableProfile(String tableFullyQualifiedName) {
+        if (hasDomainScope() && getTableByName(tableFullyQualifiedName) == null) {
+            return null;
+        }
         JsonNode response = sdkRequest(
                 "GET", "/v1/tables/" + encode(tableFullyQualifiedName)
                         + "/tableProfile/latest?includeColumnProfile=true", null, true);
@@ -1272,6 +1431,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public List<OpenMetadataColumnProfile> listColumnProfiles(
             String columnOrTableFullyQualifiedName, long startTs, long endTs) {
+        if (hasDomainScope() && getTableByName(tableOrParentFqn(columnOrTableFullyQualifiedName)) == null) {
+            return List.of();
+        }
         JsonNode response = sdkRequest(
                 "GET", "/v1/tables/" + encode(columnOrTableFullyQualifiedName)
                         + "/columnProfile?startTs=" + startTs + "&endTs=" + endTs,
@@ -1289,6 +1451,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public JsonNode getTableProfilerConfig(String tableId) {
+        if (hasDomainScope() && getTable(tableId) == null) {
+            return null;
+        }
         // 2.0.4's official SDK exposes the typed update operation but not
         // the corresponding GET extension, so use its own HttpClient for this
         // exact server path rather than introducing a second HTTP client.
@@ -1302,6 +1467,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
                     "OpenMetadata table profiler config cannot be empty");
+        }
+        if (hasDomainScope() && getTable(tableId) == null) {
+            throw domainScopeViolation("table profiler update");
         }
         // The GET/PUT extension is not modelled as a dedicated typed method in
         // SDK 2.0.4. The request is still executed by the SDK client and
@@ -1347,12 +1515,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public Optional<OpenMetadataEntity> findIngestionPipeline(String fullyQualifiedName) {
-        return findIngestionPipelineEntity(fullyQualifiedName).map(OpenMetadataRestClient::entity);
+        return findIngestionPipelineEntity(fullyQualifiedName)
+                .filter(this::isPipelineInConfiguredDomain)
+                .map(OpenMetadataRestClient::entity);
     }
 
     @Override
     public Optional<OpenMetadataPipelineConfig> findIngestionPipelineConfig(String fullyQualifiedName) {
-        return findIngestionPipelineEntity(fullyQualifiedName).map(pipeline -> new OpenMetadataPipelineConfig(
+        return findIngestionPipelineEntity(fullyQualifiedName)
+                .filter(this::isPipelineInConfiguredDomain)
+                .map(pipeline -> new OpenMetadataPipelineConfig(
                 pipeline.getId().toString(),
                 pipeline.getService() == null || pipeline.getService().getId() == null
                         ? null : pipeline.getService().getId().toString(),
@@ -1365,6 +1537,11 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public void patchIngestionPipeline(String id, JsonNode patchDocument) {
         validateBaseUrl();
+        var pipeline = getPipelineEntity(id);
+        if (pipeline == null || !isPipelineInConfiguredDomain(pipeline)) {
+            throw domainScopeViolation("ingestion pipeline update");
+        }
+        rejectPipelineServicePatch(patchDocument);
         try {
             sdk().ingestionPipelines().patch(id, patchDocument);
         } catch (OpenMetadataException error) {
@@ -1377,7 +1554,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             findIngestionPipelineEntity(String fullyQualifiedName) {
         validateBaseUrl();
         try {
-            return Optional.of(sdk().ingestionPipelines().getByName(fullyQualifiedName));
+            return Optional.ofNullable(sdk().ingestionPipelines().getByName(fullyQualifiedName, "service"));
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return Optional.empty();
@@ -1396,10 +1573,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             // fields that OpenMetadata 2.0.4 does not accept on create.
             CreateIngestionPipeline createRequest =
                     OBJECT_MAPPER.treeToValue(request, CreateIngestionPipeline.class);
+            String serviceFqn = createRequest.getService() == null
+                    ? null : createRequest.getService().getFullyQualifiedName();
+            requireServiceInConfiguredDomain(serviceFqn, "ingestion pipeline create/update");
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline existing =
                     findIngestionPipelineEntity(createRequest);
             if (existing == null) {
                 return entity(sdk().ingestionPipelines().create(createRequest));
+            }
+            if (!isPipelineInConfiguredDomain(existing)) {
+                throw domainScopeViolation("ingestion pipeline update");
             }
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline desired =
                     mergeIngestionPipeline(existing, createRequest);
@@ -1424,12 +1607,12 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             MetadataServiceCategory category, String name) {
         try {
             return switch (category) {
-                case DATABASE -> sdk().databaseServices().getByName(name);
-                case MESSAGING -> sdk().messagingServices().getByName(name);
-                case SEARCH -> sdk().searchServices().getByName(name);
-                case STORAGE -> sdk().storageServices().getByName(name);
-                case API -> sdk().apiServices().getByName(name);
-                case DRIVE -> sdk().driveServices().getByName(name);
+                case DATABASE -> sdk().databaseServices().getByName(name, "domains");
+                case MESSAGING -> sdk().messagingServices().getByName(name, "domains");
+                case SEARCH -> sdk().searchServices().getByName(name, "domains");
+                case STORAGE -> sdk().storageServices().getByName(name, "domains");
+                case API -> sdk().apiServices().getByName(name, "domains");
+                case DRIVE -> sdk().driveServices().getByName(name, "domains");
             };
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
@@ -1448,6 +1631,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().databaseServices().create(
                     addDefaultDomain(createRequest, CreateDatabaseService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.DatabaseService desired =
                 mergeDatabaseService(existing, createRequest);
         return entity(sdk().databaseServices().update(existing.getId().toString(), desired));
@@ -1463,6 +1647,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().messagingServices().create(
                     addDefaultDomain(createRequest, CreateMessagingService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.MessagingService desired =
                 mergeMessagingService(existing, createRequest);
         return entity(sdk().messagingServices().update(existing.getId().toString(), desired));
@@ -1478,6 +1663,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().searchServices().create(
                     addDefaultDomain(createRequest, CreateSearchService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.SearchService desired =
                 mergeSearchService(existing, createRequest);
         return entity(sdk().searchServices().update(existing.getId().toString(), desired));
@@ -1493,6 +1679,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().storageServices().create(
                     addDefaultDomain(createRequest, CreateStorageService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.StorageService desired =
                 mergeStorageService(existing, createRequest);
         return entity(sdk().storageServices().update(existing.getId().toString(), desired));
@@ -1508,6 +1695,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().apiServices().create(
                     addDefaultDomain(createRequest, CreateApiService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.ApiService desired =
                 mergeApiService(existing, createRequest);
         return entity(sdk().apiServices().update(existing.getId().toString(), desired));
@@ -1523,14 +1711,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             return entity(sdk().driveServices().create(
                     addDefaultDomain(createRequest, CreateDriveService.class)));
         }
+        requireInConfiguredDomain(existing, "service update");
         org.openmetadata.schema.entity.services.DriveService desired =
                 mergeDriveService(existing, createRequest);
         return entity(sdk().driveServices().update(existing.getId().toString(), desired));
     }
 
-    /** Adds an explicit Domain only to create requests; updates keep the entity's current domains. */
+    /** Adds the configured Domain only to a newly created service; blank scope stays unassigned. */
     private <T> T addDefaultDomain(T request, Class<T> requestType) throws JsonProcessingException {
-        String domainFqn = resolveCreateServiceDomainFqn();
+        String domainFqn = current().getDefaultDomainFqn();
         if (blank(domainFqn)) {
             return request;
         }
@@ -1543,30 +1732,6 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         object.putArray("domains").add(domainFqn);
         log.info("OpenMetadata service create will use Domain FQN {}", domainFqn);
         return OBJECT_MAPPER.treeToValue(object, requestType);
-    }
-
-    private String resolveCreateServiceDomainFqn() {
-        String fallback = current().getDefaultDomainFqn();
-        List<String> botDomains;
-        try {
-            botDomains = getBotDomainFqns();
-        } catch (RuntimeException error) {
-            log.warn("OpenMetadata Bot Domain scope lookup failed; configured fallback will be used: type={}",
-                    error.getClass().getSimpleName());
-            return fallback;
-        }
-        if (botDomains.size() == 1) {
-            return botDomains.get(0);
-        }
-        if (botDomains.size() > 1) {
-            if (blank(fallback) || !botDomains.contains(fallback)) {
-                throw new MetadataIntegrationException(
-                        MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
-                        "OpenMetadata Bot has multiple Domains; select a visible default Domain in 探查引擎管理");
-            }
-            return fallback;
-        }
-        return fallback;
     }
 
     private static org.openmetadata.schema.entity.services.DatabaseService mergeDatabaseService(
@@ -1664,7 +1829,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
             name = desired.getService().getFullyQualifiedName() + "." + name;
         }
         try {
-            return sdk().ingestionPipelines().getByName(name);
+            return sdk().ingestionPipelines().getByName(name, "service");
         } catch (OpenMetadataException error) {
             if (isNotFound(error)) {
                 return null;
@@ -1702,8 +1867,377 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         return existing;
     }
 
+    private boolean hasDomainScope() {
+        return !blank(current().getDefaultDomainFqn());
+    }
+
+    private boolean isInConfiguredDomain(Object entity, String fallbackServiceFqn) {
+        return isInConfiguredDomain(entity, fallbackServiceFqn, null);
+    }
+
+    /** Uses an entity's explicit Domains first and its owning service when none are assigned. */
+    private boolean isInConfiguredDomain(
+            Object entity, String fallbackServiceFqn, Boolean fallbackServiceAllowed) {
+        String selectedDomain = current().getDefaultDomainFqn();
+        if (blank(selectedDomain)) {
+            return true;
+        }
+        if (entity == null) {
+            return false;
+        }
+        JsonNode json = entity instanceof JsonNode node ? node : OBJECT_MAPPER.valueToTree(entity);
+        String ownerServiceFqn = serviceFqn(json.path("service"));
+        if (!blank(ownerServiceFqn) && !blank(fallbackServiceFqn)
+                && !fallbackServiceFqn.equals(ownerServiceFqn)) {
+            return false;
+        }
+        Set<String> entityDomains = domainFqns(json.path("domains"));
+        if (!entityDomains.isEmpty()) {
+            return entityDomains.contains(selectedDomain);
+        }
+        if (blank(ownerServiceFqn)) {
+            ownerServiceFqn = fallbackServiceFqn;
+        }
+        if (blank(ownerServiceFqn)) {
+            return false;
+        }
+        if (fallbackServiceAllowed != null && ownerServiceFqn.equals(fallbackServiceFqn)) {
+            return fallbackServiceAllowed;
+        }
+        return isServiceInConfiguredDomain(ownerServiceFqn);
+    }
+
+    private boolean isServiceInConfiguredDomain(String fullyQualifiedName) {
+        if (!hasDomainScope()) {
+            return true;
+        }
+        if (blank(fullyQualifiedName)) {
+            return false;
+        }
+        String selectedDomain = current().getDefaultDomainFqn();
+        for (MetadataServiceCategory category : MetadataServiceCategory.values()) {
+            try {
+                org.openmetadata.schema.EntityInterface service =
+                        findServiceEntity(category, fullyQualifiedName);
+                if (service != null) {
+                    return domainFqns(OBJECT_MAPPER.valueToTree(service).path("domains"))
+                            .contains(selectedDomain);
+                }
+            } catch (OpenMetadataException error) {
+                throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                        "OpenMetadata service Domain lookup failed", error);
+            }
+        }
+        return false;
+    }
+
+    private void requireInConfiguredDomain(Object entity, String operation) {
+        if (hasDomainScope() && !isInConfiguredDomain(entity, null)) {
+            throw domainScopeViolation(operation);
+        }
+    }
+
+    private void requireServiceInConfiguredDomain(String serviceFqn, String operation) {
+        if (hasDomainScope() && !isServiceInConfiguredDomain(serviceFqn)) {
+            throw domainScopeViolation(operation);
+        }
+    }
+
+    private boolean isPipelineInConfiguredDomain(
+            org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline) {
+        return pipeline != null && isInConfiguredDomain(pipeline, null);
+    }
+
+    private void requirePipelineIdInConfiguredDomain(String id, String operation) {
+        if (!hasDomainScope()) {
+            return;
+        }
+        var pipeline = getPipelineEntity(id);
+        if (!isPipelineInConfiguredDomain(pipeline)) {
+            throw domainScopeViolation(operation);
+        }
+    }
+
+    private boolean pipelineNameInConfiguredDomain(String fullyQualifiedName) {
+        if (!hasDomainScope()) {
+            return true;
+        }
+        return findIngestionPipelineEntity(fullyQualifiedName)
+                .map(this::isPipelineInConfiguredDomain)
+                .orElse(false);
+    }
+
+    private org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline
+            getPipelineEntity(String id) {
+        try {
+            return sdk().ingestionPipelines().get(id, "service");
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata ingestion pipeline lookup failed", error);
+        }
+    }
+
+    private void rejectPipelineServicePatch(JsonNode patchDocument) {
+        if (!hasDomainScope() || patchDocument == null || !patchDocument.isArray()) {
+            return;
+        }
+        for (JsonNode operation : patchDocument) {
+            String path = operation.path("path").asText();
+            if ("/service".equals(path) || path.startsWith("/service/")) {
+                throw domainScopeViolation("ingestion pipeline service change");
+            }
+        }
+    }
+
+    private void validateTableDomainPatch(JsonNode patchDocument) {
+        String selectedDomain = current().getDefaultDomainFqn();
+        String selectedId;
+        try {
+            Domain domain = sdk().domains().getByName(selectedDomain);
+            selectedId = domain == null || domain.getId() == null ? null : domain.getId().toString();
+        } catch (OpenMetadataException error) {
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "Configured OpenMetadata Domain lookup failed", error);
+        }
+        if (blank(selectedId)) {
+            throw domainScopeViolation("table Domain change");
+        }
+        for (JsonNode operation : patchDocument) {
+            String path = operation.path("path").asText();
+            if (!"/domains".equals(path) && !path.startsWith("/domains/")) {
+                continue;
+            }
+            if ("remove".equalsIgnoreCase(operation.path("op").asText())) {
+                throw domainScopeViolation("table Domain removal");
+            }
+            JsonNode value = operation.get("value");
+            if (value == null || !value.isArray() || value.isEmpty()) {
+                throw domainScopeViolation("table Domain change");
+            }
+            for (JsonNode reference : value) {
+                String fqn = reference.path("fullyQualifiedName").asText(null);
+                String id = reference.path("id").asText(null);
+                if (reference.isTextual()) {
+                    fqn = reference.asText();
+                }
+                if (!selectedDomain.equals(fqn) && !selectedId.equals(id)) {
+                    throw domainScopeViolation("table Domain change");
+                }
+            }
+        }
+    }
+
+    private void requireServiceIdInConfiguredDomain(
+            MetadataServiceCategory category, String id, String operation) {
+        if (!hasDomainScope()) {
+            return;
+        }
+        try {
+            org.openmetadata.schema.EntityInterface service = serviceEntityById(category, id);
+            if (service == null || !domainFqns(OBJECT_MAPPER.valueToTree(service).path("domains"))
+                    .contains(current().getDefaultDomainFqn())) {
+                throw domainScopeViolation(operation);
+            }
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata service Domain lookup failed", error);
+        }
+    }
+
+    private org.openmetadata.schema.EntityInterface serviceEntityById(
+            MetadataServiceCategory category, String id) throws OpenMetadataException {
+        return switch (category) {
+            case DATABASE -> sdk().databaseServices().get(id, "domains");
+            case MESSAGING -> sdk().messagingServices().get(id, "domains");
+            case SEARCH -> sdk().searchServices().get(id, "domains");
+            case STORAGE -> sdk().storageServices().get(id, "domains");
+            case API -> sdk().apiServices().get(id, "domains");
+            case DRIVE -> sdk().driveServices().get(id, "domains");
+        };
+    }
+
+    private boolean isLineageAssetJsonInConfiguredDomain(JsonNode asset, List<String> serviceFqns) {
+        if (!hasDomainScope()) {
+            return true;
+        }
+        String serviceFqn = serviceFqn(asset.path("service"));
+        if (blank(serviceFqn) || !serviceFqns.contains(serviceFqn)) {
+            return false;
+        }
+        Set<String> domains = domainFqns(asset.path("domains"));
+        return domains.isEmpty()
+                ? isServiceInConfiguredDomain(serviceFqn)
+                : domains.contains(current().getDefaultDomainFqn());
+    }
+
+    private boolean lineageReferenceInScope(EntityReference reference) {
+        if (!hasDomainScope()) {
+            return true;
+        }
+        if (reference == null || reference.getId() == null || blank(reference.getType())) {
+            return false;
+        }
+        try {
+            Object entity = lineageEntity(reference.getType(), reference.getId().toString());
+            return entity != null && isInConfiguredDomain(entity, null);
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return false;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_CONNECTION_ERROR,
+                    "OpenMetadata lineage Domain lookup failed", error);
+        }
+    }
+
+    private Object lineageEntity(String entityType, String id) throws OpenMetadataException {
+        if ("table".equalsIgnoreCase(entityType)) {
+            return sdk().tables().get(id, "domains,service", "non-deleted");
+        }
+        if ("database".equalsIgnoreCase(entityType)) {
+            return sdk().databases().get(id, "domains,service", "non-deleted");
+        }
+        if ("databaseSchema".equalsIgnoreCase(entityType)) {
+            return sdk().databaseSchemas().get(id, "domains,service,database", "non-deleted");
+        }
+        ExplorationAssetType type = ExplorationAssetType.fromValue(entityType);
+        return type == null ? null : getAssetEntity(type, id, "domains,service");
+    }
+
+    private Database getDatabaseEntity(String fullyQualifiedName) {
+        try {
+            return sdk().databases().getByName(fullyQualifiedName, "domains,service");
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata database lookup failed", error);
+        }
+    }
+
+    private DatabaseSchema getSchemaEntity(String fullyQualifiedName) {
+        try {
+            return sdk().databaseSchemas().getByName(fullyQualifiedName, "domains,service,database");
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata schema lookup failed", error);
+        }
+    }
+
+    private org.openmetadata.schema.entity.data.Table getTableEntity(String id) {
+        try {
+            return sdk().tables().get(id, "domains,service", "non-deleted");
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata table lookup failed", error);
+        }
+    }
+
+    private Container getContainerEntity(String fullyQualifiedName, String fields) {
+        try {
+            return sdk().containers().getByName(fullyQualifiedName, fields);
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata container lookup failed", error);
+        }
+    }
+
+    private Directory getDirectoryEntity(String fullyQualifiedName, String fields) {
+        try {
+            return sdk().directories().getByName(fullyQualifiedName, fields);
+        } catch (OpenMetadataException error) {
+            if (isNotFound(error)) {
+                return null;
+            }
+            throw sdkFailure(MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                    "OpenMetadata directory lookup failed", error);
+        }
+    }
+
+    private static Set<String> domainFqns(JsonNode domains) {
+        Set<String> values = new LinkedHashSet<>();
+        if (domains == null || !domains.isArray()) {
+            return values;
+        }
+        for (JsonNode domain : domains) {
+            String fqn = domain.isTextual() ? domain.asText()
+                    : domain.path("fullyQualifiedName").asText(null);
+            if (!blank(fqn)) {
+                values.add(fqn);
+            }
+        }
+        return values;
+    }
+
+    private static String serviceFqn(JsonNode service) {
+        if (service == null || service.isMissingNode() || service.isNull()) {
+            return null;
+        }
+        return service.isTextual()
+                ? service.asText()
+                : service.path("fullyQualifiedName").asText(null);
+    }
+
+    private static String withDomains(String fields) {
+        if (blank(fields)) {
+            return "domains";
+        }
+        for (String field : fields.split(",")) {
+            if ("domains".equals(field.trim())) {
+                return fields;
+            }
+        }
+        return fields + ",domains";
+    }
+
+    private static String tableOrParentFqn(String fullyQualifiedName) {
+        if (blank(fullyQualifiedName)) {
+            return fullyQualifiedName;
+        }
+        FqnLexer lexer = new FqnLexer(CharStreams.fromString(fullyQualifiedName));
+        lexer.removeErrorListeners();
+        FqnParser parser = new FqnParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.setErrorHandler(new BailErrorStrategy());
+        try {
+            List<String> names = parser.fqn().name().stream().map(ParserRuleContext::getText).toList();
+            return names.size() > 4 ? String.join(".", names.subList(0, names.size() - 1))
+                    : fullyQualifiedName;
+        } catch (ParseCancellationException error) {
+            return fullyQualifiedName;
+        }
+    }
+
+    private static <T> OpenMetadataPage<T> emptyPage() {
+        return new OpenMetadataPage<>(List.of(), 0L, null);
+    }
+
+    private MetadataIntegrationException domainScopeViolation(String operation) {
+        log.warn("OpenMetadata Domain scope denied operation={}, configuredDomain={}",
+                operation, current().getDefaultDomainFqn());
+        return new MetadataIntegrationException(
+                MetadataErrorCode.OM_SERVICE_SYNC_ERROR,
+                "OpenMetadata 对象不属于当前配置的 Domain 读写范围");
+    }
+
     @Override
     public void deployIngestionPipeline(String id) {
+        requirePipelineIdInConfiguredDomain(id, "ingestion pipeline deploy");
         pipelineControl("/v1/services/ingestionPipelines/deploy/" + encode(id),
                 MetadataErrorCode.OM_PIPELINE_DEPLOY_ERROR);
     }
@@ -1713,7 +2247,10 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         validateBaseUrl();
         try {
             org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline pipeline =
-                    sdk().ingestionPipelines().get(id);
+                    sdk().ingestionPipelines().get(id, "service");
+            if (pipeline == null || !isPipelineInConfiguredDomain(pipeline)) {
+                throw domainScopeViolation("ingestion pipeline enable");
+            }
             // OpenMetadata 2.0.4's managed deploy creates a DAG with the
             // requested pause-on-creation value, but it does not unpause an
             // already existing DagModel. Toggle through the OM resource so
@@ -1747,12 +2284,16 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public void triggerIngestionPipeline(String id) {
+        requirePipelineIdInConfiguredDomain(id, "ingestion pipeline trigger");
         pipelineControl("/v1/services/ingestionPipelines/trigger/" + encode(id),
                 MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
     }
 
     @Override
     public List<OpenMetadataPipelineRun> listIngestionPipelineRuns(String fullyQualifiedName, int limit) {
+        if (!pipelineNameInConfiguredDomain(fullyQualifiedName)) {
+            return List.of();
+        }
         int safeLimit = Math.max(1, Math.min(limit, 100));
         JsonNode response = sdkRequest(
                 "GET", "/v1/services/ingestionPipelines/" + encode(fullyQualifiedName)
@@ -1777,6 +2318,9 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public Map<String, String> listIngestionPipelineLogs(String fullyQualifiedName, int limit) {
+        if (!pipelineNameInConfiguredDomain(fullyQualifiedName)) {
+            return Map.of();
+        }
         int safeLimit = Math.max(1, Math.min(limit, 5000));
         JsonNode response = sdkRequest(
                 "GET", "/v1/services/ingestionPipelines/logs/" + encode(fullyQualifiedName)
@@ -1796,6 +2340,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
 
     @Override
     public void killIngestionPipeline(String id) {
+        requirePipelineIdInConfiguredDomain(id, "ingestion pipeline kill");
         pipelineControl("/v1/services/ingestionPipelines/kill/" + encode(id),
                 MetadataErrorCode.OM_PIPELINE_TRIGGER_ERROR);
     }
@@ -1803,6 +2348,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public void deleteIngestionPipeline(String id) {
         validateBaseUrl();
+        requirePipelineIdInConfiguredDomain(id, "ingestion pipeline deletion");
         try {
             sdk().ingestionPipelines().delete(id, Map.of("hardDelete", "true"));
         } catch (OpenMetadataException error) {
@@ -1821,6 +2367,7 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
     @Override
     public void deleteServiceRecursively(MetadataServiceCategory category, String id) {
         validateBaseUrl();
+        requireServiceIdInConfiguredDomain(category, id, "service deletion");
         try {
             switch (category) {
                 case DATABASE -> sdk().databaseServices().delete(id,
@@ -1938,6 +2485,15 @@ public class OpenMetadataRestClient implements OpenMetadataClient {
         }
         int query = baseUrl.indexOf('?');
         return query < 0 ? baseUrl : baseUrl.substring(0, query);
+    }
+
+    private static String digest(String value) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception error) {
+            return Integer.toHexString(value.hashCode());
+        }
     }
 
     private static boolean isNotFound(OpenMetadataException error) {

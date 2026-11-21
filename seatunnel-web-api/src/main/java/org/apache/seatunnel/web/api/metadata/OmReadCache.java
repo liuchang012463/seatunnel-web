@@ -76,36 +76,70 @@ public class OmReadCache {
     public OpenMetadataPage<OpenMetadataDatabase> databases(
             String serviceFqn, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataDatabase>> loader) {
-        return page(DB_PAGE_PREFIX + serviceFqn, limit, after, OpenMetadataDatabase.class, loader);
+        return databases(serviceFqn, "", limit, after, loader);
+    }
+
+    public OpenMetadataPage<OpenMetadataDatabase> databases(
+            String serviceFqn, String scopeKey, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataDatabase>> loader) {
+        return page(DB_PAGE_PREFIX + serviceFqn + scopeSuffix(scopeKey),
+                limit, after, OpenMetadataDatabase.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataDatabaseSchema> schemas(
             String databaseFqn, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataDatabaseSchema>> loader) {
-        return page(SCHEMA_PAGE_PREFIX + databaseFqn, limit, after, OpenMetadataDatabaseSchema.class, loader);
+        return schemas(databaseFqn, "", limit, after, loader);
+    }
+
+    public OpenMetadataPage<OpenMetadataDatabaseSchema> schemas(
+            String databaseFqn, String scopeKey, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataDatabaseSchema>> loader) {
+        return page(SCHEMA_PAGE_PREFIX + databaseFqn + scopeSuffix(scopeKey),
+                limit, after, OpenMetadataDatabaseSchema.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataTable> tables(
             String schemaFqn, boolean includeColumns, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
-        return page(TABLE_PAGE_PREFIX + schemaFqn + ":" + (includeColumns ? "cols" : "bare"),
+        return tables(schemaFqn, "", includeColumns, limit, after, loader);
+    }
+
+    public OpenMetadataPage<OpenMetadataTable> tables(
+            String schemaFqn, String scopeKey, boolean includeColumns, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
+        return page(TABLE_PAGE_PREFIX + schemaFqn + scopeSuffix(scopeKey)
+                        + ":" + (includeColumns ? "cols" : "bare"),
                 limit, after, OpenMetadataTable.class, loader);
     }
 
     public OpenMetadataPage<OpenMetadataTable> tablesByDatabase(
             String databaseFqn, boolean includeColumns, int limit, String after,
             Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
-        return page(TABLE_PAGE_PREFIX + databaseFqn + ":db:" + (includeColumns ? "cols" : "bare"),
+        return tablesByDatabase(databaseFqn, "", includeColumns, limit, after, loader);
+    }
+
+    public OpenMetadataPage<OpenMetadataTable> tablesByDatabase(
+            String databaseFqn, String scopeKey, boolean includeColumns, int limit, String after,
+            Supplier<OpenMetadataPage<OpenMetadataTable>> loader) {
+        return page(TABLE_PAGE_PREFIX + databaseFqn + scopeSuffix(scopeKey)
+                        + ":db:" + (includeColumns ? "cols" : "bare"),
                 limit, after, OpenMetadataTable.class, loader);
     }
 
     public OpenMetadataTableProfile latestProfile(
             String tableFqn, Supplier<OpenMetadataTableProfile> loader) {
+        return latestProfile(tableFqn, "", loader);
+    }
+
+    public OpenMetadataTableProfile latestProfile(
+            String tableFqn, String scopeKey, Supplier<OpenMetadataTableProfile> loader) {
         if (store == null) {
             return loader.get();
         }
         String epochKey = PROFILE_EPOCH_PREFIX + digest(tableServiceFqn(tableFqn));
-        String key = PROFILE_PREFIX + epochOf(epochKey) + ":" + digest(tableFqn);
+        String key = PROFILE_PREFIX + epochOf(epochKey) + ":" + digest(scopeKey == null ? "" : scopeKey)
+                + ":" + digest(tableFqn);
         String raw = store.getString(key).orElse(null);
         if (raw != null) {
             JavaType type = TypeFactory.defaultInstance().constructType(ProfileEnvelope.class);
@@ -189,12 +223,20 @@ public class OmReadCache {
      */
     private static String serviceOf(String baseKey) {
         String withoutPrefix = baseKey.substring(baseKey.indexOf(':') + 1);
+        int scope = withoutPrefix.indexOf(":scope:");
+        if (scope >= 0) {
+            withoutPrefix = withoutPrefix.substring(0, scope);
+        }
         int flag = withoutPrefix.indexOf(":cols");
         if (flag >= 0) {
             withoutPrefix = withoutPrefix.substring(0, flag);
         }
         int firstDot = withoutPrefix.indexOf('.');
         return firstDot < 0 ? withoutPrefix : withoutPrefix.substring(0, firstDot);
+    }
+
+    private static String scopeSuffix(String scopeKey) {
+        return scopeKey == null || scopeKey.isBlank() ? "" : ":scope:" + digest(scopeKey);
     }
 
     /**

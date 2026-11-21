@@ -135,6 +135,23 @@ class OmReadCacheTest {
     }
 
     @Test
+    void selectedDomainScopesUseSeparatePageCacheKeys() {
+        when(ops.get(anyString())).thenReturn(null);
+        List<String> writtenKeys = new java.util.ArrayList<>();
+        doAnswer(invocation -> {
+            writtenKeys.add(invocation.getArgument(0));
+            return null;
+        }).when(ops).set(anyString(), anyString(), any(Duration.class));
+        OmReadCache cache = newRedisCache();
+
+        cache.databases("svc", "scope-domain-a", 100, null, () -> databasePage("a"));
+        cache.databases("svc", "scope-domain-b", 100, null, () -> databasePage("b"));
+
+        assertEquals(2, writtenKeys.size());
+        assertNotEquals(writtenKeys.get(0), writtenKeys.get(1));
+    }
+
+    @Test
     void structureInvalidationForcesReloadThroughNewEpoch() {
         when(ops.get(anyString())).thenReturn(null);
         OmReadCache cache = newRedisCache();

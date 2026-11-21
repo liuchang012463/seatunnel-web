@@ -5,7 +5,9 @@ import com.sun.net.httpserver.HttpServer;
 import org.apache.seatunnel.web.api.metadata.MetadataErrorCode;
 import org.apache.seatunnel.web.api.metadata.MetadataIntegrationException;
 import org.apache.seatunnel.web.api.metadata.ExplorationAssetType;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataConfigResolver;
 import org.apache.seatunnel.web.api.metadata.OpenMetadataProperties;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataRuntimeConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -175,6 +178,126 @@ class OpenMetadataRestClientTest {
         assertEquals("2.0.4.0", health.ingestionVersion());
         org.junit.jupiter.api.Assertions.assertTrue(health.openMetadataUp());
         org.junit.jupiter.api.Assertions.assertTrue(health.orchestratorUp());
+    }
+
+    @Test
+    void selectedDomainFiltersDatabaseRowsAndUsesTheOwningServiceForUnassignedRows() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/databaseServices/name/source-a", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000051\",\"name\":\"source-a\","
+                        + "\"fullyQualifiedName\":\"source-a\",\"domains\":["
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000061\",\"type\":\"domain\",\"fullyQualifiedName\":\"DomainA\"}]}"));
+        server.createContext("/api/v1/databases", exchange -> respond(exchange, 200,
+                "{\"data\":["
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000052\",\"fullyQualifiedName\":\"source-a.orders\","
+                        + "\"domains\":[{\"id\":\"00000000-0000-0000-0000-000000000061\",\"fullyQualifiedName\":\"DomainA\"}],"
+                        + "\"service\":{\"fullyQualifiedName\":\"source-a\"}},"
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000053\",\"fullyQualifiedName\":\"source-a.audit\","
+                        + "\"domains\":[{\"id\":\"00000000-0000-0000-0000-000000000062\",\"fullyQualifiedName\":\"DomainB\"}],"
+                        + "\"service\":{\"fullyQualifiedName\":\"source-a\"}},"
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000054\",\"fullyQualifiedName\":\"source-a.logs\","
+                        + "\"service\":{\"fullyQualifiedName\":\"source-a\"}}]}"));
+        server.start();
+
+        OpenMetadataRestClient client = clientWithDomain(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/api", "DomainA");
+
+        List<OpenMetadataDatabase> databases = client.listDatabases("source-a", 20);
+
+        assertEquals(List.of("source-a.orders", "source-a.logs"),
+                databases.stream().map(OpenMetadataDatabase::fullyQualifiedName).toList());
+    }
+
+    @Test
+    void hidesUnassignedServiceAndRejectsUpdatingAServiceInAnotherDomain() throws Exception {
+        AtomicReference<String> updateMethod = new AtomicReference<>();
+        AtomicReference<Integer> databaseListCalls = new AtomicReference<>(0);
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/services/databaseServices/name/source-b", exchange -> {
+            updateMethod.set(exchange.getRequestMethod());
+            respond(exchange, 200,
+                    "{\"id\":\"00000000-0000-0000-0000-000000000055\",\"name\":\"source-b\","
+                            + "\"fullyQualifiedName\":\"source-b\",\"domains\":["
+                            + "{\"id\":\"00000000-0000-0000-0000-000000000062\",\"type\":\"domain\",\"fullyQualifiedName\":\"DomainB\"}]} ");
+        });
+        server.createContext("/api/v1/databases", exchange -> {
+            databaseListCalls.set(databaseListCalls.get() + 1);
+            respond(exchange, 200, "{\"data\":[]}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = clientWithDomain(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/api", "DomainA");
+
+        assertTrue(client.listDatabases("source-b", 20).isEmpty());
+        JsonNode request = new ObjectMapper().readTree("{\"name\":\"source-b\",\"serviceType\":\"CustomDatabase\"}");
+        assertThrows(MetadataIntegrationException.class,
+                () -> client.upsertDatabaseService(request));
+
+        assertEquals("GET", updateMethod.get());
+        assertEquals(0, databaseListCalls.get());
+    }
+
+    @Test
+    void emptyDomainScopeReadsUnassignedAssetsAndCreatesUnassignedServices() throws Exception {
+        AtomicReference<String> serviceBody = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/topics/topic-id", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000056\",\"name\":\"topic\","
+                        + "\"fullyQualifiedName\":\"topic\",\"messageSchema\":{\"schemaFields\":[]}}"));
+        server.createContext("/api/v1/services/databaseServices/name/unscoped-service", exchange ->
+                respond(exchange, 404, "{\"message\":\"not found\"}"));
+        server.createContext("/api/v1/services/databaseServices", exchange -> {
+            serviceBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000057\","
+                    + "\"name\":\"unscoped-service\",\"fullyQualifiedName\":\"unscoped-service\"}");
+        });
+        server.start();
+
+        OpenMetadataRestClient client = clientWithDomain(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/api", null);
+        OpenMetadataAssetDetail detail = client.getAssetDetail(
+                ExplorationAssetType.TOPIC, "topic-id", false);
+        JsonNode request = new ObjectMapper().readTree("{\"name\":\"unscoped-service\",\"serviceType\":\"CustomDatabase\"}");
+
+        assertNotNull(detail);
+        assertNotNull(client.upsertDatabaseService(request));
+        JsonNode servicePayload = new ObjectMapper().readTree(serviceBody.get());
+        JsonNode domains = servicePayload.path("domains");
+        assertTrue(domains.isMissingNode() || domains.isNull() || (domains.isArray() && domains.size() == 0));
+    }
+
+    @Test
+    void rejectsTableDomainChangeOutsideTheSelectedDomainBeforeSendingPatch() throws Exception {
+        AtomicReference<String> patchMethod = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/tables/table-id", exchange -> {
+            if ("PATCH".equals(exchange.getRequestMethod())) {
+                patchMethod.set(exchange.getRequestMethod());
+                respond(exchange, 200, "{}");
+                return;
+            }
+            respond(exchange, 200,
+                    "{\"id\":\"00000000-0000-0000-0000-000000000058\",\"name\":\"orders\","
+                            + "\"fullyQualifiedName\":\"source-a.orders.public.orders\","
+                            + "\"domains\":[{\"id\":\"00000000-0000-0000-0000-000000000061\",\"type\":\"domain\",\"fullyQualifiedName\":\"DomainA\"}],"
+                            + "\"service\":{\"fullyQualifiedName\":\"source-a\"}}");
+        });
+        server.createContext("/api/v1/domains/name/DomainA", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000061\",\"name\":\"DomainA\",\"fullyQualifiedName\":\"DomainA\"}"));
+        server.createContext("/api/v1/services/databaseServices/name/source-a", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000059\",\"name\":\"source-a\","
+                        + "\"fullyQualifiedName\":\"source-a\",\"domains\":["
+                        + "{\"id\":\"00000000-0000-0000-0000-000000000061\",\"fullyQualifiedName\":\"DomainA\"}]}"));
+        server.start();
+
+        OpenMetadataRestClient client = clientWithDomain(
+                "http://127.0.0.1:" + server.getAddress().getPort() + "/api", "DomainA");
+        JsonNode patch = new ObjectMapper().readTree("[{\"op\":\"add\",\"path\":\"/domains\","
+                + "\"value\":[{\"id\":\"00000000-0000-0000-0000-000000000062\",\"type\":\"domain\"}]}]");
+
+        assertThrows(MetadataIntegrationException.class, () -> client.patchTable("table-id", patch));
+        assertNull(patchMethod.get());
     }
 
     @Test
@@ -415,13 +538,25 @@ class OpenMetadataRestClientTest {
         AtomicReference<String> databaseTablesUri = new AtomicReference<>();
         AtomicReference<String> tableUri = new AtomicReference<>();
         server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/api/v1/databases/name/st_ds_42.orders", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullyQualifiedName\":\"st_ds_42.orders\","
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}"));
+        server.createContext("/api/v1/databaseSchemas/name/st_ds_42.orders.public", exchange -> respond(exchange, 200,
+                "{\"id\":\"00000000-0000-0000-0000-000000000003\",\"name\":\"public\","
+                        + "\"fullyQualifiedName\":\"st_ds_42.orders.public\","
+                        + "\"database\":{\"fullyQualifiedName\":\"st_ds_42.orders\"},"
+                        + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}"));
         server.createContext("/api/v1/databases", exchange -> {
-            databasesUri.set(exchange.getRequestURI().toString());
+            if ("/api/v1/databases".equals(exchange.getRequestURI().getPath())) {
+                databasesUri.set(exchange.getRequestURI().toString());
+            }
             respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullyQualifiedName\":\"st_ds_42.orders\","
                     + "\"service\":{\"fullyQualifiedName\":\"st_ds_42\"}}]}");
         });
         server.createContext("/api/v1/databaseSchemas", exchange -> {
-            schemasUri.set(exchange.getRequestURI().toString());
+            if ("/api/v1/databaseSchemas".equals(exchange.getRequestURI().getPath())) {
+                schemasUri.set(exchange.getRequestURI().toString());
+            }
             respond(exchange, 200, "{\"data\":[{\"id\":\"00000000-0000-0000-0000-000000000003\",\"name\":\"public\","
                     + "\"fullyQualifiedName\":\"st_ds_42.orders.public\","
                     + "\"database\":{\"fullyQualifiedName\":\"st_ds_42.orders\"},"
@@ -1007,6 +1142,19 @@ class OpenMetadataRestClientTest {
         assertFalse(detail.sampleError());
     }
 
+    private static OpenMetadataRestClient clientWithDomain(String baseUrl, String domainFqn) {
+        OpenMetadataRuntimeConfig config = new OpenMetadataRuntimeConfig(
+                baseUrl,
+                "test-jwt",
+                1000,
+                1000,
+                OpenMetadataRuntimeConfig.DEFAULT_SERVER_VERSION,
+                OpenMetadataRuntimeConfig.DEFAULT_INGESTION_PATCH,
+                domainFqn,
+                1L);
+        return new OpenMetadataRestClient(OpenMetadataConfigResolver.fixed(config));
+    }
+
     private static OpenMetadataProperties properties(String baseUrl) {
         OpenMetadataProperties properties = new OpenMetadataProperties();
         properties.setBaseUrl(baseUrl);
@@ -1017,10 +1165,22 @@ class OpenMetadataRestClientTest {
     private static void assertQuery(String expectedPath, String actualUri, String... expectedParams) {
         URI uri = URI.create(actualUri);
         assertEquals(expectedPath, uri.getPath());
-        List<String> params = Arrays.asList(uri.getQuery().split("&"));
+        List<String> params = Arrays.stream(URLDecoder.decode(uri.getRawQuery(), StandardCharsets.UTF_8)
+                .split("&")).toList();
         for (String expectedParam : expectedParams) {
-            assertTrue(params.contains(expectedParam),
-                    () -> "Missing query parameter " + expectedParam + " in " + actualUri);
+            if (expectedParam.startsWith("fields=")) {
+                List<String> requestedFields = Arrays.asList(expectedParam.substring("fields=".length()).split(","));
+                List<String> actualFields = params.stream()
+                        .filter(param -> param.startsWith("fields="))
+                        .map(param -> param.substring("fields=".length()))
+                        .flatMap(value -> Arrays.stream(value.split(",")))
+                        .toList();
+                assertTrue(actualFields.containsAll(requestedFields),
+                        () -> "Missing fields " + expectedParam + " in " + actualUri);
+            } else {
+                assertTrue(params.contains(expectedParam),
+                        () -> "Missing query parameter " + expectedParam + " in " + actualUri);
+            }
         }
     }
 

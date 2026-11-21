@@ -200,6 +200,28 @@ class DataInventoryServiceTest {
         verify(dataSourceDao, times(1)).queryAll();
     }
 
+    @Test
+    void inventoryAggregateCacheIsPartitionedByOpenMetadataDomainScope() {
+        when(dataSourceDao.queryAll()).thenReturn(List.of());
+        when(dataSourceUnitDao.queryAll()).thenReturn(List.of());
+        when(businessSystemDao.queryAll()).thenReturn(List.of());
+        when(metadataBindingDao.queryAll()).thenReturn(List.of());
+        when(openMetadataClient.cacheScopeKey()).thenReturn("domain-a", "domain-b");
+        DataInventoryService service = new DataInventoryService(
+                dataSourceDao,
+                dataSourceUnitDao,
+                businessSystemDao,
+                metadataBindingDao,
+                openMetadataClient,
+                new LocalMetadataInventoryCache(),
+                OmReadCache.disabled());
+
+        service.summary(new DataInventoryFilterDTO());
+        service.summary(new DataInventoryFilterDTO());
+
+        verify(dataSourceDao, times(2)).queryAll();
+    }
+
     private DataInventoryService service() {
         return new DataInventoryService(dataSourceDao, dataSourceUnitDao, businessSystemDao,
                 metadataBindingDao, openMetadataClient);

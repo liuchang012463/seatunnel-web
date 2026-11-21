@@ -16,6 +16,11 @@ public interface OpenMetadataClient {
 
     void assertFixedVersion();
 
+    /** Stable partition key for metadata caches that must not cross OM configuration scopes. */
+    default String cacheScopeKey() {
+        return "";
+    }
+
     /** Reads Server and managed-ingestion health through OpenMetadata 2.0.4. */
     OpenMetadataHealth health();
 
