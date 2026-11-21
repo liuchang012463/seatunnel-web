@@ -2,7 +2,6 @@ import { Link } from '@umijs/max';
 import { withLayoutPrefix } from '@/utils/iframeLayout';
 import MetricsGrid from './MetricsGrid';
 import { integerFormat, numberFormat, asNumber, toRecords, toBytes, chartRecordsToRaw, chartBytesToRaw, formatRecords, formatBytes, formatTime } from './metricFormat';
-import { formatMetric, toMegabytes } from '@/pages/common/utils/throughput';
 import { Spin } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -40,7 +39,7 @@ import type {
   DataInventorySummary,
 } from '@/pages/data-source/types';
 import { fetchChartData, fetchSummaryData } from '@/pages/metrics/api';
-import type { ApiChartData, ChartDataItem, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
+import type { ApiChartData, SummaryData, TaskType, TimeRange } from '@/pages/metrics/types';
 import './index.less';
 
 type TaskTypeMeta = {
@@ -74,30 +73,38 @@ const TASK_TYPES: TaskTypeMeta[] = [
 ];
 
 const TIME_RANGES: { value: TimeRange; label: string; shortLabel: string }[] = [
-  { value: 'H1', label: '近 1 小时', shortLabel: '1时' },
-  { value: 'H6', label: '近 6 小时', shortLabel: '6时' },
-  { value: 'H12', label: '近 12 小时', shortLabel: '12时' },
-  { value: 'H24', label: '近 24 小时', shortLabel: '24时' },
-  { value: 'D7', label: '近 7 天', shortLabel: '一周' },
+  { value: 'H24', label: '近一天', shortLabel: '一天' },
+  { value: 'D7', label: '近一周', shortLabel: '一周' },
+  { value: 'D30', label: '近一个月', shortLabel: '一个月' },
 ];
+
+/** 趋势图 X 轴刻度文案：一天显示时刻，一周/一个月显示月-日 */
+const formatTrendTickLabel = (date: string, range: TimeRange) => {
+  if (!date) return '';
+  if (range === 'H24') {
+    // 优先 HH:mm；无时刻则回退 MM-DD
+    return date.length >= 16 ? date.slice(11, 16) : date.slice(5, 10);
+  }
+  return date.length >= 10 ? date.slice(5, 10) : date;
+};
 
 /** 连接器/数据源类型展示名：能中文化的用中文，产品名保留可读简称 */
 const SOURCE_TYPE_LABELS: Record<string, string> = {
-  MYSQL: 'MySQL 库',
-  POSTGRE_SQL: 'PostgreSQL 库',
-  POSTGRESQL: 'PostgreSQL 库',
-  POSTGRES: 'PostgreSQL 库',
-  ORACLE: 'Oracle 库',
-  SQLSERVER: 'SQL Server 库',
-  SQL_SERVER: 'SQL Server 库',
-  DAMENG: '达梦库',
-  DM: '达梦库',
+  MYSQL: 'MySQL',
+  POSTGRE_SQL: 'PostgreSQL',
+  POSTGRESQL: 'PostgreSQL',
+  POSTGRES: 'PostgreSQL',
+  ORACLE: 'Oracle',
+  SQLSERVER: 'SQL Server',
+  SQL_SERVER: 'SQL Server',
+  DAMENG: '达梦',
+  DM: '达梦',
   KINGBASE: '人大金仓',
   VASTBASE: '海量数据库',
   GBASE: '南大通用',
-  DORIS: 'Doris 库',
-  STARROCKS: 'StarRocks 库',
-  CLICKHOUSE: 'ClickHouse 库',
+  DORIS: 'Doris',
+  STARROCKS: 'StarRocks',
+  CLICKHOUSE: 'ClickHouse',
   HIVE: 'Hive 数仓',
   HDFS: '分布式文件',
   ELASTICSEARCH: '搜索引擎',
@@ -372,14 +379,14 @@ const IngestionSituationPage: React.FC = () => {
     cumulativeBytes.length > 0
       ? 198 - (cumulativeBytes[cumulativeBytes.length - 1] / maxTrendValue) * 164
       : 198;
-  const tickCount = Math.min(7, trendPoints.length);
+  // 窄栏最多 5 个刻度，均匀抽样，避免 X 轴挤成一团
+  const tickCount = Math.min(5, trendPoints.length);
   const trendLabels =
     tickCount <= 1
-      ? trendPoints.map((point) => (timeRange === 'D7' ? point.date.slice(5, 10) : point.date.slice(11, 16)))
+      ? trendPoints.map((point) => formatTrendTickLabel(point.date, timeRange))
       : Array.from({ length: tickCount }, (_, index) => {
           const pointIndex = Math.round((index / (tickCount - 1)) * (trendPoints.length - 1));
-          const date = trendPoints[pointIndex].date;
-          return timeRange === 'D7' ? date.slice(5, 10) : date.slice(11, 16);
+          return formatTrendTickLabel(trendPoints[pointIndex].date, timeRange);
         });
   const trendScaleLabels = [1, 0.75, 0.5, 0.25, 0].map((share) =>
     formatBytes(maxTrendValue * share),
@@ -401,25 +408,6 @@ const IngestionSituationPage: React.FC = () => {
   );
 
   const businessSystemCount = inventorySummary?.businessSystemCount;
-  const streamMetric = taskMetrics?.find((item) => item.key === 'STREAM');
-  const streamInScope = !selectedTaskType || selectedTaskType === 'STREAM';
-  const averageDelay =
-    streamInScope && asNumber(streamMetric?.summary.totalTasks) > 0
-      ? asNumber(streamMetric?.summary.avgRecordDelay)
-      : null;
-
-  const sumLatestSpeed = (key: 'recordsSpeedTrend' | 'bytesSpeedTrend') => {
-    const latestValues = visibleCharts.flatMap(({ charts }) => {
-      const latest = charts[key]?.reduce<ChartDataItem | undefined>(
-        (last, point) => !last || point.date >= last.date ? point : last,
-        undefined,
-      );
-      return latest ? [asNumber(latest.value)] : [];
-    });
-    return latestValues.length ? latestValues.reduce((sum, value) => sum + value, 0) : undefined;
-  };
-  const currentRecordsSpeed = sumLatestSpeed('recordsSpeedTrend');
-  const currentBytesSpeed = sumLatestSpeed('bytesSpeedTrend');
 
   /**
    * The headline figures are the accumulated assets the system runs on: they answer
@@ -1170,25 +1158,14 @@ const IngestionSituationPage: React.FC = () => {
                   <span>引接数据量</span>
                   <b>{taskMetrics ? `${bytesDisplay.value} ${bytesDisplay.unit}` : '—'}</b>
                 </div>
-                <div>
-                  <span>最新记录速率</span>
-                  <b>{formatMetric(currentRecordsSpeed, '条/秒')}</b>
-                </div>
-                <div>
-                  <span>最新数据速率</span>
-                  <b>{formatMetric(currentBytesSpeed === undefined ? undefined : toMegabytes(currentBytesSpeed), 'MB/s')}</b>
-                </div>
-                <div>
-                  <span>实时平均延迟</span>
-                  <b>{averageDelay === null ? '—' : `${integerFormat.format(averageDelay)} 毫秒`}</b>
-                </div>
               </div>
+              {/* 柱图仅保留数值与色柱，去掉底部状态轴标签以压缩高度 */}
               <div className="inspect-chart">
                 {statusItems.slice(0, 4).map((item) => {
                   const value = taskMetrics ? item.value : 0
                   const headRoom = Math.max(maxStatus - value, 0)
                   return (
-                    <div className="inspect-bar-col" key={item.label}>
+                    <div className="inspect-bar-col" key={item.label} title={item.label} aria-label={item.label}>
                       <div className="inspect-bar-track">
                         <i className="inspect-bar-space" style={{ flex: headRoom || 0.0001 }} aria-hidden />
                         <div className="inspect-bar-value">{taskMetrics ? integerFormat.format(item.value) : '—'}</div>
@@ -1197,7 +1174,6 @@ const IngestionSituationPage: React.FC = () => {
                           style={{ flex: Math.max(value, 0.12) }}
                         />
                       </div>
-                      <span>{item.label}</span>
                     </div>
                   )
                 })}

@@ -215,14 +215,6 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     };
   }, [active, dataSourceId, databaseFqn, schemaFqn]);
 
-  // 跟随左侧主选表，避免 ER 与目录两套选中态
-  useEffect(() => {
-    if (!selectedTableId || !diagram?.nodes.some((table) => table.id === selectedTableId)) {
-      return;
-    }
-    setSelectedId(selectedTableId);
-  }, [diagram, selectedTableId]);
-
   const selectedTable = diagram?.nodes.find((table) => table.id === selectedId);
   const selectedRelationCount = (diagram?.edges || []).filter((edge) => (
     edge.source.nodeId === selectedId || edge.target.nodeId === selectedId
@@ -307,6 +299,31 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
     }
   };
 
+  // 跟随左侧单击选表：同步选中态并居中到对应 ER 节点（不依赖 nodes，避免展开列时反复跳动）
+  useEffect(() => {
+    if (!selectedTableId || !diagram?.nodes.some((table) => table.id === selectedTableId)) {
+      return undefined;
+    }
+    setSelectedId(selectedTableId);
+    const table = diagram.nodes.find((item) => item.id === selectedTableId);
+    if (!table) return undefined;
+    // ReactFlow 实例可能尚未 onInit，稍候再居中
+    const timer = window.setTimeout(() => {
+      const rfNode = flowInstanceRef.current?.getNode(selectedTableId);
+      if (rfNode) {
+        flowInstanceRef.current?.setCenter(
+          rfNode.position.x + TABLE_NODE_WIDTH / 2,
+          rfNode.position.y + erNodeHeight(table, expandedIds.has(table.id)) / 2,
+          { duration: 700 },
+        );
+        return;
+      }
+      focusTableOnCanvas(table);
+    }, 80);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在左侧选表变化时居中
+  }, [diagram, selectedTableId]);
+
   const selectTableOnCanvas = (tableId: string) => {
     setSelectedId(tableId);
     onSelectTable?.(tableId);
@@ -321,7 +338,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
         <div className="flow-wrapper">
           <div className="er-mode-banner">
             <strong>关系总览</strong>
-            <p>查看表关系与主键/外键；在图中点选表后点右侧「打开表详情」，或直接从左侧「选择表」进入详情</p>
+            <p>查看表关系与主键/外键；左侧单击表定位到图中节点，双击或点右侧按钮打开表详情</p>
           </div>
           {detailCollapsed && (
             <button
@@ -396,7 +413,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                 >
                   打开表详情
                 </button>
-                <small className="er-detail-shortcut">也可双击画布上的表节点</small>
+                <small className="er-detail-shortcut">也可双击画布节点，或双击左侧表名</small>
               </div>
             </>
           ) : (
@@ -411,7 +428,7 @@ const DataExplorationErDiagram: React.FC<DataExplorationErDiagramProps> = ({
                   <RightOutlined />
                 </button>
               </div>
-              <div className="detail-empty">在图中点选一张表，或从左侧主列表进入详情</div>
+              <div className="detail-empty">在图中点选一张表；左侧单击定位，双击打开详情</div>
             </>
           )}
           <div className="legend">

@@ -72,7 +72,7 @@ const BaseConfigSection: React.FC<Props> = ({
               name="jobName"
               rules={[{ required: true, message: '请输入任务名称' }]}
               className="mb-0"
-              extra="默认按来源 → 去向自动填充，可自行修改"
+              extra="默认按「来源-至-去向任务」自动填充，可自行修改"
             >
               <Input
                 placeholder="例如：达梦 → 人大金仓"

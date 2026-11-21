@@ -250,66 +250,6 @@ function completionFailureMessage(job?: DataExplorationMetadataJob) {
   return '本次未能生成并保存元数据描述，请检查 OpenMetadata 和模型服务后重试。';
 }
 
-/** 补全成功结束后弹出结果：数量 + 建议人工确认 */
-function presentCompletionFinishedResult(options: {
-  job: DataExplorationMetadataJob;
-  markedColumnCount: number;
-  onReviewColumns?: () => void;
-}) {
-  if (completionHasFailures(options.job)) {
-    return;
-  }
-  const result = asCompletionResult(options.job.result);
-  const progress = options.job.progress || {};
-  const completed = Number(result?.completed ?? progress.completed ?? 0);
-  const failed = Number(result?.failed ?? progress.failed ?? 0);
-  const skipped = Number(result?.skipped ?? progress.skipped ?? 0);
-  const patches = completionPatchCount(result);
-  const marked = options.markedColumnCount;
-
-  Modal.success({
-    title: '元数据补全完成',
-    centered: true,
-    width: 520,
-    okText: options.onReviewColumns ? '去核对列定义' : '知道了',
-    onOk: () => options.onReviewColumns?.(),
-    content: (
-      <div style={{ fontSize: 14, lineHeight: 1.65 }}>
-        <p style={{ margin: '0 0 10px' }}>
-          成功 <b>{completed}</b> 张表
-          {patches > 0 ? <>，写入 <b>{patches}</b> 处描述</> : null}
-          {skipped > 0 ? <>，跳过 <b>{skipped}</b></> : null}
-          {failed > 0 ? <>，失败 <b>{failed}</b></> : null}
-          {marked > 0 ? <>；当前表有 <b>{marked}</b> 个字段说明已更新</> : null}
-          。
-        </p>
-        {marked > 0 ? (
-          <p style={{ margin: '0 0 10px', color: 'var(--exploration-text-muted, #8aa0b8)' }}>
-            列定义中已用「已补全」标识本次新写入或变更的字段说明。
-          </p>
-        ) : (
-          <p style={{ margin: '0 0 10px', color: 'var(--exploration-text-muted, #8aa0b8)' }}>
-            若当前表未见新说明，可能本次仅跳过已有描述，或描述尚未同步完成。
-          </p>
-        )}
-        <div
-          style={{
-            padding: '10px 12px',
-            borderRadius: 6,
-            background: 'rgba(255, 215, 132, 0.12)',
-            border: '1px solid rgba(255, 215, 132, 0.35)',
-          }}
-        >
-          <strong style={{ display: 'block', marginBottom: 4 }}>建议人工确认</strong>
-          <span>
-            补全内容由助手生成，请核对表描述与字段说明是否准确、合规后再用于业务或对外发布。
-          </span>
-        </div>
-      </div>
-    ),
-  });
-}
-
 const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   dataSourceId,
   dataSourceName,
@@ -341,6 +281,10 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const [erActive, setErActive] = useState(true);
   const [completionJob, setCompletionJob] = useState<DataExplorationMetadataJob>();
   const [completionLoading, setCompletionLoading] = useState(false);
+  /** 补全弹窗会话：成功/失败都需人工点确认后才关闭 */
+  const [completionSessionOpen, setCompletionSessionOpen] = useState(false);
+  /** 成功路径下表详情已刷新并比对「已补全」字段后，才允许关闭 */
+  const [completionReviewReady, setCompletionReviewReady] = useState(false);
   const completionNoticeRef = useRef<string>();
   /** 补全前字段/表描述快照，用于标识本次新写入 */
   const descriptionSnapshotRef = useRef<Map<string, string>>(new Map());
@@ -375,6 +319,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setPendingSchemaFqn(undefined);
     setErActive(true);
     setCompletionJob(undefined);
+    setCompletionSessionOpen(false);
+    setCompletionReviewReady(false);
 
     fetchDataExplorationDatabases(dataSourceId)
       .then((response) => {
@@ -520,6 +466,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     setActiveTab('columns');
     previewAttemptRef.current = undefined;
     setCompletionJob(undefined);
+    setCompletionSessionOpen(false);
+    setCompletionReviewReady(false);
     completionNoticeRef.current = undefined;
 
     fetchDataExplorationTable(dataSourceId, selectedTableId)
@@ -739,11 +687,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
           const reviewKey = `${completionJob?.jobId}:reviewed`;
           if (completionJob && completionNoticeRef.current !== reviewKey) {
             completionNoticeRef.current = reviewKey;
-            presentCompletionFinishedResult({
-              job: completionJob,
-              markedColumnCount: marked.length,
-              onReviewColumns: () => setActiveTab('columns'),
-            });
+            // 成功结果留在会话弹窗内，等人确认后再关
+            setCompletionReviewReady(true);
           }
         } else if (attempts < 5) {
           retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
@@ -753,11 +698,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             const reviewKey = `${completionJob.jobId}:reviewed`;
             if (completionNoticeRef.current !== reviewKey) {
               completionNoticeRef.current = reviewKey;
-              presentCompletionFinishedResult({
-                job: completionJob,
-                markedColumnCount: 0,
-                onReviewColumns: () => setActiveTab('columns'),
-              });
+              setCompletionReviewReady(true);
             }
           }
         }
@@ -767,6 +708,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
             retryTimer = window.setTimeout(() => void refreshTableDetail(), 1_000);
           } else {
             message.warning(error?.response?.data?.message || '补全已完成，但最新字段描述暂不可用');
+            setCompletionReviewReady(true);
           }
         }
       } finally {
@@ -784,6 +726,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
   const startCompletion = async () => {
     if (!dataSourceId || !selectedTableId) return;
     setCompletionLoading(true);
+    setCompletionSessionOpen(true);
+    setCompletionReviewReady(false);
     completionNoticeRef.current = undefined;
     // 记录补全前描述，完成后用于在列定义中标识「已补全」
     const snapshot = new Map<string, string>();
@@ -798,28 +742,57 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
     try {
       const response = await startDataExplorationMetadataCompletion(dataSourceId, selectedTableId);
       if (response.code !== 0 || !response.data?.jobId) {
-        message.error(response.message || '无法提交元数据补全任务');
+        const error = response.message || '无法提交元数据补全任务';
+        setCompletionJob({
+          jobId: `local-submit-failed-${Date.now()}`,
+          status: 'failed',
+          error,
+        });
         return;
       }
       setCompletionJob({
         ...response.data,
         status: normalizeCompletionStatus(response.data.status) || response.data.status || 'pending',
       });
-      message.info('元数据补全任务已提交，完成后将提示补全数量并建议人工确认');
     } catch (error: any) {
-      message.error(
-        error?.response?.data?.message
+      const detail = error?.response?.data?.message
         || error?.response?.data?.msg
-        || '元数据补全服务暂不可用',
-      );
+        || '元数据补全服务暂不可用';
+      setCompletionJob({
+        jobId: `local-submit-failed-${Date.now()}`,
+        status: 'failed',
+        error: detail,
+      });
     } finally {
       setCompletionLoading(false);
+    }
+  };
+
+  const dismissCompletionSession = () => {
+    setCompletionSessionOpen(false);
+    setCompletionReviewReady(false);
+    if (
+      completionJob
+      && normalizeCompletionStatus(completionJob.status) === 'completed'
+      && !completionHasFailures(completionJob)
+    ) {
+      setActiveTab('columns');
     }
   };
 
   const completionBusy = completionInFlight(completionJob, completionLoading);
   const completionSummary = completionResultCopy(completionJob);
   const completionResult = asCompletionResult(completionJob?.result);
+  const completionFinished = Boolean(
+    completionJob && completionTerminal(completionJob.status) && !completionLoading,
+  );
+  const completionFailedView = completionFinished && completionHasFailures(completionJob);
+  const completionSuccessView = completionFinished
+    && !completionHasFailures(completionJob)
+    && normalizeCompletionStatus(completionJob?.status) === 'completed';
+  // 失败/取消立即可关；纯成功等详情刷新标识完成后再关
+  const completionCanDismiss = completionFinished
+    && (!completionSuccessView || completionReviewReady);
 
   const loadPreview = async () => {
     if (!dataSourceId || !selectedTableId) {
@@ -1052,8 +1025,8 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 </div>
                 <p className="exploration-drawer__tables-hint">
                   {erActive
-                    ? '主入口：点表名打开详情；当前为关系总览'
-                    : '主入口：点表名查看列定义、样本与指标'}
+                    ? '单击定位到 ER 图；双击打开表详情'
+                    : '单击进入关系总览并定位；双击打开表详情'}
                 </p>
                 <Input
                   allowClear
@@ -1072,11 +1045,16 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                         type="button"
                         key={table.id}
                         className={`exploration-drawer__table-item${selectedTableId === table.id && !erActive ? ' is-selected' : ''}${selectedTableId === table.id && erActive ? ' is-highlighted' : ''}`}
+                        title="单击定位 ER 图，双击打开详情"
                         onClick={() => {
-                          if (selectedTableId !== table.id) {
-                            setActiveTab('columns');
-                            setCompletionMarkedColumns([]);
-                          }
+                          // 单击：进入/停留关系总览，并选中对应表节点
+                          setSelectedTableId(table.id);
+                          setErActive(true);
+                        }}
+                        onDoubleClick={() => {
+                          // 双击：打开表详情（列/样本/指标）
+                          setActiveTab('columns');
+                          setCompletionMarkedColumns([]);
                           setSelectedTableId(table.id);
                           setErActive(false);
                         }}
@@ -1144,7 +1122,7 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <div className="exploration-drawer__empty-state">
                   <div className="exploration-drawer__empty-icon"><TableOutlined /></div>
                   <strong>从表列表打开详情</strong>
-                  <span>左侧「选择表」是主入口；也可先看关系总览，再点「打开表详情」。</span>
+                  <span>左侧单击表定位到关系总览；双击或点「打开表详情」进入详情。</span>
                   <Button type="primary" style={{ marginTop: 12 }} onClick={() => setErActive(true)}>
                     返回关系总览
                   </Button>
@@ -1493,25 +1471,85 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
       )}
       <Modal
         className="exploration-completion-modal"
-        open={completionBusy}
+        open={completionSessionOpen}
         title="元数据补全"
-        footer={null}
         closable={false}
         maskClosable={false}
+        keyboard={false}
         centered
         destroyOnHidden
+        footer={completionCanDismiss ? (
+          <Button type="primary" onClick={dismissCompletionSession}>
+            {completionSuccessView ? '确认并核对列定义' : '我知道了'}
+          </Button>
+        ) : null}
       >
         <div className="exploration-completion-modal__body">
-          <Spin size="large" />
+          {!completionFinished ? (
+            <Spin size="large" />
+          ) : completionFailedView ? (
+            <WarningOutlined className="exploration-completion-modal__status-icon is-warning" />
+          ) : completionSuccessView && !completionReviewReady ? (
+            <Spin size="large" />
+          ) : (
+            <CheckCircleOutlined className="exploration-completion-modal__status-icon is-success" />
+          )}
           <div className="exploration-completion-modal__copy">
-            <strong>{completionLabel(completionJob?.status) || '提交中'}</strong>
-            <span>{completionSummary || '正在提交元数据补全任务…'}</span>
+            <strong>
+              {!completionFinished
+                ? (completionLabel(completionJob?.status) || '提交中')
+                : completionFailedView
+                  ? completionFailureTitle(completionJob)
+                  : completionSuccessView && !completionReviewReady
+                    ? '补全完成，正在刷新标识…'
+                    : '元数据补全完成'}
+            </strong>
+            <span>
+              {!completionFinished
+                ? (completionSummary || '正在提交元数据补全任务…')
+                : completionFailedView
+                  ? (completionFailureResults(completionJob).slice(0, 1)[0]?.error
+                    || completionFailureMessage(completionJob))
+                  : completionSuccessView && !completionReviewReady
+                    ? '请稍候，正在刷新表详情并标识本次变更…'
+                    : (completionSummary || '补全已完成，请人工确认后再关闭。')}
+            </span>
           </div>
           {(completionJob?.progress || completionResult) && (
             <div className="exploration-completion-modal__progress">
               <span>成功 {Number(completionResult?.completed ?? completionJob?.progress?.completed ?? 0)}</span>
               <span>跳过 {Number(completionResult?.skipped ?? completionJob?.progress?.skipped ?? 0)}</span>
               <span>失败 {Number(completionResult?.failed ?? completionJob?.progress?.failed ?? 0)}</span>
+            </div>
+          )}
+          {completionFailedView && completionFailureResults(completionJob).length > 0 && (
+            <ul className="exploration-completion-modal__failures">
+              {completionFailureResults(completionJob).slice(0, 5).map((item, index) => {
+                const fullName = item.table_name || item.tableName || `表 ${index + 1}`;
+                const tableName = String(fullName).split('.').filter(Boolean).pop() || fullName;
+                return (
+                  <li key={`${fullName}-${index}`}>
+                    <strong title={String(fullName)}>{tableName}</strong>
+                    <span>{item.error || '该表的元数据描述未能补全。'}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {completionSuccessView && completionReviewReady && (
+            <div className="exploration-completion-modal__confirm-hint">
+              <strong>请人工确认</strong>
+              <span>
+                {completionMarkedColumns.length > 0
+                  ? `当前表已标识 ${completionMarkedColumns.length} 个「已补全」字段；补全内容由助手生成，请核对后再用于业务。`
+                  : '补全内容由助手生成，请核对表描述与字段说明是否准确后再用于业务。'}
+              </span>
+            </div>
+          )}
+          {completionFailedView && (
+            <div className="exploration-completion-modal__confirm-hint is-warning">
+              <strong>请人工确认</strong>
+              <span>请检查相关服务配置后重试；确认后关闭本弹窗。</span>
             </div>
           )}
         </div>

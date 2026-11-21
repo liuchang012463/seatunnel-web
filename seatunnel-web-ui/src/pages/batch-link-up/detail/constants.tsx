@@ -64,6 +64,6 @@ export const getDbLabel = (item: any) => {
   return getFriendlyDbName(item);
 };
 
-/** 根据来源 / 去向生成默认任务名 */
+/** 根据来源 / 去向生成默认任务名：{来源}-至-{去向}任务 */
 export const buildDefaultJobName = (sourceType: any, targetType: any) =>
-  `${getFriendlyDbName(sourceType)} → ${getFriendlyDbName(targetType)}`;
+  `${getFriendlyDbName(sourceType)}-至-${getFriendlyDbName(targetType)}任务`;
