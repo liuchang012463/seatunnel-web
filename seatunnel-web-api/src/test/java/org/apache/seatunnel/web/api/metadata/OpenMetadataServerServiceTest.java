@@ -17,13 +17,18 @@ import org.junit.jupiter.api.AfterEach;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -121,6 +126,38 @@ class OpenMetadataServerServiceTest {
         verify(bindings, never()).resetForOpenMetadataInstanceChange();
     }
 
+    @Test
+    void omittedDomainKeepsExistingScopeWhileBlankDomainClearsIt() throws Exception {
+        String baseUrl = startHealthyServer();
+        OpenMetadataServerConfig current = sampleRow();
+        current.setBaseUrl(baseUrl);
+        current.setDefaultDomainFqn("asset_assert");
+        OpenMetadataServerConfigDao dao = mock(OpenMetadataServerConfigDao.class);
+        when(dao.querySingleton()).thenReturn(current, current, current);
+        List<String> savedScopes = new ArrayList<>();
+        doAnswer(invocation -> {
+            OpenMetadataServerConfig update = invocation.getArgument(0);
+            savedScopes.add(update.getDefaultDomainFqn());
+            return 1;
+        }).when(dao).updateSingleton(any(OpenMetadataServerConfig.class));
+        MetadataIntegrationHealthService health = mock(MetadataIntegrationHealthService.class);
+        when(health.health()).thenReturn(new MetadataIntegrationHealthVO());
+        OpenMetadataServerServiceImpl service = service(dao, health);
+
+        OpenMetadataServerConfigDTO omittedDomain = new OpenMetadataServerConfigDTO();
+        omittedDomain.setBaseUrl(baseUrl);
+        service.saveConfig(omittedDomain);
+
+        OpenMetadataServerConfigDTO blankDomain = new OpenMetadataServerConfigDTO();
+        blankDomain.setBaseUrl(baseUrl);
+        blankDomain.setDefaultDomainFqn("");
+        service.saveConfig(blankDomain);
+
+        verify(dao, times(2)).updateSingleton(any(OpenMetadataServerConfig.class));
+        assertEquals("asset_assert", savedScopes.get(0));
+        assertNull(savedScopes.get(1));
+    }
+
     private static OpenMetadataServerServiceImpl service(
             OpenMetadataServerConfigDao dao, MetadataIntegrationHealthService health) {
         return service(dao, health, mock(MetadataBindingCommandService.class));
@@ -158,6 +195,9 @@ class OpenMetadataServerServiceTest {
                         "{\"id\":\"00000000-0000-0000-0000-000000000042\",\"name\":\"bot\",\"domains\":[]}"));
         server.createContext("/api/v1/domains",
                 exchange -> respond(exchange, 200, "{\"data\":[],\"paging\":{\"total\":0}}"));
+        server.createContext("/api/v1/domains/name/asset_assert",
+                exchange -> respond(exchange, 200, "{\"id\":\"00000000-0000-0000-0000-000000000061\","
+                        + "\"name\":\"asset_assert\",\"fullyQualifiedName\":\"asset_assert\"}"));
         server.start();
         return "http://127.0.0.1:" + server.getAddress().getPort() + "/api";
     }

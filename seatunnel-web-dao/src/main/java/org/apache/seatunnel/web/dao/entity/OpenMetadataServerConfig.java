@@ -1,5 +1,7 @@
 package org.apache.seatunnel.web.dao.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -26,7 +28,11 @@ public class OpenMetadataServerConfig extends BaseEntity {
     /** Bot JWT; never return this field on operator APIs. */
     private String token;
 
-    /** Optional fallback for bots whose assigned Domain cannot be derived uniquely. */
+    /**
+     * Optional fallback for bots whose assigned Domain cannot be derived uniquely.
+     * ALWAYS is required so updateById can persist null when the operator clears the scope.
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String defaultDomainFqn;
 
     private Integer connectTimeoutMs;
