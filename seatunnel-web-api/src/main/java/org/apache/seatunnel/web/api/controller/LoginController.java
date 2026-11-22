@@ -29,6 +29,9 @@ public class LoginController extends BaseController {
     @Value("${security.authentication.mode:DEV_BYPASS}")
     private String authenticationMode = "DEV_BYPASS";
 
+    @Value("${security.authentication.secure-cookies:true}")
+    private boolean secureCookies = true;
+
     @Resource
     private SessionService sessionService;
 
@@ -70,7 +73,7 @@ public class LoginController extends BaseController {
         for (Map.Entry<String, String> cookieEntry : cookieMap.entrySet()) {
             Cookie cookie = new Cookie(cookieEntry.getKey(), cookieEntry.getValue());
             cookie.setHttpOnly(true);
-            cookie.setSecure(embedded || request.isSecure());
+            cookie.setSecure(embedded || secureCookies || request.isSecure());
             cookie.setPath("/");
             cookie.setAttribute("SameSite", embedded ? "None" : "Lax");
             response.addCookie(cookie);

@@ -5,8 +5,12 @@ server:
     max-connections: 10000
 
 security:
+  cors:
+    # PASSWORD mode is same-origin by default; configure exact HTTP(S) origins only when needed.
+    allowed-origins: ${SEATUNNEL_WEB_AUTH_CORS_ORIGINS:}
   authentication:
     mode: ${SEATUNNEL_WEB_AUTH_MODE:DEV_BYPASS}
+    secure-cookies: ${SEATUNNEL_WEB_AUTH_SECURE_COOKIES:true}
     type: PASSWORD
   dev-user-id: ${SEATUNNEL_WEB_DEV_USER_ID:1}
 
