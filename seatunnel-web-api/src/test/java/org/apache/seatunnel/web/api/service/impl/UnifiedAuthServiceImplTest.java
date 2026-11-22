@@ -22,14 +22,21 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -266,6 +273,107 @@ class UnifiedAuthServiceImplTest {
             assertEquals("externalTicket=one-use-ticket", requestBody.get());
             assertEquals(1, requests.get());
         } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void getTicketValidationPreservesRawQueryAndEncodesTicketValue() throws Exception {
+        AtomicReference<String> rawQuery = new AtomicReference<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/validate", exchange -> {
+            rawQuery.set(exchange.getRequestURI().getRawQuery());
+            byte[] body = "{\"success\":true,\"username\":\"subject-1\"}"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String endpoint = "http://127.0.0.1:" + server.getAddress().getPort()
+                    + "/validate?keep=%2Fvalue";
+            UnifiedAuthConfig config = ticketConfig(endpoint);
+            config.setTicketValidationMethod("GET");
+            config.setTicketParameterName("externalTicket");
+            UnifiedAuthServiceImpl service = serviceWithConfig(config);
+            UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+            when(identityMapper.selectOne(any(Wrapper.class))).thenReturn(null);
+            when(identityMapper.insert(any(UnifiedAuthIdentity.class))).thenAnswer(invocation -> {
+                ((UnifiedAuthIdentity) invocation.getArgument(0)).setId(73L);
+                return 1;
+            });
+            ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+
+            var result = service.completeExternalTicket("a+b /ü?&=%");
+
+            assertTrue(result.pending());
+            assertEquals("keep=%2Fvalue&externalTicket=a%2Bb+%2F%C3%BC%3F%26%3D%25", rawQuery.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void getTicketValidationRejectsConfiguredDuplicateParameter() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/validate", exchange -> {
+            requests.incrementAndGet();
+            exchange.sendResponseHeaders(204, -1);
+            exchange.close();
+        });
+        server.start();
+        try {
+            String endpoint = "http://127.0.0.1:" + server.getAddress().getPort()
+                    + "/validate?%74icket=stale";
+            UnifiedAuthConfig config = ticketConfig(endpoint);
+            config.setTicketValidationMethod("GET");
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> serviceWithConfig(config).completeExternalTicket("new-ticket"));
+            assertEquals(0, requests.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void responseBodyDeadlineCancelsAnIncompleteExchange() throws Exception {
+        CountDownLatch responseStarted = new CountDownLatch(1);
+        CountDownLatch releaseResponse = new CountDownLatch(1);
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/slow", exchange -> {
+            exchange.sendResponseHeaders(200, 64);
+            exchange.getResponseBody().write('{');
+            exchange.getResponseBody().flush();
+            responseStarted.countDown();
+            try {
+                releaseResponse.await(2, TimeUnit.SECONDS);
+                exchange.getResponseBody().write(new byte[63]);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                responseStarted.countDown();
+            } catch (IOException ignored) {
+                responseStarted.countDown();
+            } finally {
+                exchange.close();
+            }
+        });
+        server.start();
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + server.getAddress().getPort() + "/slow"))
+                    .timeout(Duration.ofMillis(150))
+                    .GET()
+                    .build();
+            long startedAt = System.nanoTime();
+
+            assertThrows(HttpTimeoutException.class, () -> service().sendBoundedResponse(request));
+            assertTrue(responseStarted.await(1, TimeUnit.SECONDS));
+            assertTrue(Duration.ofNanos(System.nanoTime() - startedAt).toMillis() < 1_500);
+        } finally {
+            releaseResponse.countDown();
             server.stop(0);
         }
     }

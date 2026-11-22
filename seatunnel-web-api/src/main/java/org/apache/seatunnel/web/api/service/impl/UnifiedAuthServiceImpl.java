@@ -38,13 +38,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.net.URLDecoder;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -55,8 +57,16 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** OIDC code-flow verification and the administrator-owned local identity bindings. */
 @Slf4j
@@ -149,6 +159,7 @@ public class UnifiedAuthServiceImpl {
         }
         if (ticketEnabled) {
             validateTicketConfig(request);
+            validateTicketEndpointParameter(request);
         }
 
         UnifiedAuthConfig current = currentConfig();
@@ -622,14 +633,26 @@ public class UnifiedAuthServiceImpl {
         return normalized;
     }
 
+    private void validateTicketEndpointParameter(UnifiedAuthConfigDTO request) {
+        URI endpoint = safeEndpoint(request.getTicketValidationEndpoint());
+        String parameterName = normalizeTicketParameterName(request.getTicketParameterName());
+        if (hasQueryParameter(endpoint.getRawQuery(), parameterName)) {
+            throw invalid("外部 ticket 验证端点不能预先包含验票参数");
+        }
+    }
+
     private JsonNode validateExternalTicket(UnifiedAuthConfig config, String ticket) {
         URI endpoint = safeEndpoint(config.getTicketValidationEndpoint());
         String method = normalizeTicketMethod(config.getTicketValidationMethod());
         String parameterName = normalizeTicketParameterName(config.getTicketParameterName());
+        String rawQuery = endpoint.getRawQuery();
+        if (hasQueryParameter(rawQuery, parameterName)) {
+            throw invalid("外部 ticket 验证端点已包含验票参数");
+        }
         HttpRequest request;
         if ("GET".equals(method)) {
-            URI uri = UriComponentsBuilder.fromUri(endpoint)
-                    .queryParam(parameterName, ticket).build().encode().toUri();
+            String separator = rawQuery == null ? "?" : rawQuery.isEmpty() ? "" : "&";
+            URI uri = URI.create(endpoint + separator + form(parameterName) + "=" + form(ticket));
             request = HttpRequest.newBuilder(uri)
                     .timeout(Duration.ofSeconds(8))
                     .header("Accept", "application/json")
@@ -651,27 +674,41 @@ public class UnifiedAuthServiceImpl {
         return result;
     }
 
+    private boolean hasQueryParameter(String rawQuery, String parameterName) {
+        if (rawQuery == null || rawQuery.isEmpty()) {
+            return false;
+        }
+        try {
+            for (String pair : rawQuery.split("&", -1)) {
+                String rawName = pair.split("=", 2)[0];
+                if (parameterName.equals(URLDecoder.decode(rawName, StandardCharsets.UTF_8))) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (IllegalArgumentException error) {
+            throw invalid("外部 ticket 验证端点查询参数无效");
+        }
+    }
+
     private JsonNode sendTicketJson(HttpRequest request) {
         try {
-            HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
-                if (response.statusCode() != 200) {
-                    throw invalid("外部 ticket 验证端点拒绝了请求");
-                }
-                byte[] bytes = body.readNBytes(MAX_RESPONSE_BYTES + 1);
-                if (bytes.length > MAX_RESPONSE_BYTES) {
-                    throw invalid("外部 ticket 验证响应超出大小限制");
-                }
-                JsonNode json = MAPPER.readTree(bytes);
-                if (json == null || !json.isObject()) {
-                    throw invalid("外部 ticket 验证响应格式无效");
-                }
-                return json;
+            HttpResponse<byte[]> response = sendBoundedResponse(request);
+            if (response.statusCode() != 200) {
+                throw invalid("外部 ticket 验证端点拒绝了请求");
             }
+            JsonNode json = MAPPER.readTree(response.body());
+            if (json == null || !json.isObject()) {
+                throw invalid("外部 ticket 验证响应格式无效");
+            }
+            return json;
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw invalid("外部 ticket 验证请求中断");
         } catch (IOException error) {
+            if (error instanceof ResponseTooLargeException) {
+                throw invalid("外部 ticket 验证响应超出大小限制");
+            }
             throw invalid("无法连接外部 ticket 验证端点");
         }
     }
@@ -974,23 +1011,158 @@ public class UnifiedAuthServiceImpl {
 
     private JsonNode sendJson(HttpRequest request) {
         try {
-            HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
-                if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    throw invalid("OIDC Provider 返回了无效响应");
-                }
-                byte[] bytes = body.readNBytes(MAX_RESPONSE_BYTES + 1);
-                if (bytes.length > MAX_RESPONSE_BYTES) {
-                    throw invalid("OIDC Provider 响应超出大小限制");
-                }
-                return MAPPER.readTree(bytes);
+            HttpResponse<byte[]> response = sendBoundedResponse(request);
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw invalid("OIDC Provider 返回了无效响应");
             }
+            return MAPPER.readTree(response.body());
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw invalid("OIDC Provider 请求中断");
         } catch (IOException error) {
+            if (error instanceof ResponseTooLargeException) {
+                throw invalid("OIDC Provider 响应超出大小限制");
+            }
             throw invalid("无法连接 OIDC Provider");
         }
+    }
+
+    HttpResponse<byte[]> sendBoundedResponse(HttpRequest request) throws IOException, InterruptedException {
+        Duration timeout = request.timeout().orElse(Duration.ofSeconds(8));
+        long deadlineNanos = System.nanoTime() + timeout.toNanos();
+        AtomicReference<BoundedBodySubscriber> subscriberRef = new AtomicReference<>();
+        CompletableFuture<HttpResponse<byte[]>> responseFuture = HTTP.sendAsync(request, responseInfo -> {
+            BoundedBodySubscriber subscriber = new BoundedBodySubscriber(MAX_RESPONSE_BYTES, deadlineNanos);
+            subscriberRef.set(subscriber);
+            return subscriber;
+        });
+        try {
+            return responseFuture.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        } catch (TimeoutException error) {
+            responseFuture.cancel(true);
+            BoundedBodySubscriber subscriber = subscriberRef.get();
+            if (subscriber != null) {
+                subscriber.cancel();
+            }
+            throw new java.net.http.HttpTimeoutException("HTTP response exceeded its total deadline");
+        } catch (InterruptedException error) {
+            responseFuture.cancel(true);
+            BoundedBodySubscriber subscriber = subscriberRef.get();
+            if (subscriber != null) {
+                subscriber.cancel();
+            }
+            throw error;
+        } catch (ExecutionException error) {
+            Throwable cause = error.getCause();
+            if (cause instanceof java.net.http.HttpTimeoutException) {
+                responseFuture.cancel(true);
+                BoundedBodySubscriber subscriber = subscriberRef.get();
+                if (subscriber != null) {
+                    subscriber.cancel();
+                }
+            }
+            if (cause instanceof IOException ioException) {
+                throw ioException;
+            }
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IOException("HTTP response failed", cause);
+        } catch (CancellationException error) {
+            throw new IOException("HTTP response was cancelled", error);
+        }
+    }
+
+    private static final class BoundedBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
+
+        private final CompletableFuture<byte[]> body = new CompletableFuture<>();
+        private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        private final int maxBytes;
+        private final long deadlineNanos;
+        private Flow.Subscription subscription;
+        private boolean cancelled;
+
+        private BoundedBodySubscriber(int maxBytes, long deadlineNanos) {
+            this.maxBytes = maxBytes;
+            this.deadlineNanos = deadlineNanos;
+        }
+
+        @Override
+        public CompletionStage<byte[]> getBody() {
+            return body;
+        }
+
+        @Override
+        public synchronized void onSubscribe(Flow.Subscription subscription) {
+            this.subscription = subscription;
+            if (cancelled) {
+                subscription.cancel();
+            } else {
+                subscription.request(1);
+            }
+        }
+
+        @Override
+        public synchronized void onNext(List<ByteBuffer> buffers) {
+            if (cancelled || body.isDone()) {
+                return;
+            }
+            if (System.nanoTime() >= deadlineNanos) {
+                fail(new java.net.http.HttpTimeoutException("HTTP body exceeded its total deadline"));
+                return;
+            }
+            for (ByteBuffer buffer : buffers) {
+                int remaining = buffer.remaining();
+                if (bytes.size() + remaining > maxBytes) {
+                    fail(new ResponseTooLargeException());
+                    return;
+                }
+                byte[] chunk = new byte[remaining];
+                buffer.get(chunk);
+                bytes.write(chunk, 0, chunk.length);
+            }
+            if (subscription != null) {
+                subscription.request(1);
+            }
+        }
+
+        @Override
+        public synchronized void onError(Throwable error) {
+            if (!body.isDone()) {
+                body.completeExceptionally(error);
+            }
+        }
+
+        @Override
+        public synchronized void onComplete() {
+            if (!cancelled && !body.isDone()) {
+                body.complete(bytes.toByteArray());
+            }
+        }
+
+        private synchronized void cancel() {
+            if (cancelled) {
+                return;
+            }
+            cancelled = true;
+            if (subscription != null) {
+                subscription.cancel();
+            }
+            bytes.reset();
+            body.completeExceptionally(new CancellationException("HTTP body subscription cancelled"));
+        }
+
+        private void fail(IOException error) {
+            cancelled = true;
+            if (subscription != null) {
+                subscription.cancel();
+            }
+            bytes.reset();
+            body.completeExceptionally(error);
+        }
+    }
+
+    private static final class ResponseTooLargeException extends IOException {
     }
 
     private URI safeEndpoint(String value) {
