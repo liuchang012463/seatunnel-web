@@ -33,9 +33,12 @@ import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthIdentityVO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthLocalUserVO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthProviderVO;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.ByteArrayOutputStream;
@@ -105,9 +108,13 @@ public class UnifiedAuthServiceImpl {
     private UnifiedAuthSecretCipher secretCipher;
 
     private final ConcurrentMap<String, LoginAttempt> loginAttempts = new ConcurrentHashMap<>();
+    private final Object loginAttemptLock = new Object();
     private final Object ticketReplayLock = new Object();
     private final Map<String, TicketReplayEntry> ticketReplayHashes = new HashMap<>();
     private int pendingTicketValidations;
+
+    @Resource
+    private PlatformTransactionManager transactionManager;
 
     public UnifiedAuthServiceImpl(
             @Value("${unified-auth.callback-url:}") String callbackUrl,
@@ -253,7 +260,7 @@ public class UnifiedAuthServiceImpl {
     public UnifiedAuthProviderVO getProvider() {
         UnifiedAuthConfig config = currentConfig();
         UnifiedAuthProviderVO result = new UnifiedAuthProviderVO();
-        result.setEnabled(!isDevBypass() && config != null && Boolean.TRUE.equals(config.getEnabled()));
+        result.setEnabled(isOidcEnabled(config));
         result.setDisplayName("统一用户");
         result.setAuthenticationMode(authenticationMode);
         String ticketEntry = null;
@@ -274,6 +281,11 @@ public class UnifiedAuthServiceImpl {
     }
 
     public OidcLoginStart beginLogin() {
+        return beginLogin(null);
+    }
+
+    /** Keeps one active OIDC authorization attempt for a browser binding. */
+    public OidcLoginStart beginLogin(String existingBrowserBinding) {
         UnifiedAuthConfig config = requireEnabledConfig();
         if (callbackUrl == null) {
             throw invalid("OIDC 可信回调地址尚未配置");
@@ -282,20 +294,14 @@ public class UnifiedAuthServiceImpl {
         String state = randomToken(32);
         String nonce = randomToken(32);
         String verifier = randomToken(48);
-        String browserBinding = randomToken(32);
         String challenge = Base64.getUrlEncoder().withoutPadding().encodeToString(sha256(verifier));
-        pruneExpired();
-        if (loginAttempts.size() >= MAX_PENDING_LOGINS) {
-            throw invalid("OIDC 登录请求过多，请稍后重试");
-        }
-        loginAttempts.put(state, new LoginAttempt(
-                nonce, verifier, hashBrowserBinding(browserBinding),
-                config.getConfigVersion() == null ? 1L : config.getConfigVersion(),
-                System.currentTimeMillis()));
+        long configVersion = config.getConfigVersion() == null ? 1L : config.getConfigVersion();
+        String browserBinding = registerLoginAttempt(
+                state, nonce, verifier, existingBrowserBinding, configVersion, System.currentTimeMillis());
         String authorizationUrl = UriComponentsBuilder.fromUri(metadata.authorizationEndpoint())
                 .queryParam("response_type", "code")
                 .queryParam("client_id", config.getClientId())
-                .queryParam("redirect_uri", config.getRedirectUri())
+                .queryParam("redirect_uri", callbackUrl)
                 .queryParam("scope", "openid email profile")
                 .queryParam("state", state)
                 .queryParam("nonce", nonce)
@@ -305,43 +311,85 @@ public class UnifiedAuthServiceImpl {
         return new OidcLoginStart(authorizationUrl, browserBinding, STATE_TTL_MS / 1000);
     }
 
+    private String registerLoginAttempt(
+            String state,
+            String nonce,
+            String verifier,
+            String existingBrowserBinding,
+            long configVersion,
+            long createdAt) {
+        String browserBinding;
+        synchronized (loginAttemptLock) {
+            pruneExpired();
+            String existingHash = StringUtils.isBlank(existingBrowserBinding)
+                    ? null : hashBrowserBinding(existingBrowserBinding);
+            boolean hasExistingAttempt = existingHash != null && loginAttempts.values().stream()
+                    .anyMatch(attempt -> existingHash.equals(attempt.browserBindingHash()));
+            browserBinding = hasExistingAttempt ? existingBrowserBinding : randomToken(32);
+            if (hasExistingAttempt) {
+                loginAttempts.entrySet().removeIf(
+                        entry -> existingHash.equals(entry.getValue().browserBindingHash()));
+            }
+            if (loginAttempts.size() >= MAX_PENDING_LOGINS) {
+                throw invalid("OIDC 登录请求过多，请稍后重试");
+            }
+            loginAttempts.put(state, new LoginAttempt(
+                    nonce, verifier, hashBrowserBinding(browserBinding), configVersion, createdAt));
+        }
+        return browserBinding;
+    }
+
     public OidcCallbackResult completeLogin(String code, String state, String browserBinding) {
-        if (StringUtils.isBlank(code) || StringUtils.isBlank(state)) {
-            throw invalid("OIDC callback 参数无效");
-        }
-        LoginAttempt attempt = loginAttempts.get(state);
-        if (attempt == null) {
-            throw invalid("OIDC 登录状态已失效，请重新登录");
-        }
-        if (System.currentTimeMillis() - attempt.createdAt() > STATE_TTL_MS) {
-            loginAttempts.remove(state, attempt);
-            throw invalid("OIDC 登录状态已失效，请重新登录");
-        }
-        if (!matchesBrowserBinding(attempt, browserBinding)) {
-            throw invalid("OIDC 登录状态与发起登录的浏览器不匹配");
-        }
-        if (!loginAttempts.remove(state, attempt)) {
-            throw invalid("OIDC 登录状态已使用，请重新登录");
-        }
+        String stage = "callback_validation";
+        try {
+            if (StringUtils.isBlank(code) || StringUtils.isBlank(state)) {
+                throw invalid("OIDC callback 参数无效");
+            }
+            stage = "state_validation";
+            LoginAttempt attempt = loginAttempts.get(state);
+            if (attempt == null) {
+                throw invalid("OIDC 登录状态已失效，请重新登录");
+            }
+            if (System.currentTimeMillis() - attempt.createdAt() > STATE_TTL_MS) {
+                loginAttempts.remove(state, attempt);
+                throw invalid("OIDC 登录状态已失效，请重新登录");
+            }
+            if (!matchesBrowserBinding(attempt, browserBinding)) {
+                throw invalid("OIDC 登录状态与发起登录的浏览器不匹配");
+            }
+            if (!loginAttempts.remove(state, attempt)) {
+                throw invalid("OIDC 登录状态已使用，请重新登录");
+            }
 
-        UnifiedAuthConfig config = requireEnabledConfig();
-        long version = config.getConfigVersion() == null ? 1L : config.getConfigVersion();
-        if (version != attempt.configVersion()) {
-            throw invalid("OIDC 配置已变更，请重新登录");
-        }
-        ProviderMetadata metadata = discoverAndValidate(config.getIssuer());
-        String clientSecret = secretCipher.decrypt(config.getClientSecretEnc());
-        JsonNode token = exchangeCode(metadata, config, clientSecret, code, attempt.codeVerifier());
-        JWTClaimsSet claims = verifyIdToken(
-                token.path("id_token").asText(null), metadata, config, attempt.nonce());
+            stage = "provider_configuration";
+            UnifiedAuthConfig config = requireEnabledConfig();
+            long version = config.getConfigVersion() == null ? 1L : config.getConfigVersion();
+            if (version != attempt.configVersion()) {
+                throw invalid("OIDC 配置已变更，请重新登录");
+            }
+            stage = "discovery";
+            ProviderMetadata metadata = discoverAndValidate(config.getIssuer());
+            stage = "client_secret_decryption";
+            String clientSecret = secretCipher.decrypt(config.getClientSecretEnc());
+            stage = "token_exchange";
+            JsonNode token = exchangeCode(metadata, config, clientSecret, code, attempt.codeVerifier());
+            stage = "id_token_validation";
+            JWTClaimsSet claims = verifyIdToken(
+                    token.path("id_token").asText(null), metadata, config, attempt.nonce());
 
-        String subject = StringUtils.defaultString(claims.getSubject());
-        if (StringUtils.isBlank(subject) || subject.length() > 255) {
-            throw invalid("OIDC subject 无效");
+            String subject = StringUtils.defaultString(claims.getSubject());
+            if (StringUtils.isBlank(subject) || subject.length() > 255) {
+                throw invalid("OIDC subject 无效");
+            }
+            String issuer = claims.getIssuer();
+            stage = "identity_resolution";
+            return resolveUserForIdentity(config, "OIDC", issuer, subject,
+                    textOrNull(claims.getClaim("email")), textOrNull(claims.getClaim("name")));
+        } catch (RuntimeException failure) {
+            log.warn("Unified-user OIDC callback failed: stage={}, failureType={}",
+                    stage, failure.getClass().getSimpleName());
+            throw failure;
         }
-        String issuer = normalizeIssuer(claims.getIssuer());
-        return resolveUserForIdentity(config, "OIDC", issuer, subject,
-                textOrNull(claims.getClaim("email")), textOrNull(claims.getClaim("name")));
     }
 
     public void cancelLogin(String state, String browserBinding) {
@@ -384,6 +432,32 @@ public class UnifiedAuthServiceImpl {
     }
 
     private OidcCallbackResult resolveUserForIdentity(
+            UnifiedAuthConfig config,
+            String identitySource,
+            String issuer,
+            String subject,
+            String email,
+            String displayName) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                OidcCallbackResult result = new TransactionTemplate(transactionManager).execute(status ->
+                        resolveUserForIdentityInTransaction(
+                                config, identitySource, issuer, subject, email, displayName));
+                if (result != null) {
+                    return result;
+                }
+            } catch (DuplicateKeyException | IdentityBindingChangedException race) {
+                if (attempt == 2) {
+                    throw invalid("外部身份正在变更，请稍后重试");
+                }
+                log.info("Unified-user identity provisioning raced with another update; retrying: source={}",
+                        identitySource);
+            }
+        }
+        throw invalid("外部身份正在变更，请稍后重试");
+    }
+
+    private OidcCallbackResult resolveUserForIdentityInTransaction(
             UnifiedAuthConfig config,
             String identitySource,
             String issuer,
@@ -535,17 +609,23 @@ public class UnifiedAuthServiceImpl {
 
     private UnifiedAuthConfig requireEnabledConfig() {
         UnifiedAuthConfig config = currentConfig();
-        if (isDevBypass() || callbackUrl == null || config == null || !Boolean.TRUE.equals(config.getEnabled())
-                || StringUtils.isBlank(config.getClientSecretEnc())) {
+        if (!isOidcEnabled(config)) {
             throw invalid("统一用户 OIDC Provider 尚未启用");
         }
         return config;
     }
 
+    private boolean isOidcEnabled(UnifiedAuthConfig config) {
+        return !isDevBypass() && callbackUrl != null && config != null
+                && Boolean.TRUE.equals(config.getEnabled())
+                && callbackUrl.equals(config.getRedirectUri())
+                && StringUtils.isNotBlank(config.getClientSecretEnc());
+    }
+
     private UnifiedAuthConfigVO toConfigVO(UnifiedAuthConfig config) {
         UnifiedAuthConfigVO vo = new UnifiedAuthConfigVO();
-        vo.setRedirectUri(config == null ? StringUtils.defaultString(callbackUrl)
-                : StringUtils.defaultIfBlank(config.getRedirectUri(), StringUtils.defaultString(callbackUrl)));
+        vo.setRedirectUri(callbackUrl != null ? callbackUrl : config == null
+                ? "" : StringUtils.defaultString(config.getRedirectUri()));
         if (config != null) {
             vo.setIssuer(config.getIssuer());
             vo.setClientId(config.getClientId());
@@ -816,9 +896,8 @@ public class UnifiedAuthServiceImpl {
 
     private ProviderMetadata discoverAndValidate(String issuer) {
         JsonNode document = getJson(discoveryUri(issuer));
-        if (!issuer.equals(normalizeIssuer(document.path("issuer").asText()))) {
-            throw invalid("OIDC discovery 返回的 Issuer 与配置不一致");
-        }
+        requireExactIssuer(document.path("issuer").asText(), issuer,
+                "OIDC discovery 返回的 Issuer 与配置不一致");
         URI authorization = safeEndpoint(document.path("authorization_endpoint").asText());
         URI token = safeEndpoint(document.path("token_endpoint").asText());
         URI jwks = safeEndpoint(document.path("jwks_uri").asText());
@@ -826,7 +905,8 @@ public class UnifiedAuthServiceImpl {
     }
 
     private URI discoveryUri(String issuer) {
-        return safeEndpoint(issuer + "/.well-known/openid-configuration");
+        String base = issuer.endsWith("/") ? issuer.substring(0, issuer.length() - 1) : issuer;
+        return safeEndpoint(base + "/.well-known/openid-configuration");
     }
 
     private JsonNode exchangeCode(
@@ -837,7 +917,7 @@ public class UnifiedAuthServiceImpl {
             String codeVerifier) {
         String body = "grant_type=authorization_code"
                 + "&code=" + form(code)
-                + "&redirect_uri=" + form(config.getRedirectUri())
+                + "&redirect_uri=" + form(callbackUrl)
                 + "&code_verifier=" + form(codeVerifier);
         String credentials = form(config.getClientId()) + ":" + form(clientSecret);
         HttpRequest request = HttpRequest.newBuilder(metadata.tokenEndpoint())
@@ -883,9 +963,7 @@ public class UnifiedAuthServiceImpl {
             }
 
             JWTClaimsSet claims = parsed.getJWTClaimsSet();
-            if (!normalizeIssuer(claims.getIssuer()).equals(config.getIssuer())) {
-                throw invalid("OIDC ID Token Issuer 不匹配");
-            }
+            requireExactIssuer(claims.getIssuer(), config.getIssuer(), "OIDC ID Token Issuer 不匹配");
             validateAudience(claims, config.getClientId());
             if (!expectedNonce.equals(stringClaim(claims, "nonce"))) {
                 throw invalid("OIDC ID Token nonce 不匹配");
@@ -974,7 +1052,11 @@ public class UnifiedAuthServiceImpl {
         if (identity.getId() == null) {
             identityMapper.insert(identity);
         } else {
-            identityMapper.updateById(identity);
+            identityMapper.update(null, new LambdaUpdateWrapper<UnifiedAuthIdentity>()
+                    .set(email != null, UnifiedAuthIdentity::getEmail, email)
+                    .set(displayName != null, UnifiedAuthIdentity::getDisplayName, displayName)
+                    .set(UnifiedAuthIdentity::getUpdateTime, now)
+                    .eq(UnifiedAuthIdentity::getId, identity.getId()));
         }
         return identity;
     }
@@ -991,10 +1073,30 @@ public class UnifiedAuthServiceImpl {
         user.setState(Flag.YES.ordinal());
         user.setCreateTime(new Date());
         user.setUpdateTime(new Date());
-        userMapper.insert(user);
+        int inserted;
+        try {
+            inserted = userMapper.insert(user);
+        } catch (RuntimeException failure) {
+            log.warn("Unified-user OIDC provisioning failed: stage=local_user_insert, failureType={}",
+                    failure.getClass().getSimpleName());
+            throw failure;
+        }
+        if (inserted < 1 || user.getId() == null || user.getId() <= 0) {
+            log.warn("Unified-user OIDC provisioning failed: stage=local_user_insert, "
+                    + "failureType=MissingGeneratedUserId");
+            throw invalid("本地用户记录未能生成有效 ID");
+        }
+        Date updateTime = new Date();
+        int bound = identityMapper.update(null, new LambdaUpdateWrapper<UnifiedAuthIdentity>()
+                .set(UnifiedAuthIdentity::getUserId, user.getId())
+                .set(UnifiedAuthIdentity::getUpdateTime, updateTime)
+                .eq(UnifiedAuthIdentity::getId, identity.getId())
+                .isNull(UnifiedAuthIdentity::getUserId));
+        if (bound == 0) {
+            throw new IdentityBindingChangedException();
+        }
         identity.setUserId(user.getId());
-        identity.setUpdateTime(new Date());
-        identityMapper.updateById(identity);
+        identity.setUpdateTime(updateTime);
         log.info("Unified-user OIDC provisioned a GENERAL_USER account: identityId={}, localUserId={}",
                 identity.getId(), user.getId());
         return user;
@@ -1184,15 +1286,21 @@ public class UnifiedAuthServiceImpl {
         if (StringUtils.isBlank(value)) {
             throw invalid("OIDC Issuer 无效");
         }
-        URI uri = safeEndpoint(value.trim());
+        String issuer = value.trim();
+        URI uri = safeEndpoint(issuer);
         if (uri.getQuery() != null) {
             throw invalid("OIDC Issuer 无效");
         }
-        String normalized = uri.toString().replaceAll("/+$", "");
-        if (normalized.length() > 512) {
+        if (issuer.length() > 512) {
             throw invalid("OIDC Issuer 超过长度限制");
         }
-        return normalized;
+        return issuer;
+    }
+
+    private void requireExactIssuer(String actual, String configured, String errorMessage) {
+        if (!StringUtils.equals(configured, actual)) {
+            throw invalid(errorMessage);
+        }
     }
 
     private String validateRedirectUri(String value, String requiredPath) {
@@ -1391,5 +1499,8 @@ public class UnifiedAuthServiceImpl {
     }
 
     public record OidcCallbackResult(User user, boolean pending) {
+    }
+
+    private static final class IdentityBindingChangedException extends RuntimeException {
     }
 }
