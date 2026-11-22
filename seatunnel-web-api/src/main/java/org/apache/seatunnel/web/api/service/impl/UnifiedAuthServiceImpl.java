@@ -81,6 +81,7 @@ public class UnifiedAuthServiceImpl {
     private static final long STATE_TTL_MS = Duration.ofMinutes(10).toMillis();
     private static final long TICKET_REPLAY_TTL_MS = Duration.ofMinutes(10).toMillis();
     private static final long TICKET_PENDING_TTL_MS = Duration.ofMinutes(1).toMillis();
+    private static final int MAX_PENDING_TICKET_LOGINS = 256;
     private static final int MAX_PENDING_LOGINS = 5_000;
     private static final int MAX_TICKET_REPLAY_HASHES = 50_000;
     private static final int MAX_PENDING_TICKET_VALIDATIONS = 64;
@@ -112,6 +113,8 @@ public class UnifiedAuthServiceImpl {
     private final Object ticketReplayLock = new Object();
     private final Map<String, TicketReplayEntry> ticketReplayHashes = new HashMap<>();
     private int pendingTicketValidations;
+    private final ConcurrentMap<String, PendingTicketLogin> pendingTicketLogins = new ConcurrentHashMap<>();
+    private final Object pendingTicketLoginLock = new Object();
 
     @Resource
     private PlatformTransactionManager transactionManager;
@@ -220,6 +223,16 @@ public class UnifiedAuthServiceImpl {
             configMapper.insert(target);
         } else {
             configMapper.updateById(target);
+            // MyBatis-Plus skips nulls in updateById; write nullable ticket fields explicitly
+            // so an administrator can clear stale provider settings from the UI.
+            configMapper.update(null, new LambdaUpdateWrapper<UnifiedAuthConfig>()
+                    .set(UnifiedAuthConfig::getTicketValidationEndpoint, target.getTicketValidationEndpoint())
+                    .set(UnifiedAuthConfig::getTicketLoginEntryUrl, target.getTicketLoginEntryUrl())
+                    .set(UnifiedAuthConfig::getTicketIssuer, target.getTicketIssuer())
+                    .set(UnifiedAuthConfig::getTicketSuccessField, target.getTicketSuccessField())
+                    .set(UnifiedAuthConfig::getTicketSuccessValue, target.getTicketSuccessValue())
+                    .set(UnifiedAuthConfig::getTicketUsernameField, target.getTicketUsernameField())
+                    .eq(UnifiedAuthConfig::getId, target.getId()));
         }
         String issuerHost = StringUtils.isBlank(issuer) ? "unconfigured" : URI.create(issuer).getHost();
         log.info("Unified-user auth config saved: issuerHost={}, oidcEnabled={}, ticketEnabled={}, autoProvision={}",
@@ -264,7 +277,7 @@ public class UnifiedAuthServiceImpl {
         result.setDisplayName("统一用户");
         result.setAuthenticationMode(authenticationMode);
         String ticketEntry = null;
-        if (!isDevBypass() && config != null && Boolean.TRUE.equals(config.getTicketEnabled())) {
+        if (isTicketLoginEnabled(config)) {
             String configuredEntry = StringUtils.trimToNull(config.getTicketLoginEntryUrl());
             if (configuredEntry != null) {
                 try {
@@ -431,6 +444,161 @@ public class UnifiedAuthServiceImpl {
                 optionalPointerText(validationResult, config.getTicketResultDisplayNamePointer()));
     }
 
+    public TicketLoginStart prepareExternalTicketLogin(String ticket) {
+        return prepareExternalTicketLogin(ticket, null);
+    }
+
+    /** Reuses an active binding so a new ticket replaces that browser's one pending confirmation. */
+    public TicketLoginStart prepareExternalTicketLogin(String ticket, String existingBrowserBinding) {
+        OidcCallbackResult result = completeExternalTicket(ticket);
+        if (result.identityId() == null) {
+            throw invalid("外部 SSO 身份无法进入待确认状态");
+        }
+        return stageTicketLogin(result, existingBrowserBinding);
+    }
+
+    private TicketLoginStart stageTicketLogin(OidcCallbackResult result, String existingBrowserBinding) {
+        String confirmationToken = randomToken(32);
+        String cancellationToken = randomToken(32);
+        long expiresAt = System.currentTimeMillis() + TICKET_PENDING_TTL_MS;
+        String browserBinding;
+        synchronized (pendingTicketLoginLock) {
+            long now = System.currentTimeMillis();
+            prunePendingTicketLogins(now);
+            String existingKey = StringUtils.isBlank(existingBrowserBinding)
+                    ? null : hashBrowserBinding(existingBrowserBinding);
+            PendingTicketLogin existing = existingKey == null ? null : pendingTicketLogins.get(existingKey);
+            boolean replaceActive = existing != null && existing.expiresAt() > now;
+            browserBinding = replaceActive ? existingBrowserBinding : randomToken(32);
+            String browserKey = hashBrowserBinding(browserBinding);
+            if (!replaceActive && pendingTicketLogins.size() >= MAX_PENDING_TICKET_LOGINS) {
+                throw invalid("待确认的外部登录过多，请稍后重试");
+            }
+            pendingTicketLogins.put(browserKey, new PendingTicketLogin(
+                    result.identityId(), result.user() == null ? null : result.user().getId(),
+                    result.configVersion(), confirmationToken, cancellationToken, expiresAt));
+        }
+        return new TicketLoginStart(browserBinding, TICKET_PENDING_TTL_MS / 1000);
+    }
+
+    public TicketLoginPending getPendingTicketLogin(String browserBinding) {
+        if (StringUtils.isBlank(browserBinding)) {
+            return null;
+        }
+        String key = hashBrowserBinding(browserBinding);
+        PendingTicketLogin pending = pendingTicketLogins.get(key);
+        long now = System.currentTimeMillis();
+        if (pending == null || pending.expiresAt() <= now) {
+            if (pending != null) {
+                pendingTicketLogins.remove(key, pending);
+            }
+            return null;
+        }
+        UnifiedAuthConfig config = currentConfig();
+        if (!isTicketLoginEnabled(config) || versionOf(config) != pending.configVersion()) {
+            pendingTicketLogins.remove(key, pending);
+            return null;
+        }
+        UnifiedAuthIdentity identity = identityMapper.selectById(pending.identityId());
+        if (identity == null) {
+            pendingTicketLogins.remove(key, pending);
+            return null;
+        }
+        User user = pending.localUserId() == null || !pending.localUserId().equals(identity.getUserId())
+                ? null : userMapper.selectById(pending.localUserId());
+        boolean confirmable = user != null && user.getState() == Flag.YES.ordinal() && user.getUserType() != null;
+        return new TicketLoginPending(
+                StringUtils.defaultIfBlank(identity.getDisplayName(), identity.getSubject()),
+                identity.getEmail(),
+                confirmable ? user.getUserName() : null,
+                confirmable ? pending.confirmationToken() : null,
+                pending.cancellationToken(),
+                confirmable);
+    }
+
+    public User confirmExternalTicketLogin(String browserBinding, String confirmationToken) {
+        PendingTicketLogin pending = consumePendingTicketLogin(browserBinding, confirmationToken);
+        UnifiedAuthConfig config = currentConfig();
+        if (!isTicketLoginEnabled(config) || versionOf(config) != pending.configVersion()) {
+            throw invalid("外部登录配置已变更，请重新登录");
+        }
+        UnifiedAuthIdentity identity = identityMapper.selectById(pending.identityId());
+        if (identity == null || pending.localUserId() == null
+                || !pending.localUserId().equals(identity.getUserId())) {
+            throw invalid("外部身份绑定已变更，请重新登录或联系管理员");
+        }
+        User user = userMapper.selectById(pending.localUserId());
+        if (user == null || user.getState() != Flag.YES.ordinal() || user.getUserType() == null) {
+            throw invalid("绑定的本地用户不可用");
+        }
+        return user;
+    }
+
+    public boolean cancelExternalTicketLogin(String browserBinding, String cancellationToken) {
+        if (StringUtils.isBlank(browserBinding)) {
+            return false;
+        }
+        String key = hashBrowserBinding(browserBinding);
+        PendingTicketLogin pending = pendingTicketLogins.get(key);
+        if (pending == null || pending.expiresAt() <= System.currentTimeMillis()) {
+            if (pending != null) {
+                pendingTicketLogins.remove(key, pending);
+            }
+            return false;
+        }
+        if (StringUtils.isBlank(cancellationToken) || !matchesCancellationToken(pending, cancellationToken)) {
+            return false;
+        }
+        return pendingTicketLogins.remove(key, pending);
+    }
+
+    private PendingTicketLogin consumePendingTicketLogin(String browserBinding, String confirmationToken) {
+        if (StringUtils.isBlank(browserBinding) || StringUtils.isBlank(confirmationToken)) {
+            throw invalid("外部登录确认状态无效");
+        }
+        String key = hashBrowserBinding(browserBinding);
+        PendingTicketLogin pending = pendingTicketLogins.get(key);
+        if (pending == null || pending.expiresAt() <= System.currentTimeMillis()) {
+            if (pending != null) {
+                pendingTicketLogins.remove(key, pending);
+            }
+            throw invalid("外部登录确认已过期，请重新登录");
+        }
+        if (!matchesConfirmationToken(pending, confirmationToken)
+                || !pendingTicketLogins.remove(key, pending)) {
+            throw invalid("外部登录确认状态无效或已使用");
+        }
+        return pending;
+    }
+
+    private boolean matchesConfirmationToken(PendingTicketLogin pending, String confirmationToken) {
+        return matchesPendingToken(pending.confirmationToken(), confirmationToken);
+    }
+
+    private boolean matchesCancellationToken(PendingTicketLogin pending, String cancellationToken) {
+        return matchesPendingToken(pending.cancellationToken(), cancellationToken);
+    }
+
+    private boolean matchesPendingToken(String expectedToken, String suppliedToken) {
+        String expected = hashBrowserBinding(expectedToken);
+        String actual = hashBrowserBinding(suppliedToken);
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.US_ASCII), actual.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private void prunePendingTicketLogins(long now) {
+        pendingTicketLogins.entrySet().removeIf(entry -> entry.getValue().expiresAt() <= now);
+    }
+
+    private boolean isTicketLoginEnabled(UnifiedAuthConfig config) {
+        return !isDevBypass() && config != null && Boolean.TRUE.equals(config.getTicketEnabled())
+                && StringUtils.isNotBlank(config.getTicketValidationEndpoint());
+    }
+
+    private long versionOf(UnifiedAuthConfig config) {
+        return config.getConfigVersion() == null ? 1L : config.getConfigVersion();
+    }
+
     private OidcCallbackResult resolveUserForIdentity(
             UnifiedAuthConfig config,
             String identitySource,
@@ -493,7 +661,7 @@ public class UnifiedAuthServiceImpl {
         }
         if (user == null) {
             log.info("Unified-user external identity is pending administrator binding: identityId={}", identity.getId());
-            return new OidcCallbackResult(null, true);
+            return new OidcCallbackResult(null, true, identity.getId(), versionOf(config));
         }
         if (user.getState() != Flag.YES.ordinal() || user.getUserType() == null) {
             throw invalid("绑定的本地用户不可用");
@@ -501,7 +669,7 @@ public class UnifiedAuthServiceImpl {
 
         log.info("Unified-user external identity verified: identityId={}, localUserId={}",
                 identity.getId(), user.getId());
-        return new OidcCallbackResult(user, false);
+        return new OidcCallbackResult(user, false, identity.getId(), versionOf(config));
     }
 
     public List<UnifiedAuthIdentityVO> listMappings() {
@@ -1498,7 +1666,32 @@ public class UnifiedAuthServiceImpl {
     public record OidcLoginStart(String authorizationUrl, String browserBinding, long maxAgeSeconds) {
     }
 
-    public record OidcCallbackResult(User user, boolean pending) {
+    public record OidcCallbackResult(User user, boolean pending, Long identityId, long configVersion) {
+
+        public OidcCallbackResult(User user, boolean pending) {
+            this(user, pending, null, 1L);
+        }
+    }
+
+    public record TicketLoginStart(String browserBinding, long maxAgeSeconds) {
+    }
+
+    public record TicketLoginPending(
+            String externalDisplayName,
+            String externalEmail,
+            String localUserName,
+            String confirmationToken,
+            String cancellationToken,
+            boolean confirmable) {
+    }
+
+    private record PendingTicketLogin(
+            Long identityId,
+            Integer localUserId,
+            long configVersion,
+            String confirmationToken,
+            String cancellationToken,
+            long expiresAt) {
     }
 
     private static final class IdentityBindingChangedException extends RuntimeException {

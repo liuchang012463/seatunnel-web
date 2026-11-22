@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.controller;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.security.CurrentUserProvider;
 import org.apache.seatunnel.web.api.service.SessionService;
@@ -18,10 +19,12 @@ import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthConnectTestVO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthIdentityVO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthLocalUserVO;
 import org.apache.seatunnel.web.spi.bean.vo.UnifiedAuthProviderVO;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,10 +41,16 @@ import java.util.List;
 
 /** Public OIDC callbacks and administrator-only unified-user operations. */
 @RestController
+@Slf4j
 @RequestMapping("/api/v1/unified-auth")
 public class UnifiedAuthController {
 
     private static final String OIDC_BINDING_COOKIE = "ST_OIDC_BROWSER_BINDING";
+    private static final String TICKET_BINDING_COOKIE = "ST_TICKET_BROWSER_BINDING";
+    private static final String REFERRER_POLICY_HEADER = "Referrer-Policy";
+
+    @Value("${security.authentication.secure-cookies:true}")
+    private boolean secureCookies = true;
 
     @Resource
     private UnifiedAuthServiceImpl unifiedAuthService;
@@ -101,10 +110,10 @@ public class UnifiedAuthController {
 
     @GetMapping("/oidc/start")
     public ResponseEntity<Void> startLogin(HttpServletRequest request) {
-        UnifiedAuthServiceImpl.OidcLoginStart start = unifiedAuthService.beginLogin();
+        UnifiedAuthServiceImpl.OidcLoginStart start = unifiedAuthService.beginLogin(browserBinding(request));
         ResponseCookie bindingCookie = ResponseCookie.from(OIDC_BINDING_COOKIE, start.browserBinding())
                 .httpOnly(true)
-                .secure(request.isSecure())
+                .secure(secureCookie(request))
                 .path("/api/v1/unified-auth/oidc/callback/seatunnel")
                 .sameSite("Lax")
                 .maxAge(start.maxAgeSeconds())
@@ -122,40 +131,111 @@ public class UnifiedAuthController {
             @RequestParam(value = "error", required = false) String error,
             HttpServletRequest request,
             HttpServletResponse response) {
+        String stage = "callback_validation";
         try {
             if (StringUtils.isNotBlank(error)) {
                 unifiedAuthService.cancelLogin(state, browserBinding(request));
-                return redirect(unifiedAuthService.callbackFailureRedirect());
+                return redirect(unifiedAuthService.callbackFailureRedirect()).build();
             }
+            stage = "oidc_service";
             UnifiedAuthServiceImpl.OidcCallbackResult result =
                     unifiedAuthService.completeLogin(code, state, browserBinding(request));
             if (!result.pending()) {
+                stage = "session_creation";
                 createSessionCookie(result.user(), request, response);
             }
-            return redirect(unifiedAuthService.callbackRedirect(result));
+            stage = "redirect";
+            return redirect(unifiedAuthService.callbackRedirect(result)).build();
         } catch (RuntimeException failure) {
-            return redirect(unifiedAuthService.callbackFailureRedirect());
-        } finally {
-            clearBrowserBindingCookie(request, response);
+            log.warn("Unified-user OIDC callback failed: stage={}, failureType={}",
+                    stage, failure.getClass().getSimpleName());
+            return redirect(unifiedAuthService.callbackFailureRedirect()).build();
         }
     }
 
-    /** Validates a one-use external ticket server-side and sets the normal Web session cookie. */
+    /** Validates a one-use ticket server-side and stages a browser-bound confirmation. */
     @GetMapping("/sso/entry")
-    public ResponseEntity<Void> enterExternalTicketSession(
-            @RequestParam(value = "ticket", required = false) String ticket,
-            HttpServletRequest servletRequest,
-            HttpServletResponse servletResponse) {
+    public ResponseEntity<Void> enterExternalTicketSession(HttpServletRequest servletRequest) {
         try {
-            UnifiedAuthServiceImpl.OidcCallbackResult result =
-                    unifiedAuthService.completeExternalTicket(ticket);
-            if (!result.pending()) {
-                createSessionCookie(result.user(), servletRequest, servletResponse);
+            String[] tickets = servletRequest.getParameterValues("ticket");
+            if (tickets == null || tickets.length != 1) {
+                return redirect("/login?ticketLogin=failed").build();
             }
-            return redirect(unifiedAuthService.callbackRedirect(result));
+            UnifiedAuthServiceImpl.TicketLoginStart start =
+                    unifiedAuthService.prepareExternalTicketLogin(
+                            tickets[0], cookieValue(servletRequest, TICKET_BINDING_COOKIE));
+            ResponseCookie bindingCookie = ResponseCookie.from(TICKET_BINDING_COOKIE, start.browserBinding())
+                    .httpOnly(true)
+                    .secure(secureCookie(servletRequest))
+                    .path("/api/v1/unified-auth/sso")
+                    .sameSite("Lax")
+                    .maxAge(start.maxAgeSeconds())
+                    .build();
+            return redirect("/login")
+                    .header(HttpHeaders.SET_COOKIE, bindingCookie.toString())
+                    .build();
         } catch (RuntimeException failure) {
-            return redirect(unifiedAuthService.callbackFailureRedirect());
+            return redirect("/login?ticketLogin=failed").build();
         }
+    }
+
+    @GetMapping("/sso/pending")
+    public ResponseEntity<Result<UnifiedAuthServiceImpl.TicketLoginPending>> pendingExternalTicketLogin(
+            HttpServletRequest request) {
+        requireSameOriginBrowser(request);
+        UnifiedAuthServiceImpl.TicketLoginPending pending = unifiedAuthService.getPendingTicketLogin(
+                cookieValue(request, TICKET_BINDING_COOKIE));
+        if (pending == null) {
+            return ResponseEntity.status(HttpStatus.GONE)
+                    .cacheControl(CacheControl.noStore())
+                    .header(REFERRER_POLICY_HEADER, "no-referrer")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .build();
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(REFERRER_POLICY_HEADER, "no-referrer")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(Result.buildSuc(pending));
+    }
+
+    @PostMapping("/sso/confirm")
+    public ResponseEntity<Result<Void>> confirmExternalTicketLogin(
+            @RequestBody TicketConfirmationRequest confirmation,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        requireSameOriginBrowser(request);
+        User user = unifiedAuthService.confirmExternalTicketLogin(
+                cookieValue(request, TICKET_BINDING_COOKIE),
+                confirmation == null ? null : confirmation.confirmationToken());
+        createSessionCookie(user, request, response);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(REFERRER_POLICY_HEADER, "no-referrer")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(Result.buildSuc());
+    }
+
+    @PostMapping("/sso/cancel")
+    public ResponseEntity<Result<Void>> cancelExternalTicketLogin(
+            @RequestBody TicketCancellationRequest cancellation,
+            HttpServletRequest request) {
+        requireSameOriginBrowser(request);
+        boolean cancelled = unifiedAuthService.cancelExternalTicketLogin(
+                cookieValue(request, TICKET_BINDING_COOKIE),
+                cancellation == null ? null : cancellation.cancellationToken());
+        if (!cancelled) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .cacheControl(CacheControl.noStore())
+                    .header(REFERRER_POLICY_HEADER, "no-referrer")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .body(Result.buildFailure("外部登录状态已变化，请刷新登录页面"));
+        }
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header(REFERRER_POLICY_HEADER, "no-referrer")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .body(Result.buildSuc());
     }
 
     private void createSessionCookie(
@@ -166,7 +246,7 @@ public class UnifiedAuthController {
         }
         ResponseCookie cookie = ResponseCookie.from(Constants.SESSION_ID, sessionId)
                 .httpOnly(true)
-                .secure(servletRequest.isSecure())
+                .secure(secureCookie(servletRequest))
                 .path("/")
                 .sameSite("Lax")
                 .build();
@@ -180,32 +260,44 @@ public class UnifiedAuthController {
         }
     }
 
-    private ResponseEntity<Void> redirect(String location) {
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(location)).build();
+    private ResponseEntity.BodyBuilder redirect(String location) {
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(location))
+                .cacheControl(CacheControl.noStore())
+                .header(REFERRER_POLICY_HEADER, "no-referrer")
+                .header(HttpHeaders.PRAGMA, "no-cache");
     }
 
-    private String browserBinding(HttpServletRequest request) {
+    private void requireSameOriginBrowser(HttpServletRequest request) {
+        if (!"same-origin".equalsIgnoreCase(StringUtils.trimToEmpty(request.getHeader("Sec-Fetch-Site")))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "请求必须来自同源浏览器页面");
+        }
+    }
+
+    private String cookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() == null) {
             return null;
         }
         for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-            if (OIDC_BINDING_COOKIE.equals(cookie.getName())) {
+            if (name.equals(cookie.getName())) {
                 return cookie.getValue();
             }
         }
         return null;
     }
 
-    private void clearBrowserBindingCookie(
-            HttpServletRequest request, HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from(OIDC_BINDING_COOKIE, "")
-                .httpOnly(true)
-                .secure(request.isSecure())
-                .path("/api/v1/unified-auth/oidc/callback/seatunnel")
-                .sameSite("Lax")
-                .maxAge(0)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    private String browserBinding(HttpServletRequest request) {
+        return cookieValue(request, OIDC_BINDING_COOKIE);
+    }
+
+    private boolean secureCookie(HttpServletRequest request) {
+        return secureCookies || request.isSecure();
+    }
+
+    public record TicketConfirmationRequest(String confirmationToken) {
+    }
+
+    public record TicketCancellationRequest(String cancellationToken) {
     }
 
 }

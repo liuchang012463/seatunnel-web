@@ -191,6 +191,11 @@ const UnifiedUsersPage: React.FC = () => {
             <Form.Item
               label="Issuer"
               name="issuer"
+              extra={(
+                <Typography.Text style={{ fontSize: 14 }}>
+                  Discovery 与 ID Token 的 Issuer 按字符串精确匹配；修改末尾斜杠不会迁移既有身份映射。
+                </Typography.Text>
+              )}
               rules={oidcEnabled ? [{ required: true, message: '请输入 OIDC Issuer' }] : []}
             >
               <Input placeholder="https://identity.example.com" autoComplete="off" />

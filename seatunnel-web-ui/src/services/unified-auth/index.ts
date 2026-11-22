@@ -65,6 +65,15 @@ export interface UnifiedAuthLocalUser {
   userType: 'ADMIN_USER' | 'GENERAL_USER';
 }
 
+export interface UnifiedAuthTicketPending {
+  externalDisplayName: string;
+  externalEmail?: string;
+  localUserName?: string;
+  confirmationToken?: string;
+  cancellationToken: string;
+  confirmable: boolean;
+}
+
 const API = '/api/v1/unified-auth';
 
 export const getUnifiedAuthConfig = () =>
@@ -87,3 +96,12 @@ export const bindUnifiedAuthMapping = (identityId: number, localUserId: number) 
 
 export const unbindUnifiedAuthMapping = (identityId: number) =>
   HttpUtils.delete<void>(`${API}/mappings/${identityId}`);
+
+export const getUnifiedAuthTicketPending = () =>
+  HttpUtils.get<UnifiedAuthTicketPending>(`${API}/sso/pending`, { skipErrorHandler: true });
+
+export const confirmUnifiedAuthTicketLogin = (confirmationToken: string) =>
+  HttpUtils.post<void>(`${API}/sso/confirm`, { confirmationToken });
+
+export const cancelUnifiedAuthTicketLogin = (cancellationToken: string) =>
+  HttpUtils.post<void>(`${API}/sso/cancel`, { cancellationToken });

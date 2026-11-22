@@ -318,6 +318,49 @@ class UnifiedAuthServiceImplTest {
     }
 
     @Test
+    void clearingNullableTicketConfigFieldsPersistsNull() {
+        UnifiedAuthConfig current = ticketConfig("https://sso.example.com/validate");
+        current.setId(12L);
+        current.setConfigKey("OIDC");
+        current.setTicketLoginEntryUrl("https://sso.example.com/login");
+        current.setTicketIssuer("https://old-sso.example.com");
+        current.setTicketSuccessField("old.success");
+        current.setTicketSuccessValue("old-value");
+        current.setTicketUsernameField("old.username");
+        UnifiedAuthConfigMapper configMapper = mock(UnifiedAuthConfigMapper.class);
+        when(configMapper.selectOne(any(Wrapper.class))).thenReturn(current);
+        UnifiedAuthServiceImpl service = service(null, "PASSWORD");
+        ReflectionTestUtils.setField(service, "configMapper", configMapper);
+        UnifiedAuthConfigDTO request = ticketOnlyRequest();
+        request.setTicketEnabled(false);
+        request.setTicketValidationEndpoint(" ");
+        request.setTicketLoginEntryUrl("");
+        request.setTicketIssuer("");
+        request.setTicketSuccessField("");
+        request.setTicketSuccessValue("");
+        request.setTicketUsernameField("");
+
+        UnifiedAuthConfigVO saved = service.saveConfig(request);
+
+        assertNull(saved.getTicketValidationEndpoint());
+        assertNull(saved.getTicketLoginEntryUrl());
+        assertNull(saved.getTicketIssuer());
+        assertNull(saved.getTicketSuccessField());
+        assertNull(saved.getTicketSuccessValue());
+        assertNull(saved.getTicketUsernameField());
+        ArgumentCaptor<Wrapper> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(configMapper).update(isNull(), wrapperCaptor.capture());
+        LambdaUpdateWrapper<?> updateWrapper = (LambdaUpdateWrapper<?>) wrapperCaptor.getValue();
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_validation_endpoint"));
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_login_entry_url"));
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_issuer"));
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_success_field"));
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_success_value"));
+        assertTrue(updateWrapper.getSqlSet().contains("ticket_username_field"));
+        assertTrue(updateWrapper.getParamNameValuePairs().containsValue(null));
+    }
+
+    @Test
     void identityInsertRaceRollsBackAndReloadsExistingBinding() throws Exception {
         UnifiedAuthServiceImpl service = service();
         UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
@@ -422,6 +465,167 @@ class UnifiedAuthServiceImplTest {
         assertEquals(42, result.user().getId());
         verify(userMapper).insert(any(User.class));
         verify(identityMapper).update(isNull(), any(Wrapper.class));
+    }
+
+    @Test
+    void ticketConfirmationIsBoundToBrowserAndConsumedOnce() throws Exception {
+        UnifiedAuthConfig config = ticketConfig("https://sso.example.com/validate");
+        config.setConfigVersion(1L);
+        UnifiedAuthServiceImpl service = serviceWithConfig(config);
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        UnifiedAuthIdentity identity = identity(73L, 9308000);
+        identity.setDisplayName("External account");
+        identity.setEmail("external@example.com");
+        User user = new User();
+        user.setId(9308000);
+        user.setUserName("local-user");
+        user.setState(Flag.YES.ordinal());
+        user.setUserType(UserType.GENERAL_USER);
+        when(identityMapper.selectById(73L)).thenReturn(identity);
+        when(userMapper.selectById(9308000)).thenReturn(user);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        String binding = "browser-binding";
+        String token = "one-use-confirmation-token";
+        String cancellationToken = "one-use-cancellation-token";
+        String key = (String) invoke(service, "hashBrowserBinding", binding);
+        Class<?> pendingType = Class.forName(UnifiedAuthServiceImpl.class.getName() + "$PendingTicketLogin");
+        Constructor<?> pendingConstructor = pendingType.getDeclaredConstructor(
+                Long.class, Integer.class, long.class, String.class, String.class, long.class);
+        pendingConstructor.setAccessible(true);
+        Object pending = pendingConstructor.newInstance(
+                73L, 9308000, 1L, token, cancellationToken, System.currentTimeMillis() + 30_000);
+        @SuppressWarnings("unchecked")
+        ConcurrentMap<String, Object> pendingLogins = (ConcurrentMap<String, Object>)
+                ReflectionTestUtils.getField(service, "pendingTicketLogins");
+        pendingLogins.put(key, pending);
+
+        UnifiedAuthServiceImpl.TicketLoginPending pendingView = service.getPendingTicketLogin(binding);
+
+        assertTrue(pendingView.confirmable());
+        assertEquals("External account", pendingView.externalDisplayName());
+        assertEquals("local-user", pendingView.localUserName());
+        assertNotEquals(pendingView.confirmationToken(), pendingView.cancellationToken());
+        assertFalse(service.cancelExternalTicketLogin(binding, pendingView.confirmationToken()));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.confirmExternalTicketLogin(binding, pendingView.cancellationToken()));
+        assertSame(user, service.confirmExternalTicketLogin(binding, pendingView.confirmationToken()));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.confirmExternalTicketLogin(binding, pendingView.confirmationToken()));
+    }
+
+    @Test
+    void unboundTicketPendingExposesOnlyAnIndependentCancellationCapability() throws Exception {
+        UnifiedAuthConfig config = ticketConfig("https://sso.example.com/validate");
+        config.setConfigVersion(1L);
+        UnifiedAuthServiceImpl service = serviceWithConfig(config);
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        UnifiedAuthIdentity identity = identity(73L, null);
+        identity.setDisplayName("Unbound external account");
+        when(identityMapper.selectById(73L)).thenReturn(identity);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        Method stage = UnifiedAuthServiceImpl.class.getDeclaredMethod(
+                "stageTicketLogin", UnifiedAuthServiceImpl.OidcCallbackResult.class, String.class);
+        stage.setAccessible(true);
+        UnifiedAuthServiceImpl.TicketLoginStart start =
+                (UnifiedAuthServiceImpl.TicketLoginStart) stage.invoke(service,
+                        new UnifiedAuthServiceImpl.OidcCallbackResult(null, true, 73L, 1L), null);
+
+        UnifiedAuthServiceImpl.TicketLoginPending pending =
+                service.getPendingTicketLogin(start.browserBinding());
+
+        assertFalse(pending.confirmable());
+        assertNull(pending.confirmationToken());
+        assertTrue(pending.cancellationToken() != null && !pending.cancellationToken().isBlank());
+        assertThrows(IllegalArgumentException.class,
+                () -> service.confirmExternalTicketLogin(start.browserBinding(), pending.cancellationToken()));
+        assertTrue(service.getPendingTicketLogin(start.browserBinding()) != null);
+        assertTrue(service.cancelExternalTicketLogin(start.browserBinding(), pending.cancellationToken()));
+        assertNull(service.getPendingTicketLogin(start.browserBinding()));
+    }
+
+    @Test
+    void unavailableLocalUserPendingKeepsCancellationButHidesConfirmation() throws Exception {
+        UnifiedAuthConfig config = ticketConfig("https://sso.example.com/validate");
+        config.setConfigVersion(1L);
+        UnifiedAuthServiceImpl service = serviceWithConfig(config);
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        UnifiedAuthIdentity identity = identity(73L, 9308000);
+        identity.setDisplayName("Unavailable external account");
+        User unavailableUser = new User();
+        unavailableUser.setId(9308000);
+        unavailableUser.setUserType(UserType.GENERAL_USER);
+        when(identityMapper.selectById(73L)).thenReturn(identity);
+        when(userMapper.selectById(9308000)).thenReturn(unavailableUser);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        Method stage = UnifiedAuthServiceImpl.class.getDeclaredMethod(
+                "stageTicketLogin", UnifiedAuthServiceImpl.OidcCallbackResult.class, String.class);
+        stage.setAccessible(true);
+        UnifiedAuthServiceImpl.TicketLoginStart start =
+                (UnifiedAuthServiceImpl.TicketLoginStart) stage.invoke(service,
+                        new UnifiedAuthServiceImpl.OidcCallbackResult(unavailableUser, false, 73L, 1L), null);
+
+        UnifiedAuthServiceImpl.TicketLoginPending pending =
+                service.getPendingTicketLogin(start.browserBinding());
+
+        assertFalse(pending.confirmable());
+        assertNull(pending.confirmationToken());
+        assertTrue(pending.cancellationToken() != null && !pending.cancellationToken().isBlank());
+        assertTrue(service.cancelExternalTicketLogin(start.browserBinding(), pending.cancellationToken()));
+    }
+
+    @Test
+    void newerTicketFlowReplacesTheSingleActiveBrowserConfirmation() throws Exception {
+        UnifiedAuthConfig config = ticketConfig("https://sso.example.com/validate");
+        config.setConfigVersion(1L);
+        UnifiedAuthServiceImpl service = serviceWithConfig(config);
+        UnifiedAuthIdentityMapper identityMapper = mock(UnifiedAuthIdentityMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        UnifiedAuthIdentity firstIdentity = identity(73L, 9308000);
+        firstIdentity.setDisplayName("First external account");
+        UnifiedAuthIdentity secondIdentity = identity(74L, 9308001);
+        secondIdentity.setDisplayName("Second external account");
+        User firstUser = activeGeneralUser(9308000, "first-local-user");
+        User secondUser = activeGeneralUser(9308001, "second-local-user");
+        when(identityMapper.selectById(73L)).thenReturn(firstIdentity);
+        when(identityMapper.selectById(74L)).thenReturn(secondIdentity);
+        when(userMapper.selectById(9308000)).thenReturn(firstUser);
+        when(userMapper.selectById(9308001)).thenReturn(secondUser);
+        ReflectionTestUtils.setField(service, "identityMapper", identityMapper);
+        ReflectionTestUtils.setField(service, "userMapper", userMapper);
+        Method stage = UnifiedAuthServiceImpl.class.getDeclaredMethod(
+                "stageTicketLogin", UnifiedAuthServiceImpl.OidcCallbackResult.class, String.class);
+        stage.setAccessible(true);
+
+        UnifiedAuthServiceImpl.TicketLoginStart firstStart =
+                (UnifiedAuthServiceImpl.TicketLoginStart) stage.invoke(service,
+                        new UnifiedAuthServiceImpl.OidcCallbackResult(firstUser, true, 73L, 1L), null);
+        UnifiedAuthServiceImpl.TicketLoginPending firstPending =
+                service.getPendingTicketLogin(firstStart.browserBinding());
+        UnifiedAuthServiceImpl.TicketLoginStart secondStart =
+                (UnifiedAuthServiceImpl.TicketLoginStart) stage.invoke(service,
+                        new UnifiedAuthServiceImpl.OidcCallbackResult(secondUser, true, 74L, 1L),
+                        firstStart.browserBinding());
+        UnifiedAuthServiceImpl.TicketLoginPending secondPending =
+                service.getPendingTicketLogin(secondStart.browserBinding());
+
+        assertEquals(firstStart.browserBinding(), secondStart.browserBinding());
+        assertEquals("Second external account", secondPending.externalDisplayName());
+        assertNotEquals(firstPending.confirmationToken(), secondPending.confirmationToken());
+        assertNotEquals(firstPending.cancellationToken(), secondPending.cancellationToken());
+        assertFalse(service.cancelExternalTicketLogin(
+                secondStart.browserBinding(), firstPending.cancellationToken()));
+        assertFalse(service.cancelExternalTicketLogin(
+                secondStart.browserBinding(), secondPending.confirmationToken()));
+        assertEquals("Second external account",
+                service.getPendingTicketLogin(secondStart.browserBinding()).externalDisplayName());
+        assertTrue(service.cancelExternalTicketLogin(
+                secondStart.browserBinding(), secondPending.cancellationToken()));
     }
 
     @Test
