@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.dao.plugin.h2;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import java.sql.DriverManager;
+import java.sql.Statement;
 import static org.junit.jupiter.api.Assertions.*;
 
 class H2BootstrapMigrationTest {
@@ -13,7 +14,7 @@ class H2BootstrapMigrationTest {
                 .table("t_seatunnel_web_schema_history").locations("classpath:db/migration/h2").outOfOrder(true).load();
         flyway.migrate();
         flyway.validate();
-        assertEquals("1.0.62", flyway.info().current().getVersion().toString());
+        assertEquals("1.0.63", flyway.info().current().getVersion().toString());
         try (var connection = DriverManager.getConnection(url, "sa", "");
              var stmt = connection.createStatement()) {
             // Query real application columns and Quartz tables, not just SQL syntax.
@@ -30,6 +31,19 @@ class H2BootstrapMigrationTest {
                 assertTrue(rows.next());
                 assertEquals(5, rows.getInt(1));
             }
+            try (var rows = stmt.executeQuery("SELECT id FROM t_seatunnel_web_user WHERE user_name='admin'")) {
+                assertTrue(rows.next());
+                assertEquals(1, rows.getInt(1));
+            }
+            try (var insert = connection.prepareStatement(
+                    "INSERT INTO t_seatunnel_web_user (user_name, state) VALUES ('sso_generated', 1)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                assertEquals(1, insert.executeUpdate());
+                try (var generated = insert.getGeneratedKeys()) {
+                    assertTrue(generated.next());
+                    assertTrue(generated.getInt(1) > 1);
+                }
+            }
         }
         assertEquals(0, flyway.migrate().migrationsExecuted);
     }
@@ -45,6 +59,43 @@ class H2BootstrapMigrationTest {
         assertEquals(0, flyway.migrate().migrationsExecuted);
         try (var c = DriverManager.getConnection(url, "sa", "")) {
             assertFalse(c.getMetaData().getTables(null, null, "T_SEATUNNEL_WEB_DATASOURCE", null).next());
+        }
+    }
+
+    @Test
+    void upgradesUserIdentityPastExistingExplicitIds() throws Exception {
+        String url = "jdbc:h2:mem:user_identity_upgrade;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1";
+        Flyway.configure().dataSource(url, "sa", "").locations("classpath:db/migration/h2")
+                .target("1.0.62").load().migrate();
+        try (var connection = DriverManager.getConnection(url, "sa", "");
+             var statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO t_seatunnel_web_user (id, user_name, state) "
+                    + "VALUES (2, 'existing_two', 1)");
+            statement.executeUpdate("INSERT INTO t_seatunnel_web_user (id, user_name, state) "
+                    + "VALUES (1701, 'existing_high', 1)");
+        }
+
+        var flyway = Flyway.configure().dataSource(url, "sa", "")
+                .locations("classpath:db/migration/h2").load();
+        assertEquals(1, flyway.migrate().migrationsExecuted);
+        flyway.validate();
+
+        try (var connection = DriverManager.getConnection(url, "sa", "");
+             var statement = connection.createStatement()) {
+            try (var rows = statement.executeQuery("SELECT COUNT(*) FROM t_seatunnel_web_user "
+                    + "WHERE id IN (1, 2, 1701)")) {
+                assertTrue(rows.next());
+                assertEquals(3, rows.getInt(1));
+            }
+            try (var insert = connection.prepareStatement(
+                    "INSERT INTO t_seatunnel_web_user (user_name, state) VALUES ('sso_after_upgrade', 1)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                assertEquals(1, insert.executeUpdate());
+                try (var generated = insert.getGeneratedKeys()) {
+                    assertTrue(generated.next());
+                    assertTrue(generated.getInt(1) > 1701);
+                }
+            }
         }
     }
 
