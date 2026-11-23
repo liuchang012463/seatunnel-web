@@ -45,7 +45,7 @@ yarn build
 
 ## Pull Request Guidelines
 
-1. Fork the repository and create a topic branch from `main`.
+1. Start a topic branch from `develop` and target `develop`. See [AGENTS.md](AGENTS.md#贡献与发布) for repository rules.
 2. Keep changes focused and avoid unrelated formatting churn.
 3. Add or update tests when behavior changes.
 4. Update documentation and `CHANGELOG.md` when user-facing behavior changes.

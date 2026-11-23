@@ -3,6 +3,12 @@
 * 修改或新增代码前，必须阅读根目录 [`CLAUDE.md`]，必须在当前分支执行 `git pull --rebase`拉取上游最新代码。
 * 需主动补充必要的注释和关键日志，确保代码逻辑清晰、执行过程可追踪，便于后续维护和问题排查。
 
+## 贡献与发布
+
+* 从最新 `develop` 建功能分支，按功能小步提交，使用中文 Conventional Commits。PR 默认提到 `develop`，写明改动和验证结果，前后端 CI 通过后合入。
+* 合入 `main` 还需至少 1 名非作者审批。禁止直接推送或强推 `main` 和 `develop`。
+* 仅发布维护者可创建或更新发布标签（如 `release_*`）或触发发布。
+
 ## 版本与范围
 
 * SeaTunnel Web：`1.0.0`；SeaTunnel Engine：`3.0.0`。
@@ -26,7 +32,7 @@
 * 新增 Flyway migration 前必须检查现有版本，禁止重复版本；已应用的 migration 不改名、不修改，不手工编辑历史表。
 * OpenMetadata 操作必须使用官方 `2.0.4` Java SDK；SDK 未直接暴露的能力只能使用 SDK 自带网络客户端。禁止自建 HTTP 客户端、直连 Airflow 或使用其他版本 Schema。
 * OpenMetadata ingestion 扩展维护在 `../workspace/OpenMetadata/ingestion/extensions` 的版本匹配分支；新增数据库在该处实现 source/connection、`sourcePythonClass`、驱动路径和依赖，运行 `package-bundle.sh` 验证。本仓库不保存 OM 扩展源码或打包脚本。
-* 每个独立功能小步提交，使用 Conventional Commits，内容使用中文；不得使用破坏性 Git 操作。
+* 不得使用破坏性 Git 操作。
 
 ## 验收
 
