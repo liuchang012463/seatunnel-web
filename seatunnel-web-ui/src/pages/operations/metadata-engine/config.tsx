@@ -38,10 +38,6 @@ type TestResult = {
 const responseError = (response: MetadataApiResponse<unknown>, fallback: string) =>
   response.msg || response.message || fallback;
 
-const preferredDefaultDomain = (config?: OpenMetadataServerConfig) => {
-  return config?.defaultDomainFqn || '';
-};
-
 const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
   baseUrl: values.baseUrl?.trim(),
   token: values.token?.trim() || undefined,
@@ -77,7 +73,8 @@ const MetadataEngineConfigPage: React.FC = () => {
         form.setFieldsValue({
           baseUrl: data?.baseUrl || '',
           token: undefined,
-          defaultDomainFqn: preferredDefaultDomain(data),
+          // Select treats an empty string as a selection and hides its placeholder.
+          defaultDomainFqn: data?.defaultDomainFqn || undefined,
           connectTimeoutMs: data?.connectTimeoutMs || 10000,
           readTimeoutMs: data?.readTimeoutMs || 60000,
           rebuildBindings: false,
