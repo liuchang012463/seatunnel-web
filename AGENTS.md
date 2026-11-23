@@ -5,7 +5,7 @@
 
 ## 贡献与发布
 
-* 从最新 `develop` 建功能分支，按功能小步提交，使用中文 Conventional Commits。PR 默认提到 `develop`，写明改动和验证结果。同仓 PR 在前后端 CI 通过且满足分支保护后自动 Rebase 合入，随后删除远端功能分支。
+* 从最新 `develop` 建功能分支，按功能小步提交，使用中文 Conventional Commits。PR 默认提到 `develop`，写明改动和验证结果。在 Gitea 选择检查通过后合并，合入后默认删除远端功能分支。
 * 合入 `main` 还需至少 1 名非作者审批。禁止直接推送或强推 `main` 和 `develop`。
 * 仅发布维护者可创建或更新发布标签（如 `release_*`）或触发发布。
 
