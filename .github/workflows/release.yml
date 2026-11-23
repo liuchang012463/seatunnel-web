@@ -44,7 +44,7 @@ jobs:
         working-directory: seatunnel-web-ui
         run: yarn install --frozen-lockfile
       - name: Test and build full distribution
-        run: ./mvnw --batch-mode --no-transfer-progress -T 1C clean verify
+        run: ./mvnw --batch-mode --no-transfer-progress -T 1C -DskipTests=false clean verify
       - name: Package release payload
         run: |
           mkdir -p release
