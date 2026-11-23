@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import DataExplorationDrawer from './DataExplorationDrawer';
 
@@ -49,9 +49,13 @@ it('opens column definitions first and keeps wide sample fields readable', async
   const { container } = render(React.createElement(DataExplorationDrawer, {
     inline: true, open: true, dataSourceId: '42', onClose: () => {},
   }));
-  // 列定义和样本 Tab 属于表详情；先从左侧表列表打开一张表。
+  // 单击仅定位 ER 图，双击才打开列定义和样本 Tab。
   await waitFor(() => expect(service.fetchDataExplorationTables).toHaveBeenCalled());
-  fireEvent.click(await screen.findByRole('button', { name: /orders/ }));
+  const orders = await screen.findByRole('button', { name: /orders/ });
+  fireEvent.click(orders);
+  expect(orders.classList.contains('is-highlighted')).toBe(true);
+  expect(screen.queryByRole('tab', { name: /列/ })).toBeNull();
+  fireEvent.doubleClick(orders);
   const columnsTab = await screen.findByRole('tab', { name: /列/ });
   expect(columnsTab.getAttribute('aria-selected')).toBe('true');
   expect(service.previewDataExplorationTable).not.toHaveBeenCalled();
@@ -62,7 +66,7 @@ it('opens column definitions first and keeps wide sample fields readable', async
   const sampleTable = container.querySelector('.ant-tabs-tabpane-active .ant-table-body table') as HTMLElement;
   expect(sampleTable.style.width).toBe('2880px');
 
-  fireEvent.click(screen.getByRole('button', { name: /customers/ }));
+  fireEvent.doubleClick(screen.getByRole('button', { name: /customers/ }));
   await waitFor(() => expect(screen.getByRole('tab', { name: /列/ }).getAttribute('aria-selected')).toBe('true'));
   expect(service.previewDataExplorationTable).toHaveBeenCalledTimes(1);
 });
@@ -122,19 +126,23 @@ it('shows a readable failure notice for an unsuccessful metadata completion resu
   render(React.createElement(DataExplorationDrawer, {
     inline: true, open: true, dataSourceId: '42', onClose: () => {},
   }));
-  // 表详情 Tab 需先选择表后才会显示。
+  // 双击表名打开表详情 Tab。
   await waitFor(() => expect(service.fetchDataExplorationTables).toHaveBeenCalled());
-  fireEvent.click(await screen.findByRole('button', { name: /orders/ }));
+  fireEvent.doubleClick(await screen.findByRole('button', { name: /orders/ }));
   await screen.findByRole('tab', { name: /列/ });
   fireEvent.click(screen.getByRole('tab', { name: /样本数据/ }));
   expect(await screen.findByText('sample order')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: /customers/ }));
+  fireEvent.doubleClick(screen.getByRole('button', { name: /customers/ }));
   expect(await screen.findByText('详情 customers')).toBeTruthy();
   fireEvent.click(await screen.findByRole('button', { name: /补全元数据/ }));
 
-  const failureNotice = await screen.findByRole('alert');
-  expect(screen.getByText('元数据补全未完成')).toBeTruthy();
-  expect(screen.getByText('LLM 描述生成失败')).toBeTruthy();
-  expect(screen.getByText(/请检查相关服务配置后重试/)).toBeTruthy();
-  expect(failureNotice.textContent).not.toContain('service.db.public.customers');
+  const failureDialog = within(await screen.findByRole('dialog', { name: '元数据补全' }));
+  expect(await failureDialog.findByText('元数据补全未完成')).toBeTruthy();
+  const failureRow = within(failureDialog.getByRole('listitem'));
+  expect(failureRow.getByText('customers')).toBeTruthy();
+  expect(failureRow.getByText('LLM 描述生成失败')).toBeTruthy();
+  expect(failureDialog.getByText(/请检查相关服务配置后重试/)).toBeTruthy();
+  expect(failureDialog.queryByText('service.db.public.customers')).toBeNull();
+  fireEvent.click(failureDialog.getByRole('button', { name: '我知道了' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '元数据补全' })).toBeNull());
 });
