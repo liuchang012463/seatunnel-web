@@ -1,0 +1,46 @@
+name: Gitea Release
+
+on:
+  push:
+    tags:
+      - 'release_**'
+
+concurrency:
+  group: gitea-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ github.server_url != 'https://github.com' && github.repository == 'bigdata/seatunnel-web' && !github.event.deleted }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    # Gitea 将 contents 映射到代码和 Release 权限。
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出 tag 对应代码
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # JDK、Node、Yarn 和依赖镜像来自 Gitea Runner 的预建镜像。
+      - name: 检查构建工具版本
+        run: |
+          java -version
+          node --version
+          npm --version
+          yarn --version
+
+      - name: 安装前端依赖
+        working-directory: seatunnel-web-ui
+        run: yarn install --frozen-lockfile
+
+      - name: 测试并构建完整发行包
+        run: ./mvnw --batch-mode --no-transfer-progress -T 1C -DskipTests=false clean verify
+
+      - name: 上传归档并发布 Gitea Release
+        env:
+          GITEA_RELEASE_API_URL: http://192.168.100.91:13000/api/v1
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: python3 scripts/publish-gitea-release.py
