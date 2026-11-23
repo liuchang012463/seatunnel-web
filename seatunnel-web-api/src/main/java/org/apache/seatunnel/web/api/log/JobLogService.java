@@ -11,7 +11,6 @@ import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.engine.client.rest.SeaTunnelRestClient;
 import org.apache.seatunnel.web.spi.enums.Status;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.apache.seatunnel.web.common.utils.NonNullFunctions;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
@@ -68,7 +67,8 @@ public class JobLogService {
     private static final long ENGINE_LOG_RETRY_INTERVAL_MS = 30_000L;
     private static final int MAX_MASKABLE_LOG_LINE_CHARS = 64 * 1024;
     private static final int MAX_SEARCH_LOG_LINE_CHARS = 16 * 1024;
-    private static final String MASTER_FALLBACK_NODE = "__master_shared_logs__";
+    // Keep the existing archive cursor key so upgrades continue from the same offset.
+    private static final String CONFIGURED_ENDPOINT_CURSOR = "__master_shared_logs__";
     private static final ConcurrentHashMap<Path, ReentrantLock> ENGINE_COLLECTION_LOCKS = new ConcurrentHashMap<>();
     private static final Set<Path> SCHEDULED_ENGINE_COLLECTIONS = ConcurrentHashMap.newKeySet();
     private static final ThreadPoolExecutor ENGINE_LOG_EXECUTOR = createEngineLogExecutor();
@@ -84,14 +84,6 @@ public class JobLogService {
 
     @Resource
     private JobLogParser jobLogParser;
-
-    /**
-     * Engine clients whose nodes share one log directory. For these clients every node writes the
-     * same {@code job-{engineJobId}.log}, so one download through the configured REST address
-     * replaces the node listing and the per-node downloads.
-     */
-    @Value("${seatunnel.job.shared-log-client-ids:}")
-    private String sharedLogClientIds;
 
     private final JobLogFileReader jobLogFileReader = new JobLogFileReader();
 
@@ -600,7 +592,6 @@ public class JobLogService {
 
         ReentrantLock lock = ENGINE_COLLECTION_LOCKS.computeIfAbsent(path, ignored -> new ReentrantLock());
         lock.lock();
-        List<StagedLog> stagedLogs = new ArrayList<>();
         try {
             Path statePath = snapshotStatePath(path);
             Files.createDirectories(statePath.getParent());
@@ -608,21 +599,18 @@ public class JobLogService {
             try (FileChannel channel = FileChannel.open(
                     lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                  FileLock ignored = channel.lock()) {
-                collectEngineLogLocked(context, path, forceTerminal, stagedLogs);
+                collectEngineLogLocked(context, path, forceTerminal);
             }
         } catch (Exception e) {
             log.warn("Persist SeaTunnel Engine log failed, instanceId={}, jobMode={}",
                     context.instanceId(), context.jobMode(), e);
         } finally {
-            for (StagedLog staged : stagedLogs) {
-                deleteStagedLog(staged.path());
-            }
             lock.unlock();
         }
     }
 
     private void collectEngineLogLocked(
-            JobLogContext context, Path path, boolean forceTerminal, List<StagedLog> stagedLogs) throws IOException {
+            JobLogContext context, Path path, boolean forceTerminal) throws IOException {
         long now = System.currentTimeMillis();
         EngineSnapshotState state = readSnapshotState(path);
         if (context.isTerminal() && state.terminalCollected()) {
@@ -633,159 +621,54 @@ public class JobLogService {
                 && now - state.lastAttemptAt() < ENGINE_LOG_RETRY_INTERVAL_MS) {
             return;
         }
-        if (isSharedLogClient(context.clientId())) {
-            collectSharedEngineLogLocked(context, path, state, now, stagedLogs);
-            return;
-        }
-
-        Map<String, EngineNodeSnapshotState> nodeSnapshots = new LinkedHashMap<>(state.nodeSnapshots());
-        List<SeaTunnelRestClient.NodeLogFile> files = List.of();
-        boolean listingFailed = false;
+        // The configured Engine REST endpoint serves the job log file for Web.
+        // Node addresses advertised by the Engine may be internal to its cluster.
+        Path staged = null;
         try {
-            files = seaTunnelRestClient.jobLogFiles(context.clientId(), context.engineJobId());
+            staged = stageConfiguredEndpointLog(context, path);
+            if (staged == null) {
+                log.debug("Configured Engine job log is empty, clientId={}, instanceId={}, engineJobId={}",
+                        context.clientId(), context.instanceId(), context.engineJobId());
+            }
         } catch (Exception e) {
-            listingFailed = true;
-            log.warn("List Engine job log nodes failed, instanceId={}, engineJobId={}",
-                    context.instanceId(), context.engineJobId(), e);
-        }
-        if (files == null) {
-            files = List.of();
-        }
-
-        boolean allNodesFetched = !listingFailed && !files.isEmpty();
-        for (SeaTunnelRestClient.NodeLogFile file : files) {
-            try {
-                StagedLog staged = stageNodeLog(context, path, file);
-                if (staged == null) {
-                    allNodesFetched = false;
-                } else {
-                    stagedLogs.add(staged);
-                }
-            } catch (Exception e) {
-                allNodesFetched = false;
-                log.warn("Fetch Engine job log node failed, instanceId={}, node={}",
-                        context.instanceId(), file.node(), e);
-            }
-        }
-
-        boolean hasNodeHistory = nodeSnapshots.keySet().stream()
-                .anyMatch(node -> !MASTER_FALLBACK_NODE.equals(node));
-        boolean masterFallback = state.masterFallback();
-        if (!hasNodeHistory && (!allNodesFetched || stagedLogs.isEmpty())) {
-            try {
-                StagedLog fallback = stageMasterLog(context, path);
-                if (fallback != null) {
-                    stagedLogs.add(fallback);
-                    masterFallback = true;
-                    log.info("Persisted shared Engine job log through configured master endpoint, instanceId={}, engineJobId={}",
-                            context.instanceId(), context.engineJobId());
-                }
-            } catch (Exception e) {
-                log.warn("Fetch configured master Engine job log fallback failed, instanceId={}, engineJobId={}",
-                        context.instanceId(), context.engineJobId(), e);
-            }
-        }
-
-        boolean anyLogContent = false;
-        for (StagedLog staged : stagedLogs) {
-            try {
-                EngineNodeSnapshotState previous = nodeSnapshots.get(staged.node());
-                EngineNodeSnapshotState next = appendEngineSnapshot(
-                        context, path, staged.path(), staged.node(), previous);
-                nodeSnapshots.put(staged.node(), next);
-                if (!MASTER_FALLBACK_NODE.equals(staged.node())) {
-                    anyLogContent = true;
-                }
-            } catch (Exception e) {
-                allNodesFetched = false;
-                log.warn("Append Engine job log node failed, instanceId={}, node={}",
-                        context.instanceId(), staged.node(), e);
-            }
-        }
-
-        boolean terminalCollected = context.isTerminal()
-                && allNodesFetched
-                && anyLogContent
-                && files.stream().allMatch(file -> {
-                    EngineNodeSnapshotState nodeState = nodeSnapshots.get(file.node());
-                    return nodeState != null && nodeState.terminalCollected();
-                });
-        writeSnapshotState(path, new EngineSnapshotState(
-                now,
-                terminalCollected ? now : state.lastTerminalAttemptAt(),
-                terminalCollected,
-                masterFallback,
-                nodeSnapshots));
-    }
-
-    /**
-     * Collects the log of a client whose Engine nodes share one log directory. The configured
-     * REST endpoint already serves the merged file, so one download replaces the node listing
-     * and the per-node downloads; the file keeps the existing master-fallback cursor identity so
-     * a previous archive is continued instead of duplicated.
-     */
-    private void collectSharedEngineLogLocked(
-            JobLogContext context,
-            Path path,
-            EngineSnapshotState state,
-            long now,
-            List<StagedLog> stagedLogs) throws IOException {
-        Map<String, EngineNodeSnapshotState> nodeSnapshots = new LinkedHashMap<>(state.nodeSnapshots());
-        StagedLog staged = null;
-        try {
-            staged = stageMasterLog(context, path);
-        } catch (Exception e) {
-            log.warn("Fetch shared Engine job log failed, keep the archived content and cursor, "
-                            + "clientId={}, instanceId={}, engineJobId={}, reason={}",
-                    context.clientId(), context.instanceId(), context.engineJobId(), e.getMessage(), e);
+            log.warn("Fetch job log through configured Engine REST endpoint failed, "
+                            + "clientId={}, instanceId={}, engineJobId={}",
+                    context.clientId(), context.instanceId(), context.engineJobId(), e);
         }
 
         if (staged == null) {
-            log.warn("Shared Engine job log is not available yet, keep the archived content and cursor, "
-                            + "clientId={}, instanceId={}, engineJobId={}",
-                    context.clientId(), context.instanceId(), context.engineJobId());
-            // Remember the attempt so the next one honours the retry interval, but keep the
-            // archived snapshots and the cursor untouched.
+            // Record the attempt for retry throttling while preserving the archive and cursor.
             writeSnapshotState(path, new EngineSnapshotState(
                     now,
                     state.lastTerminalAttemptAt(),
                     state.terminalCollected(),
                     state.masterFallback(),
-                    nodeSnapshots));
+                    state.nodeSnapshots()));
             return;
         }
 
-        stagedLogs.add(staged);
-        EngineNodeSnapshotState previous = nodeSnapshots.get(MASTER_FALLBACK_NODE);
-        if (previous == null) {
-            previous = findMatchingNodeCursor(nodeSnapshots, staged.path());
-        }
-        EngineNodeSnapshotState next = appendEngineSnapshot(
-                context, path, staged.path(), MASTER_FALLBACK_NODE, previous);
-        nodeSnapshots.put(MASTER_FALLBACK_NODE, next);
-        writeSnapshotState(path, new EngineSnapshotState(
-                now,
-                next.terminalCollected() ? now : state.lastTerminalAttemptAt(),
-                next.terminalCollected(),
-                true,
-                nodeSnapshots));
-        log.debug("Collected shared Engine job log, clientId={}, instanceId={}, engineJobId={}, "
-                        + "bytes={}, terminalCollected={}",
-                context.clientId(), context.instanceId(), context.engineJobId(),
-                next.snapshotBytes(), next.terminalCollected());
-    }
-
-    private boolean isSharedLogClient(Long clientId) {
-        if (clientId == null || clientId <= 0 || StringUtils.isBlank(sharedLogClientIds)) {
-            return false;
-        }
-        String target = String.valueOf(clientId);
-        for (String configuredId : StringUtils.split(sharedLogClientIds, ',')) {
-            if (target.equals(StringUtils.trim(configuredId))) {
-                return true;
+        try {
+            Map<String, EngineNodeSnapshotState> nodeSnapshots = new LinkedHashMap<>(state.nodeSnapshots());
+            EngineNodeSnapshotState previous = nodeSnapshots.get(CONFIGURED_ENDPOINT_CURSOR);
+            if (previous == null) {
+                previous = findMatchingNodeCursor(nodeSnapshots, staged);
             }
+            EngineNodeSnapshotState next = appendEngineSnapshot(
+                    context, path, staged, CONFIGURED_ENDPOINT_CURSOR, previous);
+            nodeSnapshots.put(CONFIGURED_ENDPOINT_CURSOR, next);
+            writeSnapshotState(path, new EngineSnapshotState(
+                    now,
+                    next.terminalCollected() ? now : state.lastTerminalAttemptAt(),
+                    next.terminalCollected(),
+                    true,
+                    nodeSnapshots));
+            log.debug("Collected job log through configured Engine REST endpoint, "
+                            + "clientId={}, instanceId={}, engineJobId={}, bytes={}, terminalCollected={}",
+                    context.clientId(), context.instanceId(), context.engineJobId(),
+                    next.snapshotBytes(), next.terminalCollected());
+        } finally {
+            deleteStagedLog(staged);
         }
-        return false;
     }
 
     /**
@@ -798,7 +681,7 @@ public class JobLogService {
         long currentBytes = Files.size(sharedLog);
         EngineNodeSnapshotState matched = null;
         for (Map.Entry<String, EngineNodeSnapshotState> entry : nodeSnapshots.entrySet()) {
-            if (MASTER_FALLBACK_NODE.equals(entry.getKey())) {
+            if (CONFIGURED_ENDPOINT_CURSOR.equals(entry.getKey())) {
                 continue;
             }
             EngineNodeSnapshotState candidate = entry.getValue();
@@ -815,34 +698,7 @@ public class JobLogService {
         return matched;
     }
 
-    private StagedLog stageNodeLog(JobLogContext context, Path logPath, SeaTunnelRestClient.NodeLogFile file)
-            throws IOException {
-        Path raw = createStagingFile(logPath, ".raw");
-        Path masked = createStagingFile(logPath, ".masked");
-        boolean keepMasked = false;
-        try {
-            try (OutputStream output = Files.newOutputStream(
-                    raw, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-                seaTunnelRestClient.writeJobLogFile(context.clientId(), context.engineJobId(), file, output);
-            }
-            if (Files.size(raw) == 0L) {
-                return null;
-            }
-            maskSensitiveFile(raw, masked);
-            if (Files.size(masked) == 0L) {
-                return null;
-            }
-            keepMasked = true;
-            return new StagedLog(file.node(), masked);
-        } finally {
-            deleteStagedLog(raw);
-            if (!keepMasked) {
-                deleteStagedLog(masked);
-            }
-        }
-    }
-
-    private StagedLog stageMasterLog(JobLogContext context, Path logPath) throws IOException {
+    private Path stageConfiguredEndpointLog(JobLogContext context, Path logPath) throws IOException {
         Path raw = createStagingFile(logPath, ".raw");
         Path masked = createStagingFile(logPath, ".masked");
         boolean keepMasked = false;
@@ -859,7 +715,7 @@ public class JobLogService {
                 return null;
             }
             keepMasked = true;
-            return new StagedLog(MASTER_FALLBACK_NODE, masked);
+            return masked;
         } finally {
             deleteStagedLog(raw);
             if (!keepMasked) {
@@ -1234,9 +1090,6 @@ public class JobLogService {
     }
 
     private record EngineNodeSnapshotState(long snapshotBytes, String snapshotHash, boolean terminalCollected) {
-    }
-
-    private record StagedLog(String node, Path path) {
     }
 
     private record SnapshotPresence(boolean sameNode, boolean sharedContent) {

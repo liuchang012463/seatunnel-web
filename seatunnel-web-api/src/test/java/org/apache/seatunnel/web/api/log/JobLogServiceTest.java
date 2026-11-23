@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -26,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -80,16 +78,10 @@ class JobLogServiceTest {
                 .logPath(logPath.toString())
                 .build();
         when(jobInstanceDao.queryById(1L)).thenReturn(instance);
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080",
-                "http://master:8080/logs/job-engine-1.log",
-                "job-engine-1.log"
-        );
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-1")).thenReturn(List.of(nodeLogFile));
         CountDownLatch fetched = new CountDownLatch(1);
-        when(seaTunnelRestClient.writeJobLogFile(eq(2L), eq("engine-1"), eq(nodeLogFile), any(OutputStream.class)))
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-1"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
-                    OutputStream output = invocation.getArgument(3);
+                    OutputStream output = invocation.getArgument(2);
                     byte[] bytes = "engine failure: connection refused".getBytes(StandardCharsets.UTF_8);
                     output.write(bytes);
                     fetched.countDown();
@@ -106,13 +98,12 @@ class JobLogServiceTest {
         assertTrue(stored.contains("engine failure: connection refused"));
         assertEquals(1, count(stored, "=== SEA TUNNEL ENGINE LOG SNAPSHOT"));
         assertTrue(jobLogService.getFullContent(1L, JobMode.BATCH).contains("engine failure"));
-        verify(seaTunnelRestClient, times(1)).jobLogFiles(eq(2L), eq("engine-1"));
         verify(seaTunnelRestClient, times(1))
-                .writeJobLogFile(eq(2L), eq("engine-1"), eq(nodeLogFile), any(OutputStream.class));
+                .writeMasterJobLogFile(eq(2L), eq("engine-1"), any(OutputStream.class));
     }
 
     @Test
-    void appendsOnlyNewNodeBytesAndPacesActiveCollectionButRunsTerminalCollection() throws Exception {
+    void appendsOnlyNewEngineLogBytesAndPacesActiveCollectionButRunsTerminalCollection() throws Exception {
         Path logPath = tempDir.resolve("job-7.log");
         Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
         JobInstance instance = JobInstance.builder()
@@ -123,18 +114,12 @@ class JobLogServiceTest {
                 .logPath(logPath.toString())
                 .build();
         when(jobInstanceDao.queryById(7L)).thenReturn(instance);
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080",
-                "http://master:8080/logs/job-engine-7.log",
-                "job-engine-7.log"
-        );
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-7")).thenReturn(List.of(nodeLogFile));
         AtomicReference<String> engineLog = new AtomicReference<>("first line\n");
         CountDownLatch firstFetchCompleted = new CountDownLatch(1);
-        when(seaTunnelRestClient.writeJobLogFile(eq(2L), eq("engine-7"), eq(nodeLogFile), any(OutputStream.class)))
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-7"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
                     byte[] bytes = engineLog.get().getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
+                    ((OutputStream) invocation.getArgument(2)).write(bytes);
                     firstFetchCompleted.countDown();
                     return (long) bytes.length;
                 });
@@ -143,7 +128,7 @@ class JobLogServiceTest {
         jobLogService.persistEngineLog(7L, JobMode.BATCH);
         assertTrue(firstFetchCompleted.await(2, TimeUnit.SECONDS));
         awaitCollectionLockReleased(logPath);
-        verify(seaTunnelRestClient, times(1)).jobLogFiles(2L, "engine-7");
+        verify(seaTunnelRestClient, times(1)).writeMasterJobLogFile(eq(2L), eq("engine-7"), any(OutputStream.class));
 
         instance.setJobStatus(JobStatus.FINISHED);
         engineLog.set("first line\nsecond line\n");
@@ -154,105 +139,7 @@ class JobLogServiceTest {
         assertEquals(1, stored.lines().filter(line -> line.contains("first line")).count());
         assertTrue(stored.contains("second line"));
         assertTrue(stored.contains("delta=true fromBytes="));
-        verify(seaTunnelRestClient, times(3)).jobLogFiles(2L, "engine-7");
-    }
-
-    @Test
-    void fallsBackToTheConfiguredMasterWhenAllNodeLogLinksAreUnreachable() throws Exception {
-        Path logPath = tempDir.resolve("job-8.log");
-        Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
-        JobInstance instance = JobInstance.builder()
-                .id(8L)
-                .clientId(2L)
-                .engineJobId("engine-8")
-                .jobStatus(JobStatus.FINISHED)
-                .logPath(logPath.toString())
-                .build();
-        when(jobInstanceDao.queryById(8L)).thenReturn(instance);
-        SeaTunnelRestClient.NodeLogFile masterLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-8.log", "job-engine-8.log");
-        SeaTunnelRestClient.NodeLogFile workerLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "worker1:8080", "http://worker1:8080/logs/job-engine-8.log", "job-engine-8.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-8"))
-                .thenReturn(List.of(masterLogFile, workerLogFile));
-        when(seaTunnelRestClient.writeJobLogFile(
-                eq(2L), eq("engine-8"), any(SeaTunnelRestClient.NodeLogFile.class), any(OutputStream.class)))
-                .thenThrow(new IllegalStateException("Engine node is not reachable from Web"));
-        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-8"), any(OutputStream.class)))
-                .thenAnswer(invocation -> {
-                    byte[] bytes = "shared volume worker output\n".getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(2)).write(bytes);
-                    return (long) bytes.length;
-                });
-
-        jobLogService.persistFinalEngineLog(8L, JobMode.BATCH);
-
-        String stored = Files.readString(logPath, StandardCharsets.UTF_8);
-        assertTrue(stored.contains("shared volume worker output"));
-        assertTrue(stored.contains("node=__master_shared_logs__"));
-        verify(seaTunnelRestClient, times(2))
-                .writeJobLogFile(eq(2L), eq("engine-8"), any(SeaTunnelRestClient.NodeLogFile.class), any(OutputStream.class));
-        verify(seaTunnelRestClient, times(1)).writeMasterJobLogFile(eq(2L), eq("engine-8"), any(OutputStream.class));
-    }
-
-    @Test
-    void retriesNodeDirectoryAfterPartialTerminalPollAndDoesNotDuplicateSharedFallback() throws Exception {
-        Path logPath = tempDir.resolve("job-9.log");
-        Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
-        JobInstance instance = JobInstance.builder()
-                .id(9L)
-                .clientId(2L)
-                .engineJobId("engine-9")
-                .jobStatus(JobStatus.FINISHED)
-                .logPath(logPath.toString())
-                .build();
-        when(jobInstanceDao.queryById(9L)).thenReturn(instance);
-
-        SeaTunnelRestClient.NodeLogFile masterLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-9.log", "job-engine-9.log");
-        SeaTunnelRestClient.NodeLogFile workerLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "worker1:8080", "http://worker1:8080/logs/job-engine-9.log", "job-engine-9.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-9"))
-                .thenReturn(List.of(masterLogFile, workerLogFile));
-        CountDownLatch firstWorkerAttempt = new CountDownLatch(1);
-        AtomicInteger workerAttempts = new AtomicInteger();
-        when(seaTunnelRestClient.writeJobLogFile(eq(2L), eq("engine-9"), any(), any(OutputStream.class)))
-                .thenAnswer(invocation -> {
-                    SeaTunnelRestClient.NodeLogFile file = invocation.getArgument(2);
-                    if (file.equals(workerLogFile) && workerAttempts.incrementAndGet() == 1) {
-                        firstWorkerAttempt.countDown();
-                        throw new IllegalStateException("worker log unavailable");
-                    }
-                    byte[] bytes = "shared volume worker output\n".getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
-                    return (long) bytes.length;
-                });
-        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-9"), any(OutputStream.class)))
-                .thenAnswer(invocation -> {
-                    byte[] bytes = "shared volume worker output\n".getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(2)).write(bytes);
-                    return (long) bytes.length;
-                });
-
-        jobLogService.persistEngineLog(9L, JobMode.BATCH);
-        assertTrue(firstWorkerAttempt.await(2, TimeUnit.SECONDS));
-        awaitCollectionLockReleased(logPath);
-        String partial = Files.readString(logPath, StandardCharsets.UTF_8);
-        assertEquals(1, count(partial, "shared volume worker output"));
-        assertTrue(Files.readString(logPath.resolveSibling("job-9.log.engine-state"), StandardCharsets.UTF_8)
-                .contains("terminalCollected=false"));
-
-        jobLogService.persistFinalEngineLog(9L, JobMode.BATCH);
-
-        String recovered = Files.readString(logPath, StandardCharsets.UTF_8);
-        assertEquals(1, count(recovered, "shared volume worker output"));
-        assertTrue(Files.readString(logPath.resolveSibling("job-9.log.engine-state"), StandardCharsets.UTF_8)
-                .contains("terminalCollected=true"));
-        verify(seaTunnelRestClient, times(2)).jobLogFiles(2L, "engine-9");
-        verify(seaTunnelRestClient, times(2)).writeJobLogFile(
-                eq(2L), eq("engine-9"), eq(workerLogFile), any(OutputStream.class));
-        verify(seaTunnelRestClient, times(1)).writeMasterJobLogFile(
-                eq(2L), eq("engine-9"), any(OutputStream.class));
+        verify(seaTunnelRestClient, times(3)).writeMasterJobLogFile(eq(2L), eq("engine-7"), any(OutputStream.class));
     }
 
     @Test
@@ -269,13 +156,14 @@ class JobLogServiceTest {
 
         CountDownLatch remoteReadStarted = new CountDownLatch(1);
         CountDownLatch releaseRemoteRead = new CountDownLatch(1);
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-10")).thenAnswer(invocation -> {
-            remoteReadStarted.countDown();
-            if (!releaseRemoteRead.await(5, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("test did not release the Engine fixture");
-            }
-            return List.of();
-        });
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-10"), any(OutputStream.class)))
+                .thenAnswer(invocation -> {
+                    remoteReadStarted.countDown();
+                    if (!releaseRemoteRead.await(5, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("test did not release the Engine fixture");
+                    }
+                    return 0L;
+                });
 
         FutureTask<JobLogTailResult> tailRequest = new FutureTask<>(
                 () -> jobLogService.tail(10L, JobMode.BATCH, null, null));
@@ -291,7 +179,7 @@ class JobLogServiceTest {
                     10L, JobMode.BATCH, "missing", null, null, null, 1, 10);
             assertEquals(0L, search.total());
             jobLogService.persistEngineLog(10L, JobMode.BATCH);
-            verify(seaTunnelRestClient, times(1)).jobLogFiles(2L, "engine-10");
+            verify(seaTunnelRestClient, times(1)).writeMasterJobLogFile(eq(2L), eq("engine-10"), any(OutputStream.class));
         } finally {
             releaseRemoteRead.countDown();
             requestThread.join(1_000L);
@@ -312,14 +200,11 @@ class JobLogServiceTest {
                 .build();
         when(jobInstanceDao.queryById(11L)).thenReturn(instance);
 
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-11.log", "job-engine-11.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-11")).thenReturn(List.of(nodeLogFile));
         AtomicReference<String> engineLog = new AtomicReference<>("first line\n");
-        when(seaTunnelRestClient.writeJobLogFile(eq(2L), eq("engine-11"), eq(nodeLogFile), any(OutputStream.class)))
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-11"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
                     byte[] bytes = engineLog.get().getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
+                    ((OutputStream) invocation.getArgument(2)).write(bytes);
                     return (long) bytes.length;
                 });
 
@@ -329,7 +214,7 @@ class JobLogServiceTest {
         String hash = sha256(updatedSnapshot);
         String completedFrame = System.lineSeparator()
                 + "=== SEA TUNNEL ENGINE LOG SNAPSHOT sha256=" + hash
-                + " node=master:8080 delta=true fromBytes=11 engineJobId=engine-11 ==="
+                + " node=__master_shared_logs__ delta=true fromBytes=11 engineJobId=engine-11 ==="
                 + System.lineSeparator()
                 + "second line\n"
                 + System.lineSeparator()
@@ -360,14 +245,11 @@ class JobLogServiceTest {
                 .build();
         when(jobInstanceDao.queryById(12L)).thenReturn(instance);
 
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-12.log", "job-engine-12.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-12")).thenReturn(List.of(nodeLogFile));
         AtomicReference<String> engineLog = new AtomicReference<>("first line\n");
-        when(seaTunnelRestClient.writeJobLogFile(eq(2L), eq("engine-12"), eq(nodeLogFile), any(OutputStream.class)))
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-12"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
                     byte[] bytes = engineLog.get().getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
+                    ((OutputStream) invocation.getArgument(2)).write(bytes);
                     return (long) bytes.length;
                 });
 
@@ -378,7 +260,7 @@ class JobLogServiceTest {
         String hash = sha256(engineLog.get());
         String incompleteFrame = System.lineSeparator()
                 + "=== SEA TUNNEL ENGINE LOG SNAPSHOT sha256=" + hash
-                + " node=master:8080 delta=true fromBytes=11 engineJobId=engine-12 ==="
+                + " node=__master_shared_logs__ delta=true fromBytes=11 engineJobId=engine-12 ==="
                 + System.lineSeparator()
                 + "second line\n";
         Files.writeString(logPath, incompleteFrame, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
@@ -392,7 +274,7 @@ class JobLogServiceTest {
         assertEquals(1, count(stored, "second line"));
         assertEquals(1, count(stored, "sha256=" + hash));
         assertEquals(2, count(stored, "=== END SEA TUNNEL ENGINE LOG SNAPSHOT ==="));
-        verify(seaTunnelRestClient, times(2)).jobLogFiles(2L, "engine-12");
+        verify(seaTunnelRestClient, times(2)).writeMasterJobLogFile(eq(2L), eq("engine-12"), any(OutputStream.class));
     }
 
     @Test
@@ -418,13 +300,14 @@ class JobLogServiceTest {
 
         CountDownLatch remoteReadStarted = new CountDownLatch(1);
         CountDownLatch releaseRemoteRead = new CountDownLatch(1);
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-13")).thenAnswer(invocation -> {
-            remoteReadStarted.countDown();
-            if (!releaseRemoteRead.await(5, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("test did not release the Engine fixture");
-            }
-            return List.of();
-        });
+        when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-13"), any(OutputStream.class)))
+                .thenAnswer(invocation -> {
+                    remoteReadStarted.countDown();
+                    if (!releaseRemoteRead.await(5, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("test did not release the Engine fixture");
+                    }
+                    return 0L;
+                });
 
         FutureTask<JobLogAnalysisResult> analysisTask = new FutureTask<>(
                 () -> jobLogService.analyze(13L, JobMode.BATCH));
@@ -590,8 +473,7 @@ class JobLogServiceTest {
     }
 
     @Test
-    void sharedLogClientDownloadsTheMergedFileOncePerRoundWithoutListingNodes() throws Exception {
-        ReflectionTestUtils.setField(jobLogService, "sharedLogClientIds", "2, 9");
+    void downloadsThroughTheConfiguredEndpointOncePerRoundWithoutListingNodes() throws Exception {
         Path logPath = tempDir.resolve("job-20.log");
         Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
         JobInstance instance = JobInstance.builder()
@@ -644,7 +526,7 @@ class JobLogServiceTest {
     }
 
     @Test
-    void sharedLogClientReusesAVerifiedLegacyNodeCursor() throws Exception {
+    void reusesAVerifiedLegacyNodeCursor() throws Exception {
         Path logPath = tempDir.resolve("job-21.log");
         Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
         JobInstance instance = JobInstance.builder()
@@ -655,20 +537,8 @@ class JobLogServiceTest {
                 .logPath(logPath.toString())
                 .build();
         when(jobInstanceDao.queryById(21L)).thenReturn(instance);
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-21.log", "job-engine-21.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-21")).thenReturn(List.of(nodeLogFile));
-        when(seaTunnelRestClient.writeJobLogFile(
-                eq(2L), eq("engine-21"), eq(nodeLogFile), any(OutputStream.class)))
-                .thenAnswer(invocation -> {
-                    byte[] bytes = "first line\n".getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
-                    return (long) bytes.length;
-                });
+        writeLegacyNodeArchive(logPath, "engine-21", "first line\n");
 
-        jobLogService.persistFinalEngineLog(21L, JobMode.BATCH);
-
-        ReflectionTestUtils.setField(jobLogService, "sharedLogClientIds", "2");
         when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-21"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
                     byte[] bytes = "first line\nsecond line\n".getBytes(StandardCharsets.UTF_8);
@@ -682,13 +552,12 @@ class JobLogServiceTest {
         assertEquals(1, count(stored, "second line"));
         assertTrue(stored.contains("delta=true fromBytes=11"));
         assertTrue(stored.contains("node=__master_shared_logs__"));
-        verify(seaTunnelRestClient, times(1)).jobLogFiles(2L, "engine-21");
         verify(seaTunnelRestClient, times(1)).writeMasterJobLogFile(
                 eq(2L), eq("engine-21"), any(OutputStream.class));
     }
 
     @Test
-    void sharedLogClientDoesNotReuseAMismatchedLegacyNodeCursor() throws Exception {
+    void doesNotReuseAMismatchedLegacyNodeCursor() throws Exception {
         Path logPath = tempDir.resolve("job-22.log");
         Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
         JobInstance instance = JobInstance.builder()
@@ -699,20 +568,8 @@ class JobLogServiceTest {
                 .logPath(logPath.toString())
                 .build();
         when(jobInstanceDao.queryById(22L)).thenReturn(instance);
-        SeaTunnelRestClient.NodeLogFile nodeLogFile = new SeaTunnelRestClient.NodeLogFile(
-                "master:8080", "http://master:8080/logs/job-engine-22.log", "job-engine-22.log");
-        when(seaTunnelRestClient.jobLogFiles(2L, "engine-22")).thenReturn(List.of(nodeLogFile));
-        when(seaTunnelRestClient.writeJobLogFile(
-                eq(2L), eq("engine-22"), eq(nodeLogFile), any(OutputStream.class)))
-                .thenAnswer(invocation -> {
-                    byte[] bytes = "old node content\n".getBytes(StandardCharsets.UTF_8);
-                    ((OutputStream) invocation.getArgument(3)).write(bytes);
-                    return (long) bytes.length;
-                });
+        writeLegacyNodeArchive(logPath, "engine-22", "old node content\n");
 
-        jobLogService.persistFinalEngineLog(22L, JobMode.BATCH);
-
-        ReflectionTestUtils.setField(jobLogService, "sharedLogClientIds", "2");
         when(seaTunnelRestClient.writeMasterJobLogFile(eq(2L), eq("engine-22"), any(OutputStream.class)))
                 .thenAnswer(invocation -> {
                     byte[] bytes = "different shared content\n".getBytes(StandardCharsets.UTF_8);
@@ -730,8 +587,7 @@ class JobLogServiceTest {
     }
 
     @Test
-    void sharedLogFailureKeepsTheArchivedContentAndCursorForTheNextRetry() throws Exception {
-        ReflectionTestUtils.setField(jobLogService, "sharedLogClientIds", "2");
+    void downloadFailureKeepsTheArchivedContentAndCursorForTheNextRetry() throws Exception {
         Path logPath = tempDir.resolve("job-23.log");
         Files.writeString(logPath, "web start\n", StandardCharsets.UTF_8);
         JobInstance instance = JobInstance.builder()
@@ -768,6 +624,27 @@ class JobLogServiceTest {
         assertEquals(1, count(recovered, "second line"));
         assertTrue(recovered.contains("delta=true fromBytes=11"));
         assertEquals(3, attempts.get());
+    }
+
+    private void writeLegacyNodeArchive(Path logPath, String engineJobId, String content) throws Exception {
+        String node = "master:8080";
+        String hash = sha256(content);
+        Files.writeString(logPath, """
+
+                === SEA TUNNEL ENGINE LOG SNAPSHOT sha256=%s node=%s engineJobId=%s ===
+                %s
+                === END SEA TUNNEL ENGINE LOG SNAPSHOT ===
+                """.formatted(hash, node, engineJobId, content), StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+        String prefix = "node." + sha256(node);
+        Path statePath = logPath.resolveSibling(logPath.getFileName() + ".engine-state");
+        Files.writeString(statePath, """
+                formatVersion=2
+                terminalCollected=false
+                %s.name=%s
+                %s.bytes=%d
+                %s.hash=%s
+                """.formatted(prefix, node, prefix, content.getBytes(StandardCharsets.UTF_8).length, prefix, hash),
+                StandardCharsets.UTF_8);
     }
 
     private long count(String value, String target) {

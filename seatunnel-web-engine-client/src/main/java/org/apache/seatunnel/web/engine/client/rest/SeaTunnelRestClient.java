@@ -562,7 +562,7 @@ public class SeaTunnelRestClient {
         return streamNoRedirect(clientId, validated.logLink(), output, "GET Engine node job log failed");
     }
 
-    /** Streams the configured Engine endpoint's log file, used when node links are unreachable. */
+    /** Streams the job log from the configured Engine REST endpoint without following redirects. */
     public long writeMasterJobLogFile(Long clientId, String engineJobId, OutputStream output) {
         requireClientId(clientId);
         if (output == null) {
@@ -573,7 +573,7 @@ public class SeaTunnelRestClient {
         String requestUrl = UriComponentsBuilder.fromHttpUrl(url(clientId, "/logs/" + encodedFileName))
                 .build(true)
                 .toUriString();
-        return streamNoRedirect(clientId, requestUrl, output, "GET configured Engine job log fallback failed");
+        return streamNoRedirect(clientId, requestUrl, output, "GET configured Engine job log failed");
     }
 
     private long streamNoRedirect(Long clientId, String requestUrl, OutputStream output, String errorMessage) {
