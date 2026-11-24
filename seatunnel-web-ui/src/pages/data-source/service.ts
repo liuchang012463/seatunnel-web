@@ -42,6 +42,7 @@ const DATA_INVENTORY_API_PREFIX = '/api/v1/data-inventory';
 // these reads room beyond the global 15s default instead of aborting them.
 const METADATA_REQUEST_OPTIONS: RequestOptions = { timeout: 60_000 };
 const DATA_SOURCE_TOPOLOGY_API_PREFIX = '/api/v1/data-source-topology';
+export const EXPLORATION_TABLE_PAGE_SIZE = 100;
 
 export type MasterDataList<T> =
   | T[]
@@ -256,7 +257,7 @@ export async function fetchDataExplorationTables(
   databaseFqn: string,
   schemaFqn: string,
   pageNo = 1,
-  pageSize = 20,
+  pageSize = EXPLORATION_TABLE_PAGE_SIZE,
 ): Promise<CommonApiResponse<DataExplorationTablePage>> {
   const query = new URLSearchParams({
     dataSourceId: id,

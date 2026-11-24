@@ -60,7 +60,15 @@
     overflow: auto;
   }
 
-  .data-topology-browser { border-right: 1px solid var(--st-color-divider); }
+  .data-topology-browser {
+    overflow-x: hidden;
+    border-right: 1px solid var(--st-color-divider);
+
+    > .ant-pagination {
+      display: flex;
+      flex-wrap: wrap;
+    }
+  }
   .data-topology-inspector {
     gap: 0;
     padding: 0;
@@ -69,12 +77,15 @@
 
   .data-topology-scope {
     display: grid;
+    // Selected names can be wider than the sidebar, especially in the data source filter.
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     padding-bottom: 14px;
     border-bottom: 1px solid var(--st-color-divider);
 
     label {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: 4px;
       color: var(--st-color-text-secondary);
     }
@@ -129,6 +140,7 @@
   }
 
   .data-topology-table-item {
+    flex: none;
     padding: 7px;
     > span:nth-child(2) { display: grid; flex: 1; min-width: 0; }
     > small { flex: none; font-variant-numeric: tabular-nums; }

@@ -29,6 +29,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  EXPLORATION_TABLE_PAGE_SIZE,
   fetchDataExplorationDatabases,
   fetchDataExplorationMetadataCompletion,
   fetchDataExplorationProfile,
@@ -418,13 +419,12 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
         databaseFqn,
         schemaFqn,
         pageNo,
-        20,
       );
       if (response.code !== 0) {
         message.error(response.message || '无法读取表列表');
         return;
       }
-      const nextPage = response.data || { records: [], total: 0, pageNo, pageSize: 20 };
+      const nextPage = response.data || { records: [], total: 0, pageNo, pageSize: EXPLORATION_TABLE_PAGE_SIZE };
       setTablePage(nextPage);
       setTablePageNo(pageNo);
       setActiveTab('columns');
@@ -1077,10 +1077,11 @@ const DatabaseDataExplorationDrawer: React.FC<DataExplorationDrawerProps> = ({
                 <Pagination
                   size="small"
                   current={tablePage?.pageNo || tablePageNo}
-                  pageSize={tablePage?.pageSize || 20}
+                  pageSize={tablePage?.pageSize || EXPLORATION_TABLE_PAGE_SIZE}
                   total={tablePage?.total || 0}
                   showSizeChanger={false}
                   showLessItems
+                  hideOnSinglePage
                   onChange={(page) => void loadTables(page)}
                 />
               </div>

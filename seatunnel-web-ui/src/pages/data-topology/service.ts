@@ -1,5 +1,7 @@
 import { displayOwner, normalizeDataSourceList, withoutSystemManagedSources } from '@/pages/data-exploration/shared';
-import { fetchDataExplorationTable, fetchDataExplorationTables, fetchDataSourceAll } from '@/pages/data-source/service';
+import {
+  EXPLORATION_TABLE_PAGE_SIZE, fetchDataExplorationTable, fetchDataExplorationTables, fetchDataSourceAll,
+} from '@/pages/data-source/service';
 import type { CommonApiResponse, DataExplorationTable, DataExplorationTableDetail } from '@/pages/data-source/types';
 import { isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
 import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
@@ -119,7 +121,7 @@ export function catalogSources(records: CatalogSource[], topology?: Topology) {
 
 export async function fetchSchemaTables(sourceId: string, databaseFqn: string, schemaFqn: string, signal: AbortSignal) {
   const tables = new Map<string, DataExplorationTable>();
-  const pageSize = 100;
+  const pageSize = EXPLORATION_TABLE_PAGE_SIZE;
   for (let pageNo = 1; !signal.aborted; pageNo++) {
     const page = await readMetadata(fetchDataExplorationTables(sourceId, databaseFqn, schemaFqn, pageNo, pageSize));
     const previousSize = tables.size;

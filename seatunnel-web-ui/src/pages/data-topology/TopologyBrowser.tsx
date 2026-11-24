@@ -1,3 +1,4 @@
+import { EXPLORATION_TABLE_PAGE_SIZE } from '@/pages/data-source/service';
 import type { DataExplorationTable } from '@/pages/data-source/types';
 import { ApartmentOutlined, RightOutlined, SearchOutlined, TableOutlined } from '@ant-design/icons';
 import { Empty, Input, Pagination, Select, Spin } from 'antd';
@@ -7,7 +8,7 @@ import type useTopologyCatalog from './useTopologyCatalog';
 import type { CatalogScope } from './useTopologyCatalog';
 
 type Catalog = ReturnType<typeof useTopologyCatalog>;
-const pageSize = 20;
+const pageSize = EXPLORATION_TABLE_PAGE_SIZE;
 
 function TableList({ tables, loading, focusedId, tableCatalog, onFocus }: {
   tables: DataExplorationTable[];
@@ -44,7 +45,7 @@ function TableList({ tables, loading, focusedId, tableCatalog, onFocus }: {
         allowClear
         onChange={(event) => { setSearch(event.target.value); setPage(1); }}
       />
-      <div className="data-topology-table-list">
+      <div key={currentPage} className="data-topology-table-list">
         {loading && tables.length === 0 ? <Spin size="small" aria-label="正在读取表目录" />
           : visible.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={tables.length ? `没有匹配的${label}` : `暂无${label}`} />
