@@ -82,24 +82,42 @@ public final class OpenLineageEventFactory {
     }
 
     static ObjectNode toRunEvent(OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities) {
+        return toRunEvent(snapshot, identities, deriveRunId(snapshot.instanceId(), snapshot.engineJobId()),
+                snapshot.inputs(), snapshot.outputs());
+    }
+
+    static ObjectNode toTableRunEvent(
+            OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities, Dataset source, Dataset sink) {
+        // The same logical job owns separate OpenLineage runs for its independent table copies.
+        // Derive the run from local paths so START and COMPLETE agree even across a metadata scan.
+        String key = OBJECT_MAPPER.createArrayNode()
+                .add(deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString())
+                .add(source.datasourceId()).add(source.name())
+                .add(sink.datasourceId()).add(sink.name()).toString();
+        UUID runId = UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8));
+        return toRunEvent(snapshot, identities, runId, List.of(source), List.of(sink));
+    }
+
+    private static ObjectNode toRunEvent(OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities,
+                                         UUID runId, List<Dataset> sources, List<Dataset> sinks) {
         ObjectNode event = OBJECT_MAPPER.createObjectNode();
 
         event.put("eventType", snapshot.eventType().name());
         event.put("eventTime", snapshot.eventTime().toString());
-        event.set("run", buildRun(snapshot));
+        event.set("run", buildRun(snapshot, runId));
         event.set("job", buildJob(snapshot));
-        event.set("inputs", buildDatasets(snapshot.inputs(), identities));
-        ArrayNode outputs = buildDatasets(snapshot.outputs(), identities);
-        attachColumnLineage(outputs, snapshot, identities);
+        event.set("inputs", buildDatasets(sources, identities));
+        ArrayNode outputs = buildDatasets(sinks, identities);
+        attachColumnLineage(outputs, sinks, snapshot.lineages(), identities);
         event.set("outputs", outputs);
         event.put("producer", PRODUCER);
         event.put("schemaURL", RUN_EVENT_SCHEMA_URL);
         return event;
     }
 
-    private static ObjectNode buildRun(OpenLineageSnapshot snapshot) {
+    private static ObjectNode buildRun(OpenLineageSnapshot snapshot, UUID runId) {
         ObjectNode run = OBJECT_MAPPER.createObjectNode();
-        run.put("runId", deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString());
+        run.put("runId", runId.toString());
 
         ObjectNode facets = run.putObject("facets");
         ObjectNode seatunnel = facets.putObject("seatunnel");
@@ -187,12 +205,11 @@ public final class OpenLineageEventFactory {
      * mapped or when the source table of a column is unknown, which marks a table-level-only run.
      */
     private static void attachColumnLineage(
-            ArrayNode outputs, OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities) {
-        List<OpenLineageSnapshot.OutputLineage> lineages = snapshot.lineages();
+            ArrayNode outputs, List<Dataset> datasets,
+            List<OpenLineageSnapshot.OutputLineage> lineages, Map<Dataset, TableIdentity> identities) {
         if (lineages == null || lineages.isEmpty()) {
             return;
         }
-        List<Dataset> datasets = snapshot.outputs();
         for (int index = 0; index < outputs.size() && index < datasets.size(); index++) {
             Dataset output = datasets.get(index);
             OpenLineageSnapshot.OutputLineage lineage = findLineage(lineages, output);

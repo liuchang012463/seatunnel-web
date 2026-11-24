@@ -3,8 +3,10 @@ package org.apache.seatunnel.web.api.metadata.openlineage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
@@ -12,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
 import org.apache.seatunnel.web.api.metadata.FieldMappingExtractor;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataFqn;
 import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageEventFactory.EventType;
+import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageSnapshot.Dataset;
 import org.apache.seatunnel.web.api.utils.HoconSensitiveMaskUtil;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
@@ -28,8 +32,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -132,10 +138,10 @@ public class OpenLineageJobLineageService {
      * of being retried for the whole life of the web.
      * </p>
      */
-    private final Map<Long, OpenLineageSnapshot> pendingTerminals =
-            Collections.synchronizedMap(new LinkedHashMap<Long, OpenLineageSnapshot>(64, 0.75f, false) {
+    private final Map<Long, LineagePublication> pendingTerminals =
+            Collections.synchronizedMap(new LinkedHashMap<Long, LineagePublication>(64, 0.75f, false) {
                 @Override
-                protected boolean removeEldestEntry(Map.Entry<Long, OpenLineageSnapshot> eldest) {
+                protected boolean removeEldestEntry(Map.Entry<Long, LineagePublication> eldest) {
                     return size() > TERMINAL_PUBLISHED_CAPACITY;
                 }
             });
@@ -211,22 +217,8 @@ public class OpenLineageJobLineageService {
             String prevStatus = event.getOldStatus() == null
                     ? monitoredBatchStatuses.get(event.getJobInstanceId())
                     : event.getOldStatus().name();
-            OpenLineageSnapshot snapshot = toSnapshot(details, engineJobId, false, eventType,
-                    prevStatus, event.getErrorMessage(), null);
-            String key = terminalKey(false, event.getJobInstanceId());
-            if (!terminalPublished.add(key)) {
-                log.debug("OpenLineage terminal already published, instanceId={}",
-                        event.getJobInstanceId());
-                return;
-            }
-            PublishOutcome outcome = publishIfValid(snapshot);
-            if (outcome == PublishOutcome.FAILED) {
-                // The broker did not acknowledge the event: the pulse publishes the terminal
-                // again. A skipped event has no identifiable dataset and would never be
-                // publishable, so it is not retried.
-                terminalPublished.remove(key);
-                pendingTerminals.put(event.getJobInstanceId(), snapshot);
-            }
+            publishBatchTerminal(event.getJobInstanceId(), toSnapshot(details, engineJobId, false, eventType,
+                    prevStatus, event.getErrorMessage(), null));
         } catch (Exception error) {
             log.warn("Could not publish OpenLineage terminal event, instanceId={}, status={}",
                     event.getJobInstanceId(), event.getNewStatus(), error);
@@ -298,6 +290,7 @@ public class OpenLineageJobLineageService {
     @Scheduled(fixedDelayString = "${lineage-bridge.running.interval-ms:60000}")
     public void pulseBatchJobs() {
         try {
+            retryPendingTerminals();
             List<JobInstance> running = jobInstanceDao.listRunningLikeInstances();
             Set<Long> present = new HashSet<>();
             Map<Long, String> statuses = new HashMap<>();
@@ -325,7 +318,6 @@ public class OpenLineageJobLineageService {
                     monitoredBatchStatuses.put(entry.getKey(), entry.getValue());
                 }
             }
-            retryPendingTerminals();
         } catch (Exception error) {
             log.warn("OpenLineage batch pulse failed", error);
         }
@@ -337,20 +329,17 @@ public class OpenLineageJobLineageService {
      * until the broker confirms them.
      */
     private void retryPendingTerminals() {
-        List<Map.Entry<Long, OpenLineageSnapshot>> entries;
+        List<Map.Entry<Long, LineagePublication>> entries;
         synchronized (pendingTerminals) {
             if (pendingTerminals.isEmpty()) {
                 return;
             }
             entries = new ArrayList<>(pendingTerminals.entrySet());
         }
-        for (Map.Entry<Long, OpenLineageSnapshot> entry : entries) {
+        for (Map.Entry<Long, LineagePublication> entry : entries) {
             Long instanceId = entry.getKey();
             String key = terminalKey(false, instanceId);
             if (!terminalPublished.add(key)) {
-                // The event path published it in the meantime: the pending copy is stale and
-                // would only take capacity away from terminals still waiting for the broker.
-                pendingTerminals.remove(instanceId);
                 continue;
             }
             if (publishIfValid(entry.getValue()) != PublishOutcome.PUBLISHED) {
@@ -387,20 +376,34 @@ public class OpenLineageJobLineageService {
             if (StringUtils.isBlank(details.getEngineJobId())) {
                 return PublishOutcome.SKIPPED;
             }
-            OpenLineageSnapshot snapshot = toSnapshot(details, details.getEngineJobId(), false,
-                    eventType, lastSeenStatus, details.getErrorMessage(), null);
-            String key = terminalKey(false, instanceId);
-            if (!terminalPublished.add(key)) {
-                return PublishOutcome.PUBLISHED;
-            }
-            PublishOutcome outcome = publishIfValid(snapshot);
-            if (outcome != PublishOutcome.PUBLISHED) {
-                terminalPublished.remove(key);
-            }
-            return outcome;
+            return publishBatchTerminal(instanceId, toSnapshot(details, details.getEngineJobId(), false,
+                    eventType, lastSeenStatus, details.getErrorMessage(), null));
         } catch (Exception error) {
             log.warn("Could not publish OpenLineage batch terminal, instanceId={}", instanceId, error);
             return PublishOutcome.FAILED;
+        }
+    }
+
+    private PublishOutcome publishBatchTerminal(Long instanceId, LineagePublication publication) {
+        String key = terminalKey(false, instanceId);
+        if (!terminalPublished.add(key)) {
+            return PublishOutcome.PUBLISHED;
+        }
+        PublishOutcome outcome = PublishOutcome.FAILED;
+        try {
+            if (pendingTerminals.containsKey(instanceId)) {
+                // The pulse owns the retry, including any table messages already acknowledged.
+                return PublishOutcome.PUBLISHED;
+            }
+            outcome = publishIfValid(publication);
+            if (outcome == PublishOutcome.FAILED) {
+                pendingTerminals.put(instanceId, publication);
+            }
+            return outcome;
+        } finally {
+            if (outcome != PublishOutcome.PUBLISHED) {
+                terminalPublished.remove(key);
+            }
         }
     }
 
@@ -446,7 +449,7 @@ public class OpenLineageJobLineageService {
             if (StringUtils.isBlank(details.getEngineJobId())) {
                 return PublishOutcome.SKIPPED;
             }
-            OpenLineageSnapshot snapshot = toSnapshot(details, details.getEngineJobId(), true,
+            LineagePublication snapshot = toSnapshot(details, details.getEngineJobId(), true,
                     eventType, lastSeenStatus, details.getErrorMessage(), null);
             String key = terminalKey(true, instanceId);
             if (!terminalPublished.add(key)) {
@@ -565,11 +568,11 @@ public class OpenLineageJobLineageService {
         }
     }
 
-    private OpenLineageSnapshot toStartSnapshot(JobInstanceVO details, String engineJobId, boolean streaming) {
+    private LineagePublication toStartSnapshot(JobInstanceVO details, String engineJobId, boolean streaming) {
         return toSnapshot(details, engineJobId, streaming, EventType.START, null, null, null);
     }
 
-    private OpenLineageSnapshot toSnapshot(JobInstanceVO details,
+    private LineagePublication toSnapshot(JobInstanceVO details,
                                            String engineJobId,
                                            boolean streaming,
                                            EventType eventType,
@@ -590,13 +593,27 @@ public class OpenLineageJobLineageService {
                 details.getSourceDatasourceId(),
                 allDataSources,
                 dataSourceCache);
-        ResolvedSide outputs = resolveSide(
-                topology.sinks(),
-                details.getSinkTable(),
-                details.getSinkDatasourceId(),
-                allDataSources,
-                dataSourceCache);
-        return new OpenLineageSnapshot(
+        String sinkPrefix = sameNameSinkPrefix(streaming, runtimeConfig, topology);
+        ResolvedSide outputs;
+        if (sinkPrefix == null) {
+            outputs = resolveSide(topology.sinks(), details.getSinkTable(), details.getSinkDatasourceId(),
+                    allDataSources, dataSourceCache);
+        } else {
+            Long sinkId = resolveDatasourceId(
+                    topology.sinks().getFirst(), details.getSinkDatasourceId(), true, allDataSources);
+            List<Dataset> sources = new ArrayList<>();
+            List<Dataset> sinks = new ArrayList<>();
+            for (Dataset source : inputs.datasets()) {
+                List<String> name = OpenMetadataFqn.parts(source.name());
+                if (sinkId != null && !name.isEmpty()) {
+                    sources.add(source);
+                    sinks.add(dataset(sinkId, sinkPrefix + "." + name.getLast(), dataSourceCache));
+                }
+            }
+            inputs = new ResolvedSide(sources, Map.of());
+            outputs = new ResolvedSide(sinks, Map.of());
+        }
+        OpenLineageSnapshot snapshot = new OpenLineageSnapshot(
                 eventType,
                 Instant.now(),
                 engineJobId,
@@ -617,6 +634,24 @@ public class OpenLineageJobLineageService {
                         FieldMappingExtractor.extractDetailed(runtimeConfig),
                         inputs.aliases(),
                         outputs.aliases()));
+        return new LineagePublication(snapshot, sinkPrefix != null && snapshot.inputs().size() > 1);
+    }
+
+    private static String sameNameSinkPrefix(
+            boolean streaming, Config config, OpenLineageJobTopology.Topology topology) {
+        // A direct JDBC table copy with the fixed ${table_name} template has an exact 1:1 mapping.
+        // A transform or a multi-plugin job can route data differently.
+        if (streaming || config == null || topology.sources().size() != 1 || topology.sinks().size() != 1
+                || !topology.sources().getFirst().jdbcTableList()
+                || topology.sources().getFirst().tables().isEmpty()) {
+            return null;
+        }
+        ConfigValue transform = config.root().get("transform");
+        if (transform != null && !(transform instanceof ConfigObject object && object.isEmpty())
+                && !(transform instanceof ConfigList list && list.isEmpty())) {
+            return null;
+        }
+        return topology.sinks().getFirst().sameNameSinkPrefix();
     }
 
     /** One side of the job: its datasets and the transform alias each plugin output owns. */
@@ -847,6 +882,10 @@ public class OpenLineageJobLineageService {
                 return;
             }
         }
+        datasets.add(dataset(datasourceId, table, dataSourceCache));
+    }
+
+    private Dataset dataset(Long datasourceId, String table, Map<Long, DataSource> dataSourceCache) {
         DataSource dataSource;
         if (dataSourceCache.containsKey(datasourceId)) {
             dataSource = dataSourceCache.get(datasourceId);
@@ -864,7 +903,7 @@ public class OpenLineageJobLineageService {
         // datasource may store credentials inside it.
         String uri = dataSource == null ? null
                 : HoconSensitiveMaskUtil.maskSensitiveText(connectionUrl(dataSource));
-        datasets.add(new OpenLineageSnapshot.Dataset(datasourceId, dbTypeName, namespace, table, uri));
+        return new Dataset(datasourceId, dbTypeName, namespace, table, uri);
     }
 
     /**
@@ -902,10 +941,8 @@ public class OpenLineageJobLineageService {
         return new ArrayList<>(tables);
     }
 
-    private PublishOutcome publishIfValid(OpenLineageSnapshot snapshot) {
-        if (snapshot == null) {
-            return PublishOutcome.SKIPPED;
-        }
+    private PublishOutcome publishIfValid(LineagePublication publication) {
+        OpenLineageSnapshot snapshot = publication.snapshot;
         if (snapshot.inputs().isEmpty() || snapshot.outputs().isEmpty()) {
             // Local lineage is only publishable with both sides identified: the design fixes
             // source/sink datasource id and table path as the minimum viable edge.
@@ -917,22 +954,65 @@ public class OpenLineageJobLineageService {
         // time on its own: the run would see two terminal events.
         boolean retryOnMissingTopic = snapshot.eventType() == EventType.START
                 || snapshot.eventType() == EventType.RUNNING;
-        var tableIdentities = tableFqnResolver.resolve(snapshot);
-        if (!bridge.publish(properties.getKafka().getSourceTopic(),
-                OpenLineageEventFactory.deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString(),
-                OpenLineageEventFactory.toRunEvent(snapshot, tableIdentities).toString(),
-                retryOnMissingTopic)) {
-            log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}",
-                    snapshot.instanceId(), snapshot.engineJobId());
-            return PublishOutcome.FAILED;
+        if (publication.remaining == null) {
+            publication.remaining = prepareMessages(publication);
+        }
+        int remainingCount = publication.remaining.size();
+        while (!publication.remaining.isEmpty()) {
+            LineageMessage message = publication.remaining.getFirst();
+            if (!bridge.publish(properties.getKafka().getSourceTopic(),
+                    message.runId(), message.payload(), retryOnMissingTopic)) {
+                log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}, runId={}",
+                        snapshot.instanceId(), snapshot.engineJobId(), message.runId());
+                return PublishOutcome.FAILED;
+            }
+            publication.remaining.removeFirst();
         }
         if (snapshot.eventType() == EventType.RUNNING) {
             log.debug("Published OpenLineage RUNNING heartbeat, instanceId={}, engineJobId={}",
                     snapshot.instanceId(), snapshot.engineJobId());
         } else {
-            log.info("Published OpenLineage {} event, instanceId={}, engineJobId={}, resolvedTableFqns={}",
-                    snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId(), tableIdentities.size());
+            log.info("Published OpenLineage {} events, instanceId={}, engineJobId={}, messages={}, resolvedTableFqns={}",
+                    snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId(),
+                    remainingCount, publication.resolvedTableCount);
         }
         return PublishOutcome.PUBLISHED;
+    }
+
+    private Deque<LineageMessage> prepareMessages(LineagePublication publication) {
+        OpenLineageSnapshot snapshot = publication.snapshot;
+        var tableIdentities = tableFqnResolver.resolve(snapshot);
+        publication.resolvedTableCount = tableIdentities.size();
+        Deque<LineageMessage> messages = new ArrayDeque<>();
+        if (publication.tableByTable) {
+            // OpenLineage events apply every input to every output. Keep independent table copies
+            // in separate events so Assert only creates the configured table-to-table edges.
+            for (int i = 0; i < snapshot.inputs().size(); i++) {
+                messages.add(new LineageMessage(OpenLineageEventFactory.toTableRunEvent(snapshot, tableIdentities,
+                        snapshot.inputs().get(i), snapshot.outputs().get(i))));
+            }
+        } else {
+            messages.add(new LineageMessage(OpenLineageEventFactory.toRunEvent(snapshot, tableIdentities)));
+        }
+        return messages;
+    }
+
+    private static final class LineagePublication {
+        private final OpenLineageSnapshot snapshot;
+        private final boolean tableByTable;
+        // Preserve the exact payload and retry only unacknowledged messages after a partial send.
+        private Deque<LineageMessage> remaining;
+        private int resolvedTableCount;
+
+        private LineagePublication(OpenLineageSnapshot snapshot, boolean tableByTable) {
+            this.snapshot = snapshot;
+            this.tableByTable = tableByTable;
+        }
+    }
+
+    private record LineageMessage(String runId, String payload) {
+        private LineageMessage(ObjectNode event) {
+            this(event.at("/run/runId").asText(), event.toString());
+        }
     }
 }

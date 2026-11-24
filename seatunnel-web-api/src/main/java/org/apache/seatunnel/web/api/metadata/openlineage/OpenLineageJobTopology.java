@@ -7,6 +7,7 @@ import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigValue;
 import com.typesafe.config.ConfigValueType;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.seatunnel.web.api.metadata.OpenMetadataFqn;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -38,6 +39,7 @@ public final class OpenLineageJobTopology {
 
     private static final String SECTION_SOURCE = "source";
     private static final String SECTION_SINK = "sink";
+    private static final String TABLE_NAME_SUFFIX = ".${table_name}";
 
     /** Keys that mark a block as one plugin instead of a container of plugins. */
     private static final List<String> PLUGIN_MARKERS = List.of("plugin_name", "factory");
@@ -76,6 +78,8 @@ public final class OpenLineageJobTopology {
      * @param outputName plugin output this plugin produces, the identity a transform reads
      * @param pattern the plugin subscribes by regular expression (Kafka pattern=true), so its
      *     topic option is not a dataset name
+     * @param jdbcTableList this JDBC source declares separate tables in a table list
+     * @param sameNameSinkPrefix the fixed path prefix of a JDBC same-name sink template
      */
     public record Plugin(
             String configPath,
@@ -85,7 +89,9 @@ public final class OpenLineageJobTopology {
             String username,
             String inputName,
             String outputName,
-            boolean pattern) {
+            boolean pattern,
+            boolean jdbcTableList,
+            String sameNameSinkPrefix) {
     }
 
     /**
@@ -175,6 +181,8 @@ public final class OpenLineageJobTopology {
 
     private static Plugin plugin(Config config, String configPath) {
         boolean pattern = patternSubscription(config);
+        boolean jdbc = configPath.toLowerCase(Locale.ROOT).endsWith(".jdbc")
+                || "Jdbc".equalsIgnoreCase(string(config, "plugin_name"));
         return new Plugin(
                 configPath,
                 tables(config, pattern),
@@ -185,7 +193,27 @@ public final class OpenLineageJobTopology {
                 string(config, "username"),
                 firstNonBlank(string(config, "plugin_input"), string(config, "source_table_name")),
                 firstNonBlank(string(config, "plugin_output"), string(config, "result_table_name")),
-                pattern);
+                pattern,
+                jdbc && configPath.startsWith(SECTION_SOURCE) && !config.hasPath("query")
+                        && !config.hasPath("sql") && TABLE_LIST_KEYS.stream().anyMatch(config::hasPath),
+                jdbc && configPath.startsWith(SECTION_SINK) ? sameNameSinkPrefix(config) : null);
+    }
+
+    private static String sameNameSinkPrefix(Config config) {
+        String table = firstNonBlank(string(config, "table"), string(config, "table_path"));
+        if (table == null || !table.endsWith(TABLE_NAME_SUFFIX)) {
+            return null;
+        }
+        String prefix = table.substring(0, table.length() - TABLE_NAME_SUFFIX.length());
+        List<String> parts = OpenMetadataFqn.parts(prefix);
+        if (prefix.contains("${") || parts.isEmpty() || parts.size() > 2) {
+            return null;
+        }
+        String database = firstNonBlank(string(config, "database"), string(config, "database_name"));
+        if (parts.size() == 1 && database != null && OpenMetadataFqn.parts(database).size() == 1) {
+            return database + "." + prefix;
+        }
+        return prefix;
     }
 
     /** The concrete tables of one plugin; dynamic placeholders are not tables. */

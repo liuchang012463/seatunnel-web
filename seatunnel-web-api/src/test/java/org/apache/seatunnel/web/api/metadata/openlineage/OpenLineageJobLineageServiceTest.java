@@ -245,6 +245,63 @@ class OpenLineageJobLineageServiceTest {
         assertEquals("public.test", MAPPER.readTree(published.getFirst()).at("/outputs/0/name").asText());
     }
 
+    @Test
+    void publishesOneRunPerDynamicJdbcTableAndRetriesOnlyUnacknowledgedTerminals() throws Exception {
+        JobInstanceVO details = instance();
+        details.setSinkTable("[\"orders\",\"customers\"]");
+        details.setRuntimeConfig("""
+                source { Jdbc {
+                    database = kingbase
+                    table_list = [
+                        { table_path = "kingbase.public.orders" },
+                        { table_path = "kingbase.public.customers" }
+                    ]
+                } }
+                transform {}
+                sink { Jdbc {
+                    database = postgres
+                    table = "public.${table_name}"
+                    generate_sink_sql = true
+                } }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(details);
+        when(dataSourceDao.queryById(10L)).thenReturn(dataSource(10L, "kingbase", "KINGBASE"));
+        when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "zeonedb", "ZEONEDB"));
+        mockCatalog(10L, "st_ds_10.default", "public");
+        when(exploration.listDatabases(20L)).thenReturn(List.of(database("st_ds_20.postgres")));
+        List<JsonNode> attempts = new ArrayList<>();
+        doAnswer(invocation -> {
+            JsonNode message = MAPPER.readTree(invocation.<String>getArgument(2));
+            attempts.add(message);
+            assertEquals(message.at("/run/runId").asText(), invocation.getArgument(1));
+            return attempts.size() != 4;
+        }).when(bridge).publish(anyString(), anyString(), anyString(), anyBoolean());
+
+        service.recordStart(details, "engine-job-42", false);
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+        service.pulseBatchJobs();
+
+        assertEquals(5, attempts.size());
+        assertDynamicTablePair(attempts.get(0), "START", "orders");
+        assertDynamicTablePair(attempts.get(1), "START", "customers");
+        assertDynamicTablePair(attempts.get(2), "COMPLETE", "orders");
+        assertDynamicTablePair(attempts.get(3), "COMPLETE", "customers");
+        assertEquals(attempts.get(0).at("/run/runId"), attempts.get(2).at("/run/runId"));
+        assertEquals(attempts.get(1).at("/run/runId"), attempts.get(3).at("/run/runId"));
+        assertFalse(attempts.get(0).at("/run/runId").equals(attempts.get(1).at("/run/runId")));
+        assertEquals(attempts.get(3), attempts.get(4), "retry must send the same unacknowledged event");
+    }
+
+    private static void assertDynamicTablePair(JsonNode message, String eventType, String table) {
+        assertEquals(eventType, message.path("eventType").asText());
+        assertEquals(100L, message.at("/run/facets/seatunnel/instanceId").asLong());
+        assertEquals(1, message.path("inputs").size());
+        assertEquals(1, message.path("outputs").size());
+        assertEquals("st_ds_10.default.public." + table, message.at("/inputs/0/name").asText());
+        assertEquals("st_ds_20.postgres.public." + table, message.at("/outputs/0/name").asText());
+    }
+
     private static DataExplorationDatabaseVO database(String fqn) {
         DataExplorationDatabaseVO database = new DataExplorationDatabaseVO();
         database.setFullyQualifiedName(fqn);
