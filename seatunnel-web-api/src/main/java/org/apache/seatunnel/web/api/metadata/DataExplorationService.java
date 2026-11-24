@@ -48,6 +48,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -69,6 +70,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class DataExplorationService {
+
+    private static final Set<DbType> TABLE_CONNECTORS = EnumSet.of(
+            DbType.MYSQL, DbType.POSTGRE_SQL, DbType.ZEONEDB, DbType.JDBC, DbType.DORIS,
+            DbType.ORACLE, DbType.DAMENG, DbType.KINGBASE, DbType.VASTBASE);
 
     private static final int MAX_OM_PAGE_SIZE = 1000;
     private static final int MAX_OM_PAGES = 10_000;
@@ -138,6 +143,10 @@ public class DataExplorationService {
             DataSourceCatalogService dataSourceCatalogService) {
         this(dataSourceDao, metadataBindingDao, openMetadataClient, dataSourceCatalogService,
                 OpenMetadataConfigResolver.fixed(enabledProperties()), null, OmReadCache.disabled());
+    }
+
+    public static boolean supportsTableExploration(DbType type) {
+        return TABLE_CONNECTORS.contains(type);
     }
 
     public List<DataExplorationDatabaseVO> listDatabases(Long dataSourceId) {
@@ -787,15 +796,7 @@ public class DataExplorationService {
         if (source == null || source.getStatus() == DataSourceLifecycleStatus.REVOKED) {
             throw invalid("data source is unavailable");
         }
-        if (source.getDbType() != DbType.MYSQL
-                && source.getDbType() != DbType.POSTGRE_SQL
-                && source.getDbType() != DbType.ZEONEDB
-                && source.getDbType() != DbType.JDBC
-                && source.getDbType() != DbType.DORIS
-                && source.getDbType() != DbType.ORACLE
-                && source.getDbType() != DbType.DAMENG
-                && source.getDbType() != DbType.KINGBASE
-                && source.getDbType() != DbType.VASTBASE) {
+        if (!supportsTableExploration(source.getDbType())) {
             throw new MetadataIntegrationException(
                     MetadataErrorCode.CONNECTOR_NOT_SUPPORTED,
                     "OpenMetadata 2.0.4 exploration is supported only for MYSQL, POSTGRE_SQL, ZEONEDB, JDBC(PostgreSQL), DORIS, ORACLE, DAMENG, KINGBASE and VASTBASE");

@@ -4,11 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.BailErrorStrategy;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.seatunnel.web.api.metadata.client.OpenMetadataClient;
 import org.apache.seatunnel.web.common.enums.DataSourceLifecycleStatus;
 import org.apache.seatunnel.web.common.enums.MetadataDesiredState;
@@ -27,8 +22,6 @@ import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.Source;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.Task;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.TaskKind;
 import org.apache.seatunnel.web.spi.enums.Status;
-import org.openmetadata.schema.FqnLexer;
-import org.openmetadata.schema.FqnParser;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -49,6 +42,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.apache.seatunnel.web.api.metadata.OpenMetadataFqn.unquote;
 
 /** Keeps the graph scoped to registered assets while preserving the stored direction of every edge. */
 @Slf4j
@@ -173,7 +168,7 @@ public class DataSourceLineageService {
         if (id == null || type == null || fqn == null) {
             return null;
         }
-        List<String> parts = qualifiedNames(fqn);
+        List<String> parts = OpenMetadataFqn.parts(fqn);
         if (parts.size() < 2) {
             return null;
         }
@@ -183,8 +178,8 @@ public class DataSourceLineageService {
             return null;
         }
         return new Asset(id.toString(), source.id(), type,
-                table ? displayName(parts.get(1)) : null, table ? displayName(parts.get(2)) : null,
-                displayName(parts.getLast()), fqn);
+                table ? unquote(parts.get(1)) : null, table ? unquote(parts.get(2)) : null,
+                unquote(parts.getLast()), fqn);
     }
 
     private static String canonicalAssetType(String value) {
@@ -193,25 +188,6 @@ public class DataSourceLineageService {
         }
         ExplorationAssetType type = ExplorationAssetType.fromValue(value);
         return type == null ? null : type.entityType();
-    }
-
-    // Use the OM grammar so quoted identifiers containing dots retain their actual hierarchy.
-    private static List<String> qualifiedNames(String fqn) {
-        var lexer = new FqnLexer(CharStreams.fromString(fqn));
-        lexer.removeErrorListeners();
-        var parser = new FqnParser(new CommonTokenStream(lexer));
-        parser.removeErrorListeners();
-        parser.setErrorHandler(new BailErrorStrategy());
-        try {
-            return parser.fqn().name().stream().map(ParserRuleContext::getText).toList();
-        } catch (ParseCancellationException error) {
-            return List.of();
-        }
-    }
-
-    private static String displayName(String segment) {
-        return segment.startsWith("\"")
-                ? segment.substring(1, segment.length() - 1).replace("\"\"", "\"") : segment;
     }
 
     private static JobReference jobReference(String description) {

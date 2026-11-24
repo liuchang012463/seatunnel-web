@@ -3,10 +3,11 @@ package org.apache.seatunnel.web.api.metadata.openlineage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageSnapshot.Dataset;
+import org.apache.seatunnel.web.api.metadata.openlineage.OpenLineageTableFqnResolver.TableIdentity;
 import org.apache.seatunnel.web.common.utils.MetadataStableName;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -49,8 +50,8 @@ public final class OpenLineageEventFactory {
 
     /** Job namespace for every event the web publishes from this module. */
     private static final String JOB_NAMESPACE = "seatunnel-web";
-    /** Datasets are always published under their local identity; asset resolves them to OM. */
     private static final String IDENTITY_TYPE_LOCAL = "local";
+    private static final String IDENTITY_TYPE_FQN = "fqn";
     /** Deterministic runId prefix; keeps runIds from colliding with other producers' uuids. */
     private static final String RUN_ID_DERIVATION_PREFIX = "stweb-lineage:";
 
@@ -77,15 +78,19 @@ public final class OpenLineageEventFactory {
      * Renders one {@code RunEvent}. Pure function: no I/O and no mutable global state.
      */
     public static ObjectNode toRunEvent(OpenLineageSnapshot snapshot) {
+        return toRunEvent(snapshot, Map.of());
+    }
+
+    static ObjectNode toRunEvent(OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities) {
         ObjectNode event = OBJECT_MAPPER.createObjectNode();
 
         event.put("eventType", snapshot.eventType().name());
         event.put("eventTime", snapshot.eventTime().toString());
         event.set("run", buildRun(snapshot));
         event.set("job", buildJob(snapshot));
-        event.set("inputs", buildDatasets(snapshot.inputs()));
-        ArrayNode outputs = buildDatasets(snapshot.outputs());
-        attachColumnLineage(outputs, snapshot);
+        event.set("inputs", buildDatasets(snapshot.inputs(), identities));
+        ArrayNode outputs = buildDatasets(snapshot.outputs(), identities);
+        attachColumnLineage(outputs, snapshot, identities);
         event.set("outputs", outputs);
         event.put("producer", PRODUCER);
         event.put("schemaURL", RUN_EVENT_SCHEMA_URL);
@@ -122,24 +127,25 @@ public final class OpenLineageEventFactory {
         return job;
     }
 
-    private static ArrayNode buildDatasets(List<OpenLineageSnapshot.Dataset> datasets) {
+    private static ArrayNode buildDatasets(List<Dataset> datasets, Map<Dataset, TableIdentity> identities) {
         ArrayNode array = OBJECT_MAPPER.createArrayNode();
         if (datasets == null) {
             return array;
         }
-        for (OpenLineageSnapshot.Dataset dataset : datasets) {
+        for (Dataset dataset : datasets) {
             if (dataset == null) {
                 continue;
             }
-            array.add(buildDataset(dataset));
+            array.add(buildDataset(dataset, identities));
         }
         return array;
     }
 
-    private static ObjectNode buildDataset(OpenLineageSnapshot.Dataset dataset) {
+    private static ObjectNode buildDataset(Dataset dataset, Map<Dataset, TableIdentity> identities) {
+        TableIdentity identity = identities.get(dataset);
         ObjectNode node = OBJECT_MAPPER.createObjectNode();
         node.put("namespace", dataset.namespace());
-        node.put("name", dataset.name());
+        node.put("name", datasetName(dataset, identities));
 
         ObjectNode facets = node.putObject("facets");
         ObjectNode datasource = facets.putObject("seatunnelDatasource");
@@ -147,9 +153,9 @@ public final class OpenLineageEventFactory {
         datasource.put("_schemaURL", SEATUNNEL_DATASOURCE_FACET_SCHEMA_URL);
         putNumber(datasource, "datasourceId", dataset.datasourceId());
         putString(datasource, "dbTypeName", dataset.dbTypeName());
-        String serviceName = serviceName(dataset.datasourceId());
+        String serviceName = identity == null ? serviceName(dataset.datasourceId()) : identity.serviceName();
         putString(datasource, "serviceName", serviceName);
-        datasource.put("identityType", IDENTITY_TYPE_LOCAL);
+        datasource.put("identityType", identity == null ? IDENTITY_TYPE_LOCAL : IDENTITY_TYPE_FQN);
 
         // Standard facet consumed by OM 2.0.4 and the asset precheck: the datasource name is
         // resolved as the database service name, which lets the consumer build the exact table
@@ -180,14 +186,15 @@ public final class OpenLineageEventFactory {
      * keyed by the output field name as the OpenLineage spec requires. Absent when no field was
      * mapped or when the source table of a column is unknown, which marks a table-level-only run.
      */
-    private static void attachColumnLineage(ArrayNode outputs, OpenLineageSnapshot snapshot) {
+    private static void attachColumnLineage(
+            ArrayNode outputs, OpenLineageSnapshot snapshot, Map<Dataset, TableIdentity> identities) {
         List<OpenLineageSnapshot.OutputLineage> lineages = snapshot.lineages();
         if (lineages == null || lineages.isEmpty()) {
             return;
         }
-        List<OpenLineageSnapshot.Dataset> datasets = snapshot.outputs();
+        List<Dataset> datasets = snapshot.outputs();
         for (int index = 0; index < outputs.size() && index < datasets.size(); index++) {
-            OpenLineageSnapshot.Dataset output = datasets.get(index);
+            Dataset output = datasets.get(index);
             OpenLineageSnapshot.OutputLineage lineage = findLineage(lineages, output);
             if (lineage == null || lineage.columns().isEmpty()) {
                 continue;
@@ -207,17 +214,23 @@ public final class OpenLineageEventFactory {
                     ObjectNode inputField = inputFields.addObject();
                     inputField.put("namespace", source.dataset().namespace() == null
                             ? "" : source.dataset().namespace());
-                    inputField.put("name", source.dataset().name() == null
-                            ? "" : source.dataset().name());
+                    // Assert identifies the source by the same namespace/name pair as the input dataset.
+                    String name = datasetName(source.dataset(), identities);
+                    inputField.put("name", name == null ? "" : name);
                     inputField.put("field", source.column());
                 }
             }
         }
     }
 
+    private static String datasetName(Dataset dataset, Map<Dataset, TableIdentity> identities) {
+        TableIdentity identity = identities.get(dataset);
+        return identity == null ? dataset.name() : identity.fqn();
+    }
+
     /** The column lineage of one output dataset, matched by its local identity. */
     private static OpenLineageSnapshot.OutputLineage findLineage(
-            List<OpenLineageSnapshot.OutputLineage> lineages, OpenLineageSnapshot.Dataset output) {
+            List<OpenLineageSnapshot.OutputLineage> lineages, Dataset output) {
         for (OpenLineageSnapshot.OutputLineage lineage : lineages) {
             if (lineage.output() == null) {
                 continue;

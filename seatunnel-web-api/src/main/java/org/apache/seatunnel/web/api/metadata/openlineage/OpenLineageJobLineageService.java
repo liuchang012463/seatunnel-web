@@ -45,9 +45,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>
  * This is the only lineage channel of the web: it fetches the job instances, runtime configs and
- * datasource names itself, uses the local names as dataset identity (the asset project resolves
- * them to OpenMetadata entities) and writes nothing to OpenMetadata itself. Whole-run life cycle
- * per the bridge design v1: one START at submission acceptance, periodic RUNNING heartbeats for
+ * datasource names itself and uses the OpenMetadata table FQN when the catalog resolves it.
+ * It forwards the local table path when metadata is unavailable and leaves writes to the consumer.
+ * The bridge emits one START at submission acceptance, periodic RUNNING heartbeats for
  * streaming jobs, exactly one terminal COMPLETE / FAIL / ABORT per run. The runId is derived
  * deterministically from the instance id and the engine job id, so START and the terminal event
  * share one runId even across a web restart, and a savepoint-restored run that reuses the previous
@@ -90,6 +90,7 @@ public class OpenLineageJobLineageService {
     private final JobInstanceDao jobInstanceDao;
     private final StreamingJobInstanceDao streamingJobInstanceDao;
     private final DataSourceDao dataSourceDao;
+    private final OpenLineageTableFqnResolver tableFqnResolver;
 
     /**
      * Streaming instances observed in the running-like set, with the status last seen
@@ -143,12 +144,14 @@ public class OpenLineageJobLineageService {
                                  OpenLineageKafkaBridge bridge,
                                  JobInstanceDao jobInstanceDao,
                                  StreamingJobInstanceDao streamingJobInstanceDao,
-                                 DataSourceDao dataSourceDao) {
+                                 DataSourceDao dataSourceDao,
+                                 OpenLineageTableFqnResolver tableFqnResolver) {
         this.properties = properties;
         this.bridge = bridge;
         this.jobInstanceDao = jobInstanceDao;
         this.streamingJobInstanceDao = streamingJobInstanceDao;
         this.dataSourceDao = dataSourceDao;
+        this.tableFqnResolver = tableFqnResolver;
     }
 
     /**
@@ -914,9 +917,10 @@ public class OpenLineageJobLineageService {
         // time on its own: the run would see two terminal events.
         boolean retryOnMissingTopic = snapshot.eventType() == EventType.START
                 || snapshot.eventType() == EventType.RUNNING;
+        var tableIdentities = tableFqnResolver.resolve(snapshot);
         if (!bridge.publish(properties.getKafka().getSourceTopic(),
                 OpenLineageEventFactory.deriveRunId(snapshot.instanceId(), snapshot.engineJobId()).toString(),
-                OpenLineageEventFactory.toRunEvent(snapshot).toString(),
+                OpenLineageEventFactory.toRunEvent(snapshot, tableIdentities).toString(),
                 retryOnMissingTopic)) {
             log.debug("OpenLineage event was not delivered, instanceId={}, engineJobId={}",
                     snapshot.instanceId(), snapshot.engineJobId());
@@ -926,8 +930,8 @@ public class OpenLineageJobLineageService {
             log.debug("Published OpenLineage RUNNING heartbeat, instanceId={}, engineJobId={}",
                     snapshot.instanceId(), snapshot.engineJobId());
         } else {
-            log.info("Published OpenLineage {} event, instanceId={}, engineJobId={}",
-                    snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId());
+            log.info("Published OpenLineage {} event, instanceId={}, engineJobId={}, resolvedTableFqns={}",
+                    snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId(), tableIdentities.size());
         }
         return PublishOutcome.PUBLISHED;
     }

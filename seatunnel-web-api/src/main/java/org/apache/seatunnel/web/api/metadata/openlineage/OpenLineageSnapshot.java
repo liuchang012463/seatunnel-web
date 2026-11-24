@@ -11,8 +11,8 @@ import java.util.Map;
  *
  * <p>
  * The snapshot is built from the job's local state only (instance identity, engine job id, local
- * datasource names and table paths, column field mappings). It intentionally contains no
- * OpenMetadata entity, so lineage publication never depends on OpenMetadata.
+ * datasource names and table paths, column field mappings). Catalog enrichment is resolved
+ * at publication so local table paths remain available for matching field mappings.
  * </p>
  *
  * <p>

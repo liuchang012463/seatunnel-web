@@ -3,6 +3,7 @@ package org.apache.seatunnel.web.api.metadata.openlineage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.seatunnel.web.api.alarm.event.JobStatusChangedEvent;
+import org.apache.seatunnel.web.api.metadata.DataExplorationService;
 import org.apache.seatunnel.web.common.enums.JobStatus;
 import org.apache.seatunnel.web.dao.entity.DataSource;
 import org.apache.seatunnel.web.dao.entity.JobInstance;
@@ -12,6 +13,8 @@ import org.apache.seatunnel.web.dao.repository.DataSourceDao;
 import org.apache.seatunnel.web.dao.repository.JobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.StreamingJobInstanceDao;
 import org.apache.seatunnel.web.dao.repository.impl.StreamingJobInstanceDaoImpl;
+import org.apache.seatunnel.web.spi.bean.vo.DataExplorationDatabaseVO;
+import org.apache.seatunnel.web.spi.bean.vo.DataExplorationSchemaVO;
 import org.apache.seatunnel.web.spi.bean.vo.JobInstanceVO;
 import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +61,9 @@ class OpenLineageJobLineageServiceTest {
     @Mock
     private DataSourceDao dataSourceDao;
 
+    @Mock
+    private DataExplorationService exploration;
+
     /** Every JSON the service hands to the bridge, in publish order. */
     private List<String> published;
 
@@ -67,7 +73,8 @@ class OpenLineageJobLineageServiceTest {
     void setUp() {
         published = new ArrayList<>();
         service = new OpenLineageJobLineageService(
-                properties, bridge, jobInstanceDao, streamingJobInstanceDao, dataSourceDao);
+                properties, bridge, jobInstanceDao, streamingJobInstanceDao, dataSourceDao,
+                new OpenLineageTableFqnResolver(exploration));
         LineageBridgeProperties.Kafka kafka = new LineageBridgeProperties.Kafka();
         kafka.setEnabled(true);
         kafka.setBootstrapServers("kafka:9092");
@@ -157,6 +164,103 @@ class OpenLineageJobLineageServiceTest {
         // columnLineage attached because the mapper produced two target fields.
         assertFalse(event.path("outputs").get(0).path("facets").path("columnLineage")
                 .path("fields").isEmpty());
+    }
+
+    @Test
+    void publishesBatchCompletionWithCatalogTableFqnsAndMatchingFieldReferences() throws Exception {
+        long sourceId = 22980182904096L;
+        long sinkId = 23132197819872L;
+        JobInstanceVO details = instance();
+        details.setSourceDatasourceId(sourceId);
+        details.setSinkDatasourceId(sinkId);
+        details.setSourceTable("DAMENG.TEST.STUDENT");
+        details.setSinkTable("public.STUDENT");
+        details.setRuntimeConfig("""
+                source { Jdbc { table_path = "DAMENG.TEST.STUDENT" } }
+                transform = [{
+                    FieldMapper {
+                        plugin_input = source
+                        plugin_output = sink
+                        field_mapper { NAME = STUDENT_NAME }
+                    }
+                }]
+                sink { Jdbc { table = "public.STUDENT" } }
+                """);
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(details);
+        when(dataSourceDao.queryById(sourceId)).thenReturn(dataSource(sourceId, "dameng", "DAMENG"));
+        when(dataSourceDao.queryById(sinkId)).thenReturn(dataSource(sinkId, "vastbase", "VASTBASE"));
+        mockCatalog(sourceId, "st_ds_22980182904096.default", "TEST");
+        mockCatalog(sinkId, "st_ds_23132197819872.default", "public");
+
+        service.onBatchJobStatusChanged(new JobStatusChangedEvent(
+                this, 100L, 200L, JobStatus.FINISHED, JobStatus.RUNNING, null, "engine-job-42"));
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.getFirst());
+        assertEquals("COMPLETE", event.path("eventType").asText());
+        JsonNode input = event.path("inputs").get(0);
+        JsonNode output = event.path("outputs").get(0);
+        assertEquals("st_ds_22980182904096.default.TEST.STUDENT", input.path("name").asText());
+        assertEquals("st_ds_23132197819872.default.public.STUDENT", output.path("name").asText());
+        assertEquals("st_ds_23132197819872", output.at("/facets/datasource/name").asText());
+        assertEquals("st_ds_23132197819872", output.at("/facets/seatunnelDatasource/serviceName").asText());
+        assertEquals("fqn", output.at("/facets/seatunnelDatasource/identityType").asText());
+        JsonNode reference = output.at("/facets/columnLineage/fields/STUDENT_NAME/inputFields/0");
+        assertEquals(input.path("namespace"), reference.path("namespace"));
+        assertEquals(input.path("name"), reference.path("name"));
+        assertEquals("NAME", reference.path("field").asText());
+    }
+
+    @Test
+    void resolvesTwoPartPostgresPathsAndKeepsLocalIdentityWhenCatalogIsUnavailable() throws Exception {
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance());
+        when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "postgres", "POSTGRE_SQL"));
+        when(exploration.listDatabases(10L)).thenThrow(new IllegalStateException("catalog unavailable"));
+        mockCatalog(20L, "bound_postgres.\"sales.archive\"", "public");
+
+        service.recordStart(instance(), "engine-job-42", false);
+
+        assertEquals(1, published.size());
+        JsonNode event = MAPPER.readTree(published.getFirst());
+        assertEquals("seatunnel_web.t_seatunnel_web_alarm_channel", event.at("/inputs/0/name").asText());
+        assertEquals("local", event.at("/inputs/0/facets/seatunnelDatasource/identityType").asText());
+        assertEquals("bound_postgres.\"sales.archive\".public.test", event.at("/outputs/0/name").asText());
+        assertEquals("bound_postgres", event.at("/outputs/0/facets/datasource/name").asText());
+    }
+
+    @Test
+    void retainsLocalPathWhenTwoDatabasesContainTheSameSchema() throws Exception {
+        when(jobInstanceDao.selectDetailById(100L)).thenReturn(instance());
+        when(dataSourceDao.queryById(20L)).thenReturn(dataSource(20L, "postgres", "POSTGRE_SQL"));
+        when(exploration.listDatabases(20L)).thenReturn(List.of(
+                database("bound_postgres.sales"), database("bound_postgres.archive")));
+        when(exploration.listSchemas(20L, "bound_postgres.sales"))
+                .thenReturn(List.of(schema("bound_postgres.sales.public")));
+        when(exploration.listSchemas(20L, "bound_postgres.archive"))
+                .thenReturn(List.of(schema("bound_postgres.archive.public")));
+
+        service.recordStart(instance(), "engine-job-42", false);
+
+        assertEquals(1, published.size());
+        assertEquals("public.test", MAPPER.readTree(published.getFirst()).at("/outputs/0/name").asText());
+    }
+
+    private static DataExplorationDatabaseVO database(String fqn) {
+        DataExplorationDatabaseVO database = new DataExplorationDatabaseVO();
+        database.setFullyQualifiedName(fqn);
+        return database;
+    }
+
+    private static DataExplorationSchemaVO schema(String fqn) {
+        DataExplorationSchemaVO schema = new DataExplorationSchemaVO();
+        schema.setFullyQualifiedName(fqn);
+        return schema;
+    }
+
+    private void mockCatalog(long datasourceId, String databaseFqn, String schemaName) {
+        when(exploration.listDatabases(datasourceId)).thenReturn(List.of(database(databaseFqn)));
+        when(exploration.listSchemas(datasourceId, databaseFqn))
+                .thenReturn(List.of(schema(databaseFqn + "." + schemaName)));
     }
 
     @Test
@@ -965,7 +1069,8 @@ class OpenLineageJobLineageServiceTest {
         StreamingJobInstanceDaoImpl realDao = new StreamingJobInstanceDaoImpl(mapper);
         ReflectionTestUtils.setField(realDao, "streamingJobInstanceMapper", mapper);
         service = new OpenLineageJobLineageService(
-                properties, bridge, jobInstanceDao, realDao, dataSourceDao);
+                properties, bridge, jobInstanceDao, realDao, dataSourceDao,
+                new OpenLineageTableFqnResolver(exploration));
 
         JobInstanceVO runningDetails = instance();
         runningDetails.setJobStatus("RUNNING");
