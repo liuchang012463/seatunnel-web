@@ -98,6 +98,10 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
     [catalog.roots, focus, limits, topology]);
   const catalogAssets = useMemo(() => new Map(topology?.assets.map((asset) => [asset.id, asset])), [topology]);
   const tasks = useMemo(() => groupLineageTasks(topology?.edges ?? []), [topology]);
+  // Older history entries identified tasks by a table pair.
+  const legacyTask = selectedId?.startsWith('task:') && !tasks.has(selectedId)
+    ? topology?.edges.find((link) => `task:${linkId(link)}` === selectedId)?.task : undefined;
+  const selection = legacyTask ? taskNodeId(legacyTask) : selectedId;
   const groupedTasks = useMemo(() => new Set([...tasks].filter(([, group]) => group.links.length > 1)
     .map(([id]) => id)), [tasks]);
   const visibleGroups = useMemo(() => [...groupLineageTasks(graph.links).keys()]
@@ -200,7 +204,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
       database: catalog.database?.fullyQualifiedName,
       schema: catalog.schema?.fullyQualifiedName,
       tableId: focus?.id,
-      node: selectedId,
+      node: selection,
       fields: activeFieldAsset?.id,
       pair: activePair && linkId(activePair),
       ...Object.fromEntries(graphOptions.map(({ key }) => [key, String(limits[key])])),
@@ -216,9 +220,10 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
 
   const busy = topologyLoading || catalog.loading;
   const scopeFqn = catalog.schema?.fullyQualifiedName;
-  const title = focus?.name ?? (source.tableCatalog ? 'Schema 血缘总览' : '数据源血缘');
-  const selectedAsset: LineageAsset | undefined = selectedId ? assets.get(selectedId) : undefined;
-  const selectedGroup = selectedId ? tasks.get(selectedId) : undefined;
+  const title = activePair ? '表对血缘' : focus?.name ?? (source.tableCatalog ? 'Schema 血缘总览' : '数据源血缘');
+  const selectedAsset: LineageAsset | undefined = selection ? assets.get(selection) : undefined;
+  const selectedGroup = selection ? tasks.get(selection) : undefined;
+  const resetLayout = () => setLayout((current) => current + 1);
   const fieldLabel = mappingResult.loading ? '正在读取字段映射'
     : mappingResult.failed ? '字段映射读取失败'
       : mappings.length > 0 ? `${mappings.length} 条字段映射` : '暂无字段映射';
@@ -234,19 +239,20 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
             <div className="data-topology-graph-title">
               <h2 title={title}>{title}</h2>
               {scopeFqn && <small title={scopeFqn}>{scopeFqn}</small>}
-              <span role="status">{graph.assets.length} 个资产 · {graph.links.length} 条血缘
-                {graph.truncated && ' · 已达到每层节点上限'}
+              <span role="status">{canvas.assets.length} 个资产 · {canvas.links.length} 条血缘
+                {!activePair && graph.truncated && ' · 已达到每层节点上限'}
               </span>
             </div>
-            <GraphSettings limits={limits} onChange={focus ? setTableSettings : setOverviewSettings}
-              onLayout={() => setLayout((current) => current + 1)} />
+            {activePair ? <Button size="small" icon={<PartitionOutlined />} onClick={resetLayout}>自动布局</Button>
+              : <GraphSettings limits={limits} onChange={focus ? setTableSettings : setOverviewSettings}
+                onLayout={resetLayout} />}
           </header>
           {!activePair && visibleGroups.length > 0 && <div className="data-topology-task-strip" aria-label="多表任务">
             {visibleGroups.map(({ task, links }) => {
               const id = taskNodeId(task);
               const name = task.name || `任务 ${task.id}`;
               return (
-                <button key={id} type="button" title={name} aria-pressed={selectedId === id}
+                <button key={id} type="button" title={name} aria-pressed={selection === id}
                   onClick={() => setSelectedId(id)}>
                   <ApartmentOutlined /><strong>{name}</strong><span>{links.length} 对表</span>
                 </button>
@@ -267,7 +273,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
             {canvas.assets.length ? <TopologyCanvas
               key={JSON.stringify([scopeFqn, focus?.id, activePair && linkId(activePair), layout])}
               assets={canvas.assets} links={canvas.links} sources={topology?.sources ?? sources} summaries={summaries}
-              focusedId={focus?.id} selectedId={selectedId} fields={fields} mappings={mappings} onSelect={setSelectedId}
+              focusedId={focus?.id} selectedId={selection} fields={fields} mappings={mappings} onSelect={setSelectedId}
               groupedTasks={groupedTasks} onFields={toggleFields} onPair={openPair}
             /> : <div className="data-topology-empty">
               {busy ? <Spin aria-label="正在读取血缘" />
