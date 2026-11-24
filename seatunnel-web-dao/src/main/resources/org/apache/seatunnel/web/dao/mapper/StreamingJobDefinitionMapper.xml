@@ -44,6 +44,10 @@
 
     <sql id="StreamingDefinitionWhere">
         <where>
+            <if test="dto != null and dto.id != null">
+                AND d.id = #{dto.id}
+            </if>
+
             <if test="dto != null and dto.jobName != null and dto.jobName != ''">
                 AND d.job_name LIKE CONCAT('%', #{dto.jobName}, '%')
             </if>

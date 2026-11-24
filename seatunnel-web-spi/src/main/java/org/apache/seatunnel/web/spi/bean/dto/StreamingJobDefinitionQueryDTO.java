@@ -12,6 +12,8 @@ import org.apache.seatunnel.web.spi.bean.dto.pagination.PaginationBaseDTO;
 @EqualsAndHashCode(callSuper = true)
 public class StreamingJobDefinitionQueryDTO extends PaginationBaseDTO {
 
+    /** Exact definition ID used by the task list and lineage deep links. */
+    private Long id;
 
     private String jobName;
 

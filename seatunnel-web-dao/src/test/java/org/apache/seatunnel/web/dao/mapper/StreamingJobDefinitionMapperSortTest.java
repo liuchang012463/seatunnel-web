@@ -38,7 +38,7 @@ class StreamingJobDefinitionMapperSortTest {
         dto.setSortField("updateTime");
         dto.setSortOrder("desc");
 
-        String sql = pageSql(dto);
+        String sql = sql("selectPageWithLatestInstance", dto);
 
         assertTrue(sql.contains("DS_SOURCE.NAME AS SOURCE_DATASOURCE_NAME"), sql);
         assertTrue(sql.contains("DS_SINK.NAME AS SINK_DATASOURCE_NAME"), sql);
@@ -51,19 +51,30 @@ class StreamingJobDefinitionMapperSortTest {
         dto.setSortField("createTime");
         dto.setSortOrder("asc");
 
-        String sql = pageSql(dto);
+        String sql = sql("selectPageWithLatestInstance", dto);
 
         assertTrue(sql.contains("ORDER BY D.CREATE_TIME ASC, D.ID DESC"), sql);
     }
 
-    private static String pageSql(StreamingJobDefinitionQueryDTO dto) {
+    @Test
+    void shouldFilterPageAndCountByDefinitionId() {
+        StreamingJobDefinitionQueryDTO dto = new StreamingJobDefinitionQueryDTO();
+        dto.setId(9007199254740993L);
+
+        for (String statement : new String[] {"selectPageWithLatestInstance", "countPage"}) {
+            String sql = sql(statement, dto);
+            assertTrue(sql.contains("WHERE D.ID = ?"), sql);
+        }
+    }
+
+    private static String sql(String statementName, StreamingJobDefinitionQueryDTO dto) {
         Map<String, Object> params = new HashMap<>();
         params.put("dto", dto);
         params.put("offset", 0);
         params.put("pageSize", 10);
 
         MappedStatement statement = configuration.getMappedStatement(
-                StreamingJobDefinitionMapper.class.getName() + ".selectPageWithLatestInstance");
+                StreamingJobDefinitionMapper.class.getName() + "." + statementName);
         return statement.getBoundSql(params)
                 .getSql()
                 .replaceAll("\\s+", " ")
