@@ -1,4 +1,4 @@
-import { normalizeDataSourceList, withoutSystemManagedSources } from '@/pages/data-exploration/shared';
+import { displayOwner, normalizeDataSourceList, withoutSystemManagedSources } from '@/pages/data-exploration/shared';
 import { fetchDataExplorationTable, fetchDataExplorationTables, fetchDataSourceAll } from '@/pages/data-source/service';
 import type { CommonApiResponse, DataExplorationTable, DataExplorationTableDetail } from '@/pages/data-source/types';
 import { isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
@@ -9,6 +9,15 @@ export interface LineageSource {
   id: string;
   name: string;
   dbType?: string | null;
+}
+
+export interface CatalogSource extends LineageSource {
+  ready?: boolean;
+  tableCatalog: boolean;
+  unitId?: string;
+  businessSystemId?: string;
+  unitName?: string;
+  systemName?: string;
 }
 
 export interface LineageAsset {
@@ -78,13 +87,34 @@ export async function readMetadata<T>(request: Promise<CommonApiResponse<T>>) {
   return response.data;
 }
 
-export async function fetchCatalogSources(): Promise<LineageSource[]> {
+export async function fetchCatalogSources(): Promise<CatalogSource[]> {
   const records = withoutSystemManagedSources(normalizeDataSourceList(await readMetadata(fetchDataSourceAll())));
-  return records.flatMap(({ id, name, dbType, metadataSyncStatus }) =>
-    id && metadataSyncStatus === 'READY' && !isAssetExplorationDbType(dbType)
-      ? [{ id: String(id), name: name || String(id), dbType }]
-      : [],
-  );
+  return records.flatMap((record) => {
+    if (!record.id) return [];
+    const { unit, system } = displayOwner(record);
+    return [{
+      id: String(record.id),
+      name: record.name || String(record.id),
+      dbType: record.dbType,
+      ready: record.metadataSyncStatus === 'READY',
+      tableCatalog: !isAssetExplorationDbType(record.dbType),
+      unitId: record.unitId == null ? undefined : String(record.unitId),
+      businessSystemId: record.businessSystemId == null ? undefined : String(record.businessSystemId),
+      unitName: unit,
+      systemName: system,
+    }];
+  });
+}
+
+export function catalogSources(records: CatalogSource[], topology?: Topology) {
+  const linked = new Set(topology?.sources.map(({ id }) => id));
+  const sources = new Map(records.filter(({ id, ready }) => ready || linked.has(id)).map((item) => [item.id, item]));
+  for (const source of topology?.sources ?? []) {
+    if (!sources.has(source.id)) {
+      sources.set(source.id, { ...source, tableCatalog: !isAssetExplorationDbType(source.dbType ?? undefined) });
+    }
+  }
+  return [...sources.values()];
 }
 
 export async function fetchSchemaTables(sourceId: string, databaseFqn: string, schemaFqn: string, signal: AbortSignal) {
@@ -99,11 +129,28 @@ export async function fetchSchemaTables(sourceId: string, databaseFqn: string, s
   return [...tables.values()];
 }
 
-export function fetchTableMetadata(asset: LineageAsset) {
+function fetchTableMetadata(asset: LineageAsset) {
   return readMetadata(fetchDataExplorationTable(asset.dataSourceId, asset.id));
 }
 
-export async function fetchFieldMetadata(assets: LineageAsset[], signal: AbortSignal) {
+export type ReadTableMetadata = typeof fetchTableMetadata;
+
+export function createTableMetadataReader(): ReadTableMetadata {
+  const requests = new Map<string, Promise<DataExplorationTableDetail>>();
+  return (asset) => {
+    const existing = requests.get(asset.id);
+    if (existing) return existing;
+    // The canvas, field view, and inspector share the same in-flight table read.
+    const request = fetchTableMetadata(asset).catch((error) => {
+      requests.delete(asset.id);
+      throw error;
+    });
+    requests.set(asset.id, request);
+    return request;
+  };
+}
+
+export async function fetchTableDetails(assets: LineageAsset[], signal: AbortSignal, readTable: ReadTableMetadata) {
   const details = new Map<string, DataExplorationTableDetail>();
   const unavailable = new Set<string>();
   const tables = assets.filter(({ type }) => type === 'table');
@@ -111,7 +158,7 @@ export async function fetchFieldMetadata(assets: LineageAsset[], signal: AbortSi
   for (let start = 0; start < tables.length && !signal.aborted; start += 8) {
     await Promise.all(tables.slice(start, start + 8).map(async (asset) => {
       try {
-        details.set(asset.id, await fetchTableMetadata(asset));
+        details.set(asset.id, await readTable(asset));
       } catch {
         unavailable.add(asset.id);
       }

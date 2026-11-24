@@ -2,16 +2,18 @@ import type { DataExplorationTable } from '@/pages/data-source/types';
 import { ApartmentOutlined, RightOutlined, SearchOutlined, TableOutlined } from '@ant-design/icons';
 import { Empty, Input, Pagination, Select, Spin } from 'antd';
 import { useMemo, useState } from 'react';
+import type { CatalogSource } from './service';
 import type useTopologyCatalog from './useTopologyCatalog';
 import type { CatalogScope } from './useTopologyCatalog';
 
 type Catalog = ReturnType<typeof useTopologyCatalog>;
 const pageSize = 20;
 
-function TableList({ tables, loading, focusedId, onFocus }: {
+function TableList({ tables, loading, focusedId, tableCatalog, onFocus }: {
   tables: DataExplorationTable[];
   loading: boolean;
   focusedId?: string;
+  tableCatalog: boolean;
   onFocus: (tableId: string) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -25,16 +27,18 @@ function TableList({ tables, loading, focusedId, onFocus }: {
   }, [search, tables]);
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const label = tableCatalog ? '数据表' : '资产';
+  const searchLabel = tableCatalog ? '搜索表名或 FQN' : '搜索资产名或 FQN';
 
   return (
     <>
       <div className="data-topology-list-heading">
-        <strong><TableOutlined /> 数据表</strong>
+        <strong><TableOutlined /> {label}</strong>
         <span>{tables.length}</span>
       </div>
       <Input
-        aria-label="搜索表名或 FQN"
-        placeholder="搜索表名或 FQN"
+        aria-label={searchLabel}
+        placeholder={searchLabel}
         prefix={<SearchOutlined />}
         value={search}
         allowClear
@@ -43,7 +47,7 @@ function TableList({ tables, loading, focusedId, onFocus }: {
       <div className="data-topology-table-list">
         {loading && tables.length === 0 ? <Spin size="small" aria-label="正在读取表目录" />
           : visible.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={tables.length ? '没有匹配的表' : '暂无数据表'} />
+            description={tables.length ? `没有匹配的${label}` : `暂无${label}`} />
             : visible.map((table) => (
               <button
                 type="button"
@@ -68,16 +72,17 @@ function TableList({ tables, loading, focusedId, onFocus }: {
   );
 }
 
-export default function TopologyBrowser({ catalog, focusedId, onScope, onFocus, onOverview }: {
+export default function TopologyBrowser({ catalog, sources, focusedId, onScope, onFocus, onOverview }: {
   catalog: Catalog;
+  sources: CatalogSource[];
   focusedId?: string;
   onScope: (scope: CatalogScope) => void;
   onFocus: (tableId: string) => void;
   onOverview: () => void;
 }) {
-  const { sources, source, database, databases, schema, schemas, tables, loading } = catalog;
+  const { source, database, databases, schema, schemas, directory, loading } = catalog;
   return (
-    <nav className="data-topology-browser" aria-label="血缘表目录">
+    <nav className="data-topology-browser" aria-label={source.tableCatalog ? '血缘表目录' : '血缘资产目录'}>
       <div className="data-topology-scope">
         <label>
           <span>数据源</span>
@@ -87,7 +92,7 @@ export default function TopologyBrowser({ catalog, focusedId, onScope, onFocus, 
             onChange={(sourceId) => onScope({ sourceId })}
           />
         </label>
-        <label>
+        {source.tableCatalog && <><label>
           <span>数据库</span>
           <Select
             aria-label="数据库" placeholder="选择数据库" showSearch optionFilterProp="label"
@@ -104,16 +109,16 @@ export default function TopologyBrowser({ catalog, focusedId, onScope, onFocus, 
             options={schemas.data?.map(({ name, fullyQualifiedName }) => ({ value: fullyQualifiedName, label: name }))}
             onChange={(schemaFqn) => onScope({ sourceId: source?.id, databaseFqn: database?.fullyQualifiedName, schemaFqn })}
           />
-        </label>
+        </label></>}
         <button
           type="button" className="data-topology-overview" aria-pressed={!focusedId}
-          disabled={!schema} onClick={onOverview}
+          disabled={source.tableCatalog && !schema} onClick={onOverview}
         >
-          <span><ApartmentOutlined /> Schema 血缘总览</span><RightOutlined />
+          <span><ApartmentOutlined /> {source.tableCatalog ? 'Schema 血缘总览' : '数据源血缘'}</span><RightOutlined />
         </button>
       </div>
-      <TableList key={schema?.fullyQualifiedName} tables={tables.data ?? []} loading={loading}
-        focusedId={focusedId} onFocus={onFocus} />
+      <TableList key={schema?.fullyQualifiedName} tables={directory} loading={loading}
+        tableCatalog={source.tableCatalog} focusedId={focusedId} onFocus={onFocus} />
     </nav>
   );
 }

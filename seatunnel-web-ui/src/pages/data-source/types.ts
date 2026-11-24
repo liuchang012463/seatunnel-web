@@ -421,6 +421,7 @@ export interface DataExplorationTable {
   tableType?: string;
   description?: string;
   columnCount?: number;
+  rowCount?: number | string | null;
   profileAvailable?: boolean;
   profileTime?: number;
 }
