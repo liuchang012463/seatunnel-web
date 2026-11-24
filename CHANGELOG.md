@@ -20,6 +20,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   whose plugin datasource is resolved by its connection.
 - The lineage topic is created when the broker does not have it yet, following the cluster defaults
   for partitions and replication factor.
+- The data topology page adds a data source overview, schema and table views, draggable nodes, and
+  field lineage on demand. Each table pair shows its own task node, with a link to the corresponding
+  task in the management list.
 
 ### Changed
 
@@ -31,6 +34,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Multi table jobs no longer publish a single dataset whose name is the raw table list; every table
   of the job is published as its own dataset.
+- Relational lineage events use the OpenMetadata table FQN when resolved. Batch jobs with independent
+  table copies publish one event per pair and identify direct copies that create the target schema
+  so the consumer can derive same-name field mappings.
+- The topology and exploration table lists keep long names within the sidebar and show up to 100
+  tables per page.
 - The lineage topic of a broker without automatic topic creation is no longer dropped silently.
 
 ## [1.0.0] - 2026-07-12
