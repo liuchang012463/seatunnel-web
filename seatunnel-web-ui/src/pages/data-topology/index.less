@@ -1,26 +1,50 @@
 .data-topology-page {
-  padding: 18px 24px 22px;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 56px);
+  min-height: 490px;
+  padding: 16px 22px;
   color: var(--st-color-text-primary);
   font-size: 14px;
 
-  .data-topology-toolbar {
+  .data-topology-header {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    min-height: 48px;
   }
 
-  .data-topology-filter {
-    width: 200px;
-    max-width: 100%;
+  .data-topology-header-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--st-color-line-strong);
+    border-radius: var(--st-radius-md);
+    background: var(--st-color-bg-elevated);
+    color: var(--st-color-accent-strong);
   }
 
-  .data-topology-graph {
-    display: flex;
-    flex: 1 1 0;
-    flex-direction: column;
+  .data-topology-header-copy {
+    flex: 1;
     min-width: 0;
+
+    h1 { margin: 0; font-size: 18px; line-height: 24px; }
+    small { display: block; }
+  }
+
+  .data-topology-header-copy small,
+  .data-topology-read-time,
+  .data-topology-graph-title > span {
+    color: var(--st-color-text-muted);
+  }
+
+  .data-topology-workspace {
+    display: grid;
+    flex: 1 1 0;
+    grid-template: minmax(0, 1fr) / clamp(202px, 17vw, 280px) minmax(0, 1fr) clamp(208px, 17vw, 272px);
     min-height: 0;
     overflow: hidden;
     border: 1px solid var(--st-color-border);
@@ -28,154 +52,241 @@
     background: var(--st-color-bg-panel);
   }
 
+  .data-topology-browser,
+  .data-topology-inspector {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px;
+    gap: 12px;
+    overflow: auto;
+  }
+
+  .data-topology-browser { border-right: 1px solid var(--st-color-divider); }
+  .data-topology-inspector { border-left: 1px solid var(--st-color-divider); }
+
+  .data-topology-scope {
+    display: grid;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--st-color-divider);
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--st-color-text-secondary);
+    }
+
+    .ant-select { width: 100%; }
+  }
+
+  .data-topology-overview,
+  .data-topology-table-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    color: var(--st-color-text-primary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--st-radius-sm);
+    cursor: pointer;
+
+    &:hover { background: var(--st-color-bg-hover); }
+    &:focus-visible { outline: 2px solid var(--st-color-focus); outline-offset: -2px; }
+    &[aria-pressed='true'] {
+      color: var(--st-color-accent-strong);
+      background: var(--st-color-bg-elevated);
+      border-color: var(--st-color-line-strong);
+    }
+  }
+
+  .data-topology-overview {
+    justify-content: space-between;
+    padding: 8px 10px;
+    &:disabled { opacity: .6; cursor: default; }
+  }
+
+  .data-topology-list-heading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    > span { color: var(--st-color-text-muted); font-variant-numeric: tabular-nums; }
+  }
+
+  .data-topology-table-list {
+    display: flex;
+    flex: 1;
+    min-height: 80px;
+    flex-direction: column;
+    gap: 4px;
+    overflow: auto;
+  }
+
+  .data-topology-table-item {
+    padding: 7px;
+    > span:nth-child(2) { display: grid; flex: 1; min-width: 0; }
+    > small { flex: none; font-variant-numeric: tabular-nums; }
+    small { color: var(--st-color-text-muted); }
+  }
+
+  .data-topology-graph {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
   .data-topology-graph-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    min-height: 52px;
-    padding: 8px 16px;
-    gap: 8px 18px;
+    gap: 8px 14px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--st-color-divider);
-
-    h2 { margin: 0; font-size: 16px; line-height: 24px; }
   }
 
-  .data-topology-graph-meta {
+  .data-topology-graph-title {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+    h2 { margin: 0; font-size: 15px; line-height: 20px; }
+    > span { font-size: 12px; }
+  }
+
+  .data-topology-settings {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 18px;
-    color: var(--st-color-text-muted);
+    align-items: center;
+    gap: 7px 12px;
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--st-color-text-secondary);
+      font-size: 12px;
+    }
+
+    .ant-input-number { width: 58px; }
+  }
+
+  .data-topology-field-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 14px;
+    border-bottom: 1px solid var(--st-color-divider);
+    color: var(--st-color-text-secondary);
   }
 
   .data-topology-canvas {
     position: relative;
     flex: 1 1 0;
     min-height: 0;
+    background: var(--st-color-bg-page);
   }
 
   .data-topology-empty {
-    height: 100%;
     display: grid;
+    height: 100%;
     place-items: center;
   }
+
+  .data-topology-inspector-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .data-topology-inspector h3 { margin: 0; min-width: 0; font-size: 15px; line-height: 22px; }
+  .data-topology-inspector p { margin: 6px 0 0; color: var(--st-color-text-secondary); }
+  .data-topology-inspector .ant-descriptions-item-content { overflow-wrap: anywhere; }
+  .data-topology-inspector .ant-descriptions-item-label { white-space: nowrap; }
+  .data-topology-task-tags .ant-tag { margin: 0 6px 4px 0; }
 
   .data-topology-asset,
   .data-topology-task {
     position: relative;
     width: 266px;
-    /* React Flow disables wrapper interaction for fixed, unselectable nodes. */
-    pointer-events: auto;
     border: 1px solid var(--st-color-line-strong);
     border-radius: var(--st-radius-md);
     background: var(--st-color-bg-elevated);
     color: var(--st-color-text-primary);
-    font-size: 14px;
   }
 
   .data-topology-task {
-    width: 236px;
+    width: 222px;
     border-color: var(--st-color-accent);
+    &.is-deleted { border-color: var(--st-color-border); }
   }
 
-  .data-topology-task--unavailable {
-    border-color: var(--st-color-border);
-    color: var(--st-color-text-muted);
+  .data-topology-asset.is-focus { border-color: var(--st-color-accent-strong); }
+
+  .react-flow__node.selected > div,
+  .react-flow__node:focus-visible > div {
+    border-color: var(--st-color-focus);
+    box-shadow: 0 0 0 2px var(--st-color-focus);
   }
 
-  .data-topology-node-heading,
-  .data-topology-task-heading {
+  .data-topology-node-heading {
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-height: 54px;
+    gap: 9px;
+    min-height: 60px;
     padding: 8px 10px;
-
+    cursor: grab;
     > :first-child { flex: none; }
   }
 
-  .data-topology-task-heading { min-height: 42px; }
+  .react-flow__node.dragging .data-topology-node-heading { cursor: grabbing; }
 
   .data-topology-node-label {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
+    display: grid;
+    flex: 1;
     min-width: 0;
     line-height: 19px;
+    small { color: var(--st-color-text-muted); font-size: 11px; }
   }
 
+  .data-topology-header-copy small,
+  .data-topology-table-item > span > *,
+  .data-topology-graph-title h2,
   .data-topology-node-label > *,
-  .data-topology-task-heading > strong,
-  .data-topology-task-link > span:first-child,
-  .data-topology-field > span {
-    min-width: 0;
+  .data-topology-inspector-title h3,
+  .data-topology-field > span,
+  .data-topology-field > small {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
 
-  .data-topology-node-parent,
-  .data-topology-node-count,
-  .data-topology-field-status { color: var(--st-color-text-muted); }
-
-  .data-topology-node-count {
-    padding: 0 10px 8px;
-    line-height: 20px;
-  }
-
-  .data-topology-icon,
-  .data-topology-task-link {
-    padding: 3px 6px;
-    border: 0;
-    border-radius: var(--st-radius-sm);
-    background: transparent;
-    color: var(--st-color-text-secondary);
-    font: inherit;
-    cursor: pointer;
-
-    &:hover, &:focus-visible {
-      outline: 1px solid var(--st-color-focus);
-      color: var(--st-color-accent-strong);
-      background: var(--st-color-bg-hover);
-    }
-  }
-
-  .data-topology-icon { flex: none; }
-  .data-topology-fields-toggle[aria-pressed='true'] { color: var(--st-color-accent-strong); }
-
-  .data-topology-task-link {
-    display: flex;
-    flex: 1 1 auto;
-    align-items: center;
-    justify-content: space-between;
-    gap: 7px;
-    min-width: 0;
-    text-align: left;
-
-    > :last-child { flex: none; }
-    &:disabled { cursor: wait; }
-  }
-
   .data-topology-field-list { border-top: 1px solid var(--st-color-divider); }
+
   .data-topology-field,
   .data-topology-field-status {
     position: relative;
     display: flex;
     align-items: center;
-    height: 29px;
+    gap: 8px;
+    height: 27px;
     padding: 0 10px;
     border-bottom: 1px solid var(--st-color-divider-subtle);
   }
 
-  .react-flow__handle {
-    opacity: 0;
-    pointer-events: none;
-  }
+  .data-topology-field > span { flex: 1; }
+  .data-topology-field > small { max-width: 45%; color: var(--st-color-text-muted); }
+  .data-topology-field-status { color: var(--st-color-text-muted); font-size: 12px; }
 
-  .data-topology-asset > .react-flow__handle { top: 27px; }
-
+  .react-flow__handle { opacity: 0; pointer-events: none; }
+  .data-topology-asset > .react-flow__handle { top: 30px; }
   .data-topology-field .react-flow__handle {
-    opacity: 0.85;
+    opacity: .85;
     border-color: var(--st-color-bg-panel);
     background: #63c5a6;
   }
@@ -184,11 +295,17 @@
     border-color: var(--st-color-divider);
     color: var(--st-color-text-primary);
     background: var(--st-color-bg-elevated);
-
     svg { fill: currentColor; }
     &:hover { background: var(--st-color-bg-hover); }
   }
 
+  .react-flow__minimap {
+    overflow: hidden;
+    background: var(--st-color-bg-panel);
+    border: 1px solid var(--st-color-divider);
+    border-radius: var(--st-radius-sm);
+  }
+
   .react-flow__attribution { background: var(--st-color-bg-panel); }
-  .react-flow__attribution a { color: var(--st-color-text-muted); font-size: 14px; }
+  .react-flow__attribution a { color: var(--st-color-text-muted); }
 }

@@ -1,263 +1,210 @@
-import { readTaskDefinition } from '@/pages/common/workflow/TaskDefinitionView';
-import { ApartmentOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, PartitionOutlined, ReloadOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
-import { Alert, Button, Empty, message, Select, Spin } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import ReactFlow, { Background, Controls, type Edge, MarkerType, type Node, useNodesInitialized, useReactFlow } from 'reactflow';
+import { Alert, Button, Empty, InputNumber, Spin } from 'antd';
+import { useMemo, useState } from 'react';
 import 'reactflow/dist/style.css';
-import { type AssetNodeData, fieldHandle, type FieldPort, TopologyAssetNode, TopologyTaskNode } from './TopologyNodes';
-import { ancestry, buildHierarchy, type Group, levels, linksInFilter, openPaths, projectGraph, taskId } from './graph';
-import { topologyPositions } from './layout';
-import { fetchFieldLineage, fetchTopology, type FieldLink, type LineageTask, type Topology } from './service';
+import { fieldRows, lineageNeighborhood, linkId, schemaLimits, tableLimits, type GraphLimits } from './graph';
+import {
+  fetchFieldLineage, fetchFieldMetadata, fetchTopology, type FieldLink, type LineageAsset, type LineageTask,
+} from './service';
+import TopologyBrowser from './TopologyBrowser';
+import TopologyCanvas, { taskNodeId } from './TopologyCanvas';
+import TopologyInspector from './TopologyInspector';
+import type { FieldView } from './TopologyNodes';
+import useLineageRead from './useLineageRead';
+import useTopologyCatalog, { type CatalogScope } from './useTopologyCatalog';
 import './index.less';
 
-const nodeTypes = { asset: TopologyAssetNode, task: TopologyTaskNode };
-const filterLabels = { source: '数据源', database: '库', schema: 'Schema', table: '表' };
-const noFields: FieldLink[] = [];
-const noPorts: FieldPort[] = [];
+const noMappings: FieldLink[] = [];
+const graphOptions = [
+  { key: 'upstream', label: '上游深度', min: 0 },
+  { key: 'downstream', label: '下游深度', min: 0 },
+  { key: 'nodesPerLayer', label: '每层节点数', min: 1 },
+] as const;
 
-function FitGraph({ positions }: { positions: ReturnType<typeof topologyPositions> }) {
-  const initialized = useNodesInitialized();
-  const { fitView } = useReactFlow();
-  useEffect(() => {
-    if (!initialized) return;
-    const frame = requestAnimationFrame(() => fitView({ padding: 0.2, maxZoom: 1 }));
-    return () => cancelAnimationFrame(frame);
-  }, [fitView, initialized, positions]);
-  return null;
+function restoreView() {
+  const query = new URLSearchParams(history.location.search);
+  function get(key: string) {
+    return query.get(key) || undefined;
+  }
+  const focusedId = get('tableId');
+  const defaults = focusedId ? tableLimits : schemaLimits;
+  const limits = { ...defaults };
+  for (const { key, min } of graphOptions) {
+    const value = Number(get(key));
+    if (Number.isSafeInteger(value) && value >= min) limits[key] = value;
+  }
+  return {
+    scope: { sourceId: get('dataSourceId'), databaseFqn: get('database'), schemaFqn: get('schema') },
+    focusedId, selectedId: get('node') ?? focusedId, fieldId: get('fields'), limits,
+  };
 }
 
-function fieldPorts(fields: FieldLink[]) {
-  const ports = new Map<string, Map<string, FieldPort>>();
-  function connect(id: string, fqn: string, direction: 'incoming' | 'outgoing') {
-    const asset = ports.get(id) ?? new Map<string, FieldPort>();
-    const field = asset.get(fqn) ?? { fqn };
-    field[direction] = true;
-    asset.set(fqn, field);
-    ports.set(id, asset);
-  }
-  for (const field of fields) {
-    connect(field.sourceId, field.fromColumn, 'outgoing');
-    connect(field.targetId, field.toColumn, 'incoming');
-  }
-  return new Map([...ports].map(([id, fields]) => [id, [...fields.values()]]));
+function GraphSettings({ limits, onChange, onLayout }: {
+  limits: GraphLimits;
+  onChange: (limits: GraphLimits) => void;
+  onLayout: () => void;
+}) {
+  return (
+    <div className="data-topology-settings">
+      {graphOptions.map(({ key, label, min }) => (
+        <label key={key}>
+          {label}
+          <InputNumber size="small" aria-label={label} min={min} precision={0} value={limits[key]}
+            onChange={(value) => {
+              if (value !== null && Number.isSafeInteger(value) && value >= min) {
+                onChange({ ...limits, [key]: value });
+              }
+            }} />
+        </label>
+      ))}
+      <Button size="small" icon={<PartitionOutlined />} onClick={onLayout}>自动布局</Button>
+    </div>
+  );
 }
 
 export default function DataTopologyPage() {
-  const [topology, setTopology] = useState<Topology>();
-  const [filterId, setFilterId] = useState<string>();
-  const [opened, setOpened] = useState(new Set<string>());
-  const [fieldId, setFieldId] = useState<string>();
-  const [fieldResult, setFieldResult] = useState<{ id: string; fields?: FieldLink[] }>();
-  const [removedTasks, setRemovedTasks] = useState(new Set<string>());
-  const [checkingTask, setCheckingTask] = useState<string>();
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const [notice, noticeContext] = message.useMessage();
+  const [initial] = useState(restoreView);
+  const [scope, setScope] = useState<CatalogScope>(initial.scope);
+  const [focusedId, setFocusedId] = useState(initial.focusedId);
+  const [selectedId, setSelectedId] = useState(initial.selectedId);
+  const [fieldId, setFieldId] = useState(initial.fieldId);
+  const [overviewSettings, setOverviewSettings] = useState(initial.focusedId ? schemaLimits : initial.limits);
+  const [tableSettings, setTableSettings] = useState(initial.focusedId ? initial.limits : tableLimits);
+  const [layout, setLayout] = useState(0);
+  const [revision, setRevision] = useState(0);
 
-  useEffect(() => {
-    let current = true;
-    setLoading(true);
-    setFailed(false);
-    fetchTopology().then((data) => {
-      if (current) setTopology(data);
-    }).catch(() => {
-      if (current) setFailed(true);
-    }).finally(() => {
-      if (current) setLoading(false);
-    });
-    return () => { current = false; };
-  }, [attempt]);
+  const topology = useLineageRead(fetchTopology, revision);
+  const catalog = useTopologyCatalog(scope, topology.data, revision);
+  const focus = catalog.roots.find(({ id }) => id === focusedId);
+  const limits = focus ? tableSettings : overviewSettings;
+  const graph = useMemo(() => lineageNeighborhood(topology.data, focus ? [focus] : catalog.roots, limits),
+    [catalog.roots, focus, limits, topology.data]);
+  const assets = useMemo(() => new Map(graph.assets.map((asset) => [asset.id, asset])), [graph.assets]);
+  const activeFieldAsset = fieldId ? assets.get(fieldId) : undefined;
+  const fieldScope = useMemo(() => {
+    if (!activeFieldAsset) return undefined;
+    const pairs = new Set<string>();
+    const ids = new Set([activeFieldAsset.id]);
+    for (const link of graph.links) {
+      if (link.sourceId !== activeFieldAsset.id && link.targetId !== activeFieldAsset.id) continue;
+      pairs.add(linkId(link));
+      ids.add(link.sourceId);
+      ids.add(link.targetId);
+    }
+    return { pairs, assets: [...ids].map((id) => assets.get(id)!) };
+  }, [activeFieldAsset, assets, graph.links]);
 
-  const hierarchy = useMemo(() => buildHierarchy(topology), [topology]);
-  const activeFilter = filterId && hierarchy.groups.has(filterId) ? filterId : undefined;
-  const filterPath = ancestry(hierarchy, activeFilter);
-  const links = useMemo(() => linksInFilter(topology?.edges ?? [], hierarchy, activeFilter),
-    [topology, hierarchy, activeFilter]);
-  const focusedAsset = fieldId ? hierarchy.paths.get(fieldId)?.at(-1)?.asset : undefined;
-  const fieldState = !focusedAsset ? undefined
-    : fieldResult?.id !== focusedAsset.id ? 'loading'
-      : fieldResult.fields ? 'open' : 'error';
+  const loadMappings = useMemo(() => activeFieldAsset && fieldScope?.pairs.size
+    ? () => fetchFieldLineage(activeFieldAsset) : undefined, [activeFieldAsset, fieldScope?.pairs.size]);
+  const loadColumns = useMemo(() => fieldScope
+    ? (signal: AbortSignal) => fetchFieldMetadata(fieldScope.assets, signal) : undefined, [fieldScope]);
+  const mappingResult = useLineageRead(loadMappings, revision);
+  const columnResult = useLineageRead(loadColumns, revision);
+  const mappings = useMemo(() => fieldScope
+    ? mappingResult.data?.filter((mapping) => fieldScope.pairs.has(linkId(mapping))) ?? noMappings
+    : noMappings, [fieldScope, mappingResult.data]);
+  const fields = useMemo(() => {
+    const result = new Map<string, FieldView>();
+    for (const asset of fieldScope?.assets ?? []) {
+      const detail = columnResult.data?.details.get(asset.id);
+      result.set(asset.id, {
+        rows: fieldRows(asset, detail?.columns ?? [], mappings),
+        loading: asset.type === 'table' && columnResult.loading && !detail,
+        failed: columnResult.data?.unavailable.has(asset.id),
+      });
+    }
+    return result;
+  }, [columnResult.data, columnResult.loading, fieldScope, mappings]);
 
-  useEffect(() => {
-    if (!focusedAsset) return;
-    let current = true;
-    setFieldResult(undefined);
-    fetchFieldLineage(focusedAsset).then((fields) => {
-      if (current) setFieldResult({ id: focusedAsset.id, fields });
-    }).catch(() => {
-      if (current) setFieldResult({ id: focusedAsset.id });
-    });
-    return () => { current = false; };
-  }, [focusedAsset]);
-
-  const visibleFields = fieldState === 'open' ? fieldResult?.fields ?? noFields : noFields;
-  const projection = useMemo(() => projectGraph(links, hierarchy, opened, visibleFields),
-    [links, hierarchy, opened, visibleFields]);
-  const ports = useMemo(() => fieldPorts(projection.fields), [projection.fields]);
-  const positions = useMemo(() => topologyPositions([
-    ...projection.groups.map(({ group }) => ({
-      id: group.id,
-      height: 88 + (ports.get(group.asset?.id ?? '')?.length ?? 0) * 29 + (focusedAsset && group.asset?.id === focusedAsset.id ? 32 : 0),
-    })),
-    ...projection.tasks.map(([id]) => ({ id, height: 72 })),
-  ], projection.links), [projection, ports, focusedAsset]);
-
-  function applyFilter(id?: string) {
-    setFilterId(id);
+  function focusTable(id?: string) {
+    setFocusedId(id);
+    setSelectedId(id);
     setFieldId(undefined);
-    const depth = Math.max(0, ancestry(hierarchy, id).length - 1);
-    setOpened(openPaths(linksInFilter(topology?.edges ?? [], hierarchy, id), hierarchy, depth));
   }
 
-  function collapse(id: string) {
-    setOpened((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
+  function changeScope(next: CatalogScope) {
+    setScope(next);
+    focusTable();
+  }
+
+  function openTask(task: LineageTask) {
+    // Keep the current graph on the history entry so Back returns to this view.
+    const query = new URLSearchParams({
+      dataSourceId: catalog.source?.id ?? '',
+      database: catalog.database?.fullyQualifiedName ?? '',
+      schema: catalog.schema?.fullyQualifiedName ?? '',
+      ...Object.fromEntries(graphOptions.map(({ key }) => [key, String(limits[key])])),
     });
-    if (focusedAsset && hierarchy.paths.get(focusedAsset.id)?.some((group) => group.id === id)) {
-      setFieldId(undefined);
-    }
+    if (focus) query.set('tableId', focus.id);
+    if (selectedId) query.set('node', selectedId);
+    if (activeFieldAsset) query.set('fields', activeFieldAsset.id);
+    history.replace({ pathname: history.location.pathname, search: `?${query}` });
+    const list = task.kind === 'STREAMING' ? 'stream-link-up' : 'batch-link-up';
+    history.push(`/sync/${list}?id=${encodeURIComponent(task.id)}`);
   }
 
-  function showFields(group: Group) {
-    const asset = group.asset;
-    if (!asset) return;
-    if (fieldId === asset.id) {
-      setFieldId(undefined);
-      return;
-    }
-    const related = links.filter((edge) => edge.sourceId === asset.id || edge.targetId === asset.id);
-    setOpened((current) => new Set([...current, ...openPaths(related, hierarchy, levels.length - 1)]));
-    setFieldResult(undefined);
-    setFieldId(asset.id);
-  }
+  const busy = topology.loading || catalog.loading;
+  const scopeFqn = catalog.schema?.fullyQualifiedName;
+  const title = focus?.name ?? 'Schema 血缘总览';
+  const selectedAsset: LineageAsset | undefined = selectedId ? assets.get(selectedId) : undefined;
+  const selectedLink = graph.links.find((link) => link.task && taskNodeId(link) === selectedId);
+  const fieldLabel = mappingResult.loading ? '正在读取字段映射'
+    : mappingResult.failed ? '字段映射读取失败'
+      : mappings.length > 0 ? `${mappings.length} 条字段映射` : '暂无字段映射';
 
-  async function openDefinition(task: LineageTask) {
-    if (checkingTask) return;
-    const key = taskId(task);
-    setCheckingTask(key);
-    try {
-      const current = await readTaskDefinition(task.kind, task.id);
-      if (!current) {
-        setRemovedTasks((previous) => new Set([...previous, key]));
-        notice.warning('任务已删除');
-        return;
-      }
-      const path = task.kind === 'STREAMING' ? 'stream-link-up' : 'batch-link-up';
-      history.push(`/sync/${path}/${encodeURIComponent(task.id)}/detail?view=definition`);
-    } catch {
-      notice.error('无法查看任务定义');
-    } finally {
-      setCheckingTask(undefined);
-    }
-  }
-
-  const nodes: Node[] = projection.groups.map(({ group, assets, internalCount }) => {
-    const data: AssetNodeData = {
-      group,
-      parents: ancestry(hierarchy, group.parentId),
-      assetCount: assets.size,
-      internalCount,
-      fields: ports.get(group.asset?.id ?? '') ?? noPorts,
-      fieldState: group.asset?.id === focusedAsset?.id ? fieldState : undefined,
-      onExpand: ({ id }) => setOpened((current) => new Set([...current, id])),
-      onCollapse: collapse,
-      onFields: showFields,
-    };
-    return { id: group.id, type: 'asset', position: positions.get(group.id)!, data, ariaLabel: group.name };
-  });
-  for (const [id, link] of projection.tasks) {
-    const key = link.task ? taskId(link.task) : undefined;
-    const task = key && link.task && removedTasks.has(key) ? { ...link.task, deleted: true } : link.task;
-    nodes.push({ id, type: 'task', position: positions.get(id)!,
-      data: { task, checking: key !== undefined && checkingTask === key, onOpen: openDefinition } });
-  }
-  const edges: Edge[] = projection.links.map((edge) => ({
-    ...edge,
-    type: 'smoothstep',
-    sourceHandle: 'out',
-    targetHandle: 'in',
-    label: edge.count ? `${edge.count} 条` : undefined,
-    labelStyle: { fontSize: 14, fill: 'var(--st-color-text-primary)' },
-    labelBgStyle: { fill: 'var(--st-color-bg-elevated)' },
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#62a6d6' },
-    style: { stroke: '#62a6d6', strokeWidth: 2 },
-  }));
-  projection.fields.forEach((field, index) => {
-    edges.push({
-      id: `field:${index}`,
-      className: 'data-topology-field-edge',
-      source: `asset:${field.sourceId}`,
-      target: `asset:${field.targetId}`,
-      sourceHandle: fieldHandle(field.fromColumn, 'from'),
-      targetHandle: fieldHandle(field.toColumn, 'to'),
-      ariaLabel: `${field.fromColumn} → ${field.toColumn}`,
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#63c5a6' },
-      style: { stroke: '#63c5a6', strokeWidth: 1.4 },
-    });
-  });
-
-  const refresh = () => setAttempt((value) => value + 1);
   return (
     <div className="data-topology-page">
-      {noticeContext}
-      <div className="data-topology-toolbar">
-        {levels.map((level, index) => {
-          const parent = filterPath.find((group) => group.kind === levels[index - 1]);
-          const options = [...hierarchy.groups.values()]
-            .filter((group) => group.kind === level && (!parent || group.parentId === parent.id))
-            .map((group) => ({ value: group.id,
-              label: parent ? group.name : ancestry(hierarchy, group.id).map(({ name }) => name).join(' / ') }))
-            .sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
-          return <Select<string>
-            key={level}
-            aria-label={`筛选${filterLabels[level]}`}
-            placeholder={`筛选${filterLabels[level]}`}
-            className="data-topology-filter"
-            showSearch
-            allowClear
-            optionFilterProp="label"
-            value={filterPath.find((group) => group.kind === level)?.id}
-            options={options}
-            onChange={(value) => applyFilter(value || parent?.id)}
-          />;
-        })}
-        <Button icon={<ApartmentOutlined />} aria-label="全局视图" disabled={!activeFilter && opened.size === 0 && !fieldId}
-          onClick={() => applyFilter()}>全局视图</Button>
-        <Button icon={<ReloadOutlined />} aria-label="刷新拓扑" loading={loading} onClick={refresh}>刷新拓扑</Button>
-      </div>
-      {failed && topology && <Alert showIcon type="warning" message="读取血缘失败，当前显示上次成功读取的结果"
-        action={<Button onClick={refresh}>重试</Button>} />}
-      <section className="data-topology-graph" aria-label="数据引接拓扑">
-        <div className="data-topology-graph-header">
-          <h2>数据引接血缘</h2>
-          <div className="data-topology-graph-meta" role="status">
-            {topology && <span>{new Set(links.flatMap(({ sourceId, targetId }) => [sourceId, targetId])).size} 个资产 · {links.length} 条血缘</span>}
-            {topology?.readAt && <span>最近成功读取 <time dateTime={topology.readAt}>
-              {new Date(topology.readAt).toLocaleString('zh-CN', { hour12: false })}
-            </time></span>}
-          </div>
+      <header className="data-topology-header">
+        <div className="data-topology-header-icon"><ApartmentOutlined /></div>
+        <div className="data-topology-header-copy">
+          <h1>数据引接血缘</h1>
+          {scopeFqn && <small title={scopeFqn}>{scopeFqn}</small>}
         </div>
-        <div className="data-topology-canvas">
-          {nodes.length ? <ReactFlow
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes} nodesDraggable={false} nodesConnectable={false}
-            elementsSelectable={false} deleteKeyCode={null} fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-            minZoom={0.1} maxZoom={2}
-          >
-            <Background color="var(--st-color-divider)" gap={20} />
-            <Controls showInteractive={false} />
-            <FitGraph positions={positions} />
-          </ReactFlow> : <div className="data-topology-empty">
-            {loading ? <Spin aria-label="正在读取拓扑" size="large" />
-              : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={failed ? '读取血缘失败' : '暂无可展示的血缘'}>
-                {failed && !topology && <Button onClick={refresh}>重试</Button>}
-              </Empty>}
+        {topology.data?.readAt && <time dateTime={topology.data.readAt} className="data-topology-read-time">
+          {new Date(topology.data.readAt).toLocaleString('zh-CN', { hour12: false })}
+        </time>}
+        <Button icon={<ReloadOutlined />} loading={busy} onClick={() => setRevision((current) => current + 1)}>刷新血缘</Button>
+      </header>
+      {topology.failed && <Alert showIcon type="warning"
+        message={topology.data ? '读取血缘失败，当前显示上次成功读取的结果' : '读取表间血缘失败，请刷新重试。'} />}
+      {catalog.failed && <Alert showIcon type="warning" message="读取元数据目录失败，请刷新重试。" />}
+      <div className="data-topology-workspace">
+        <TopologyBrowser catalog={catalog} focusedId={focus?.id} onScope={changeScope}
+          onFocus={focusTable} onOverview={() => focusTable()} />
+        <section className="data-topology-graph" aria-label={title}>
+          <header className="data-topology-graph-header">
+            <div className="data-topology-graph-title">
+              <h2 title={title}>{title}</h2>
+              <span role="status">{graph.assets.length} 个资产 · {graph.links.length} 条血缘
+                {graph.truncated && ' · 已达到每层节点上限'}
+              </span>
+            </div>
+            <GraphSettings limits={limits} onChange={focus ? setTableSettings : setOverviewSettings}
+              onLayout={() => setLayout((current) => current + 1)} />
+          </header>
+          {activeFieldAsset && <div className="data-topology-field-toolbar">
+            <span title={activeFieldAsset.fullyQualifiedName}>
+              <strong>{activeFieldAsset.name}</strong> · {fieldLabel}
+            </span>
+            <Button type="text" size="small" onClick={() => setFieldId(undefined)}>收起字段</Button>
           </div>}
-        </div>
-      </section>
+          <div className="data-topology-canvas">
+            {graph.assets.length ? <TopologyCanvas
+              key={JSON.stringify([scopeFqn, focus?.id, layout])}
+              assets={graph.assets} links={graph.links} sources={topology.data?.sources ?? catalog.sources}
+              focusedId={focus?.id} selectedId={selectedId} fields={fields} mappings={mappings} onSelect={setSelectedId}
+            /> : <div className="data-topology-empty">
+              {busy ? <Spin aria-label="正在读取血缘" />
+                : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={
+                  scopeFqn ? '该 Schema 暂无数据表' : '暂无可用的 Schema'
+                } />}
+            </div>}
+          </div>
+        </section>
+        <TopologyInspector asset={selectedAsset} link={selectedLink} assets={assets} fieldId={activeFieldAsset?.id}
+          onFields={(id) => setFieldId((current) => current === id ? undefined : id)} onOpenTask={openTask} />
+      </div>
     </div>
   );
 }

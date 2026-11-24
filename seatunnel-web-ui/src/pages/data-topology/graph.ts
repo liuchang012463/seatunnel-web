@@ -1,132 +1,102 @@
-import type { FieldLink, LineageAsset, LineageLink, LineageSource, Topology } from './service';
+import type { DataExplorationColumn } from '@/pages/data-source/types';
+import type { FieldLink, LineageAsset, LineageLink, Topology } from './service';
 
-export type Level = 'source' | 'database' | 'schema' | 'table';
-export const levels: Level[] = ['source', 'database', 'schema', 'table'];
-
-export interface Group {
-  id: string;
-  kind: Level | 'asset';
-  name: string;
-  source: LineageSource;
-  parentId?: string;
-  asset?: LineageAsset;
+export interface GraphLimits {
+  upstream: number;
+  downstream: number;
+  nodesPerLayer: number;
 }
 
-export interface Hierarchy {
-  groups: Map<string, Group>;
-  paths: Map<string, Group[]>;
-}
-
-export function buildHierarchy(topology?: Topology): Hierarchy {
-  const groups = new Map<string, Group>();
-  const paths = new Map<string, Group[]>();
-  const sources = new Map(topology?.sources.map((source) => [source.id, source]));
-  function group(value: Group) {
-    const existing = groups.get(value.id);
-    if (existing) return existing;
-    groups.set(value.id, value);
-    return value;
-  }
-  for (const asset of topology?.assets ?? []) {
-    const source = sources.get(asset.dataSourceId);
-    if (!source) continue;
-    const root = group({ id: `source:${source.id}`, kind: 'source', name: source.name, source });
-    const path = [root];
-    if (asset.type === 'table' && asset.database && asset.schema) {
-      const database = group({
-        id: `database:${source.id}:${encodeURIComponent(asset.database)}`,
-        kind: 'database', name: asset.database, source, parentId: root.id,
-      });
-      path.push(database, group({
-        id: `schema:${database.id}:${encodeURIComponent(asset.schema)}`,
-        kind: 'schema', name: asset.schema, source, parentId: database.id,
-      }));
-    }
-    path.push(group({
-      id: `asset:${asset.id}`, kind: asset.type === 'table' ? 'table' : 'asset',
-      name: asset.name, source, asset, parentId: path.at(-1)?.id,
-    }));
-    paths.set(asset.id, path);
-  }
-  return { groups, paths };
-}
-
-export function ancestry(hierarchy: Hierarchy, id: string | undefined): Group[] {
-  const parents: Group[] = [];
-  let group = id ? hierarchy.groups.get(id) : undefined;
-  while (group) {
-    parents.unshift(group);
-    group = group.parentId ? hierarchy.groups.get(group.parentId) : undefined;
-  }
-  return parents;
-}
-
-export function linksInFilter(edges: LineageLink[], hierarchy: Hierarchy, filterId?: string) {
-  if (!filterId) return edges;
-  const matches = (assetId: string) => hierarchy.paths.get(assetId)?.some(({ id }) => id === filterId);
-  // Either end can match. The other end stays on screen so a filter never breaks a flow.
-  return edges.filter(({ sourceId, targetId }) => matches(sourceId) || matches(targetId));
-}
-
-export function openPaths(edges: LineageLink[], hierarchy: Hierarchy, level: number): Set<string> {
-  const opened = new Set<string>();
-  for (const edge of edges) {
-    for (const assetId of [edge.sourceId, edge.targetId]) {
-      const path = hierarchy.paths.get(assetId);
-      path?.slice(0, Math.min(level, path.length - 1)).forEach(({ id }) => opened.add(id));
-    }
-  }
-  return opened;
-}
+export const schemaLimits: GraphLimits = { upstream: 2, downstream: 2, nodesPerLayer: 50 };
+export const tableLimits: GraphLimits = { upstream: 3, downstream: 3, nodesPerLayer: 100 };
 
 export function linkId({ sourceId, targetId }: Pick<LineageLink, 'sourceId' | 'targetId'>) {
   return `${sourceId}:${targetId}`;
 }
 
-export function taskId(task: NonNullable<LineageLink['task']>) {
-  return `${task.kind}:${task.id}`;
-}
+export function lineageNeighborhood(topology: Topology | undefined, roots: LineageAsset[], limits: GraphLimits) {
+  const assets = new Map(topology?.assets.map((asset) => [asset.id, asset]));
+  const visible = new Map(roots.map((asset) => [asset.id, asset]));
+  const rootIds = new Set(visible.keys());
+  const links = new Map<string, LineageLink>();
+  const incoming = new Map<string, LineageLink[]>();
+  const outgoing = new Map<string, LineageLink[]>();
+  let truncated = false;
 
-export function projectGraph(edges: LineageLink[], hierarchy: Hierarchy, opened: Set<string>, fields: FieldLink[]) {
-  const groups = new Map<string, { group: Group; assets: Set<string>; internalCount: number }>();
-  const tasks = new Map<string, LineageLink>();
-  const pairs = new Set<string>();
-  const links = new Map<string, { id: string; source: string; target: string; count?: number }>();
-  const displayed = (assetId: string) => {
-    const path = hierarchy.paths.get(assetId);
-    const group = path?.find(({ id }) => !opened.has(id));
-    if (!group) return undefined;
-    const node = groups.get(group.id) ?? { group, assets: new Set<string>(), internalCount: 0 };
-    node.assets.add(assetId);
-    groups.set(group.id, node);
-    return node;
-  };
+  for (const link of topology?.edges ?? []) {
+    if (!assets.has(link.sourceId) || !assets.has(link.targetId)) continue;
+    if (rootIds.has(link.sourceId) && rootIds.has(link.targetId)) links.set(linkId(link), link);
+    const upstream = incoming.get(link.targetId) ?? [];
+    upstream.push(link);
+    incoming.set(link.targetId, upstream);
+    const downstream = outgoing.get(link.sourceId) ?? [];
+    downstream.push(link);
+    outgoing.set(link.sourceId, downstream);
+  }
 
-  for (const edge of edges) {
-    const from = displayed(edge.sourceId);
-    const to = displayed(edge.targetId);
-    if (!from || !to) continue;
-    const source = from.group.id;
-    const target = to.group.id;
-    if (from.group.asset && to.group.asset) {
-      const pair = linkId(edge);
-      const task = `task:${pair}`;
-      tasks.set(task, edge);
-      pairs.add(pair);
-      links.set(`into:${pair}`, { id: `into:${pair}`, source, target: task });
-      links.set(`out:${pair}`, { id: `out:${pair}`, source: task, target });
-    } else if (source === target) {
-      from.internalCount++;
-    } else {
-      const id = `summary:${source}:${target}`;
-      const link = links.get(id);
-      links.set(id, { id, source, target, count: (link?.count ?? 0) + 1 });
+  function expand(adjacency: typeof incoming, endpoint: 'sourceId' | 'targetId', depth: number) {
+    // Count new assets independently at each hop and in each direction. All
+    // schema tables are roots, including tables that have no lineage yet.
+    const visited = new Set(rootIds);
+    let frontier = [...rootIds];
+    for (let hop = 0; hop < depth && frontier.length > 0; hop++) {
+      const candidates = frontier.flatMap((id) => adjacency.get(id) ?? []);
+      const neighbors = [...new Set(candidates.map((link) => link[endpoint]))]
+        .filter((id) => !visited.has(id))
+        .sort((a, b) => assets.get(a)!.fullyQualifiedName.localeCompare(assets.get(b)!.fullyQualifiedName)
+          || a.localeCompare(b));
+      truncated ||= neighbors.length > limits.nodesPerLayer;
+      frontier = neighbors.slice(0, limits.nodesPerLayer);
+      for (const id of frontier) {
+        visited.add(id);
+        visible.set(id, assets.get(id)!);
+      }
+      for (const link of candidates) {
+        if (visited.has(link[endpoint])) links.set(linkId(link), link);
+      }
     }
   }
-  return {
-    groups: [...groups.values()],
-    tasks: [...tasks.entries()],
-    links: [...links.values()],
-    fields: fields.filter((field) => pairs.has(linkId(field))),
-  };
+
+  expand(incoming, 'sourceId', limits.upstream);
+  expand(outgoing, 'targetId', limits.downstream);
+  return { assets: [...visible.values()], links: [...links.values()], truncated };
+}
+
+export interface FieldRow {
+  fqn: string;
+  name: string;
+  type?: string;
+  incoming?: boolean;
+  outgoing?: boolean;
+}
+
+export function fieldRows(asset: LineageAsset, columns: DataExplorationColumn[], mappings: FieldLink[]) {
+  const connected = new Map<string, FieldRow>();
+  function port(fqn: string, direction: 'incoming' | 'outgoing') {
+    const suffix = fqn.startsWith(`${asset.fullyQualifiedName}.`)
+      ? fqn.slice(asset.fullyQualifiedName.length + 1) : fqn;
+    const name = suffix.startsWith('"') && suffix.endsWith('"') ? suffix.slice(1, -1) : suffix;
+    const row = connected.get(fqn) ?? { fqn, name };
+    row[direction] = true;
+    connected.set(fqn, row);
+  }
+  for (const mapping of mappings) {
+    if (mapping.sourceId === asset.id) port(mapping.fromColumn, 'outgoing');
+    if (mapping.targetId === asset.id) port(mapping.toColumn, 'incoming');
+  }
+
+  // Metadata determines the row order and includes every unmapped column.
+  const rows = columns.map((column) => {
+    const mapped = column.fullyQualifiedName ? connected.get(column.fullyQualifiedName)
+      : [...connected.values()].find(({ name }) => name === column.name);
+    if (mapped) connected.delete(mapped.fqn);
+    return {
+      fqn: mapped?.fqn ?? column.fullyQualifiedName ?? column.name,
+      name: column.name,
+      type: column.dataTypeDisplay ?? column.dataType,
+      incoming: mapped?.incoming,
+      outgoing: mapped?.outgoing,
+    };
+  });
+  return [...rows, ...connected.values()];
 }
