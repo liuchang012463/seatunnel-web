@@ -460,9 +460,16 @@ public class DataExplorationService {
         result.setTableType(table.getTableType());
         result.setDescription(table.getDescription());
         result.setColumnCount(table.getColumns() == null ? 0 : table.getColumns().size());
+        result.setRowCount(profiledRowCount(profile));
         result.setProfileAvailable(profile != null && profile.getTimestamp() != null);
         result.setProfileTime(profile == null ? null : profile.getTimestamp());
         return result;
+    }
+
+    private static Long profiledRowCount(OpenMetadataTableProfile profile) {
+        Long rowCount = profile == null ? null : profile.getRowCount();
+        // OpenMetadata uses negative row counts for unavailable measurements.
+        return rowCount == null || rowCount < 0 ? null : rowCount;
     }
 
     private OpenMetadataTableProfile latestProfile(OpenMetadataTable table, String cacheScopeKey) {
@@ -598,6 +605,7 @@ public class DataExplorationService {
         result.setDatabaseFullyQualifiedName(table.getDatabaseFullyQualifiedName());
         result.setSchemaFullyQualifiedName(table.getSchemaFullyQualifiedName());
         OpenMetadataTableProfile profile = latestProfile(table, cacheScopeKey);
+        result.setRowCount(profiledRowCount(profile));
         result.setProfileAvailable(profile != null && profile.getTimestamp() != null);
         result.setProfileTime(profile == null ? null : profile.getTimestamp());
         result.setTags(new ArrayList<>(safe(table.getTags())));

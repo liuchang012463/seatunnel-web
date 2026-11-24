@@ -12,6 +12,8 @@ public class DataExplorationTableVO {
     private String tableType;
     private String description;
     private Integer columnCount;
+    /** Null when OpenMetadata has no row-count profile for this table. */
+    private Long rowCount;
     private boolean profileAvailable;
     private Long profileTime;
 }

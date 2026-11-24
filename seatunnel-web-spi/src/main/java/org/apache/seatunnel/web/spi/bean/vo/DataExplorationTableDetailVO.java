@@ -18,6 +18,7 @@ public class DataExplorationTableDetailVO {
     private String serviceFullyQualifiedName;
     private String databaseFullyQualifiedName;
     private String schemaFullyQualifiedName;
+    private Long rowCount;
     private boolean profileAvailable;
     private Long profileTime;
     private List<DataExplorationColumnVO> columns = new ArrayList<>();
