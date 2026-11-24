@@ -634,7 +634,16 @@ public class OpenLineageJobLineageService {
                         FieldMappingExtractor.extractDetailed(runtimeConfig),
                         inputs.aliases(),
                         outputs.aliases()));
-        return new LineagePublication(snapshot, sinkPrefix != null && snapshot.inputs().size() > 1);
+        boolean tableByTable = sinkPrefix != null && snapshot.inputs().size() > 1;
+        boolean singlePair = snapshot.inputs().size() == 1 && snapshot.outputs().size() == 1;
+        boolean sameNameColumns = !streaming && (tableByTable || singlePair)
+                && topology.sources().size() == 1 && topology.sinks().size() == 1
+                && topology.sources().getFirst().directJdbcRead()
+                && !topology.sources().getFirst().tables().isEmpty()
+                && topology.sinks().getFirst().automaticJdbcSink()
+                && (sinkPrefix != null || topology.sinks().getFirst().tables().size() == 1)
+                && hasNoTransforms(runtimeConfig);
+        return new LineagePublication(snapshot, tableByTable, sameNameColumns);
     }
 
     private static String sameNameSinkPrefix(
@@ -643,15 +652,16 @@ public class OpenLineageJobLineageService {
         // A transform or a multi-plugin job can route data differently.
         if (streaming || config == null || topology.sources().size() != 1 || topology.sinks().size() != 1
                 || !topology.sources().getFirst().jdbcTableList()
-                || topology.sources().getFirst().tables().isEmpty()) {
-            return null;
-        }
-        ConfigValue transform = config.root().get("transform");
-        if (transform != null && !(transform instanceof ConfigObject object && object.isEmpty())
-                && !(transform instanceof ConfigList list && list.isEmpty())) {
+                || topology.sources().getFirst().tables().isEmpty() || !hasNoTransforms(config)) {
             return null;
         }
         return topology.sinks().getFirst().sameNameSinkPrefix();
+    }
+
+    private static boolean hasNoTransforms(Config config) {
+        ConfigValue transform = config.root().get("transform");
+        return transform == null || transform instanceof ConfigObject object && object.isEmpty()
+                || transform instanceof ConfigList list && list.isEmpty();
     }
 
     /** One side of the job: its datasets and the transform alias each plugin output owns. */
@@ -996,25 +1006,36 @@ public class OpenLineageJobLineageService {
             // OpenLineage events apply every input to every output. Keep independent table copies
             // in separate events so Assert only creates the configured table-to-table edges.
             for (int i = 0; i < snapshot.inputs().size(); i++) {
-                messages.add(new LineageMessage(OpenLineageEventFactory.toTableRunEvent(snapshot, tableIdentities,
-                        snapshot.inputs().get(i), snapshot.outputs().get(i))));
+                messages.add(lineageMessage(OpenLineageEventFactory.toTableRunEvent(snapshot, tableIdentities,
+                        snapshot.inputs().get(i), snapshot.outputs().get(i)), publication.sameNameColumns));
             }
         } else {
-            messages.add(new LineageMessage(OpenLineageEventFactory.toRunEvent(snapshot, tableIdentities)));
+            messages.add(lineageMessage(OpenLineageEventFactory.toRunEvent(snapshot, tableIdentities),
+                    publication.sameNameColumns));
         }
         return messages;
+    }
+
+    private static LineageMessage lineageMessage(ObjectNode event, boolean sameNameColumns) {
+        // The consumer resolves the actual column FQNs after OM has discovered both tables.
+        if (sameNameColumns) {
+            ((ObjectNode) event.at("/run/facets/seatunnel")).put("sameNameColumns", true);
+        }
+        return new LineageMessage(event);
     }
 
     private static final class LineagePublication {
         private final OpenLineageSnapshot snapshot;
         private final boolean tableByTable;
+        private final boolean sameNameColumns;
         // Preserve the exact payload and retry only unacknowledged messages after a partial send.
         private Deque<LineageMessage> remaining;
         private int resolvedTableCount;
 
-        private LineagePublication(OpenLineageSnapshot snapshot, boolean tableByTable) {
+        private LineagePublication(OpenLineageSnapshot snapshot, boolean tableByTable, boolean sameNameColumns) {
             this.snapshot = snapshot;
             this.tableByTable = tableByTable;
+            this.sameNameColumns = sameNameColumns;
         }
     }
 

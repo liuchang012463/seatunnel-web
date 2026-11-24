@@ -80,6 +80,8 @@ public final class OpenLineageJobTopology {
      *     topic option is not a dataset name
      * @param jdbcTableList this JDBC source declares separate tables in a table list
      * @param sameNameSinkPrefix the fixed path prefix of a JDBC same-name sink template
+     * @param directJdbcRead the source reads whole tables without an explicit query or projection
+     * @param automaticJdbcSink the JDBC sink uses generated SQL and creates the target schema
      */
     public record Plugin(
             String configPath,
@@ -91,7 +93,9 @@ public final class OpenLineageJobTopology {
             String outputName,
             boolean pattern,
             boolean jdbcTableList,
-            String sameNameSinkPrefix) {
+            String sameNameSinkPrefix,
+            boolean directJdbcRead,
+            boolean automaticJdbcSink) {
     }
 
     /**
@@ -183,6 +187,13 @@ public final class OpenLineageJobTopology {
         boolean pattern = patternSubscription(config);
         boolean jdbc = configPath.toLowerCase(Locale.ROOT).endsWith(".jdbc")
                 || "Jdbc".equalsIgnoreCase(string(config, "plugin_name"));
+        boolean directJdbcRead = jdbc && configPath.startsWith(SECTION_SOURCE) && isWholeTableRead(config);
+        String schemaSaveMode = string(config, "schema_save_mode");
+        boolean automaticJdbcSink = jdbc && configPath.startsWith(SECTION_SINK)
+                && (schemaSaveMode == null || "CREATE_SCHEMA_WHEN_NOT_EXIST".equalsIgnoreCase(schemaSaveMode)
+                    || "RECREATE_SCHEMA".equalsIgnoreCase(schemaSaveMode))
+                && enabled(config, "generate_sink_sql")
+                && !config.hasPath("query") && !config.hasPath("sql");
         return new Plugin(
                 configPath,
                 tables(config, pattern),
@@ -196,7 +207,36 @@ public final class OpenLineageJobTopology {
                 pattern,
                 jdbc && configPath.startsWith(SECTION_SOURCE) && !config.hasPath("query")
                         && !config.hasPath("sql") && TABLE_LIST_KEYS.stream().anyMatch(config::hasPath),
-                jdbc && configPath.startsWith(SECTION_SINK) ? sameNameSinkPrefix(config) : null);
+                jdbc && configPath.startsWith(SECTION_SINK) ? sameNameSinkPrefix(config) : null,
+                directJdbcRead,
+                automaticJdbcSink);
+    }
+
+    private static boolean isWholeTableRead(Config config) {
+        List<String> projections = List.of("query", "sql", "columns", "column_fields");
+        if (projections.stream().anyMatch(config::hasPath)) {
+            return false;
+        }
+        // A JDBC table list can override the read configuration per table.
+        for (String key : TABLE_LIST_KEYS) {
+            if (config.hasPath(key) && config.getValue(key) instanceof ConfigList tables) {
+                for (ConfigValue table : tables) {
+                    if (table instanceof ConfigObject object
+                            && projections.stream().anyMatch(object.toConfig()::hasPath)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean enabled(Config config, String key) {
+        try {
+            return config.getBoolean(key);
+        } catch (ConfigException ignored) {
+            return false;
+        }
     }
 
     private static String sameNameSinkPrefix(Config config) {

@@ -262,6 +262,7 @@ class OpenLineageJobLineageServiceTest {
                     database = postgres
                     table = "public.${table_name}"
                     generate_sink_sql = true
+                    schema_save_mode = CREATE_SCHEMA_WHEN_NOT_EXIST
                 } }
                 """);
         when(jobInstanceDao.selectDetailById(100L)).thenReturn(details);
@@ -300,6 +301,32 @@ class OpenLineageJobLineageServiceTest {
         assertEquals(1, message.path("outputs").size());
         assertEquals("st_ds_10.default.public." + table, message.at("/inputs/0/name").asText());
         assertEquals("st_ds_20.postgres.public." + table, message.at("/outputs/0/name").asText());
+        assertTrue(message.at("/run/facets/seatunnel/sameNameColumns").asBoolean());
+    }
+
+    @Test
+    void marksAutomaticJdbcCopyButNotAQueryOrAPreexistingTable() throws Exception {
+        JobInstanceVO details = instance();
+        String direct = """
+                source { Jdbc { table_path = "seatunnel_web.orders" } }
+                sink { Jdbc {
+                    table = "public.orders"
+                    generate_sink_sql = true
+                    schema_save_mode = CREATE_SCHEMA_WHEN_NOT_EXIST
+                } }
+                """;
+        List<String> configurations = List.of(direct, direct.replace("table_path = \"seatunnel_web.orders\"",
+                "query = \"select id from seatunnel_web.orders\""),
+                direct.replace("CREATE_SCHEMA_WHEN_NOT_EXIST", "ERROR_WHEN_SCHEMA_NOT_EXIST"));
+        for (int i = 0; i < configurations.size(); i++) {
+            details.setRuntimeConfig(configurations.get(i));
+            service.recordStart(details, "engine-copy-" + i, false);
+        }
+        String marker = "/run/facets/seatunnel/sameNameColumns";
+        assertEquals(3, published.size());
+        assertTrue(MAPPER.readTree(published.get(0)).at(marker).asBoolean());
+        assertTrue(MAPPER.readTree(published.get(1)).at(marker).isMissingNode());
+        assertTrue(MAPPER.readTree(published.get(2)).at(marker).isMissingNode());
     }
 
     private static DataExplorationDatabaseVO database(String fqn) {
