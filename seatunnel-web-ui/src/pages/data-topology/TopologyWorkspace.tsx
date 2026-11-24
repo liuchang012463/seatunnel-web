@@ -1,16 +1,18 @@
 import type { DataExplorationTable } from '@/pages/data-source/types';
-import { PartitionOutlined, SettingOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, ArrowLeftOutlined, PartitionOutlined, SettingOutlined } from '@ant-design/icons';
 import { history } from '@umijs/max';
 import { Alert, Button, Empty, InputNumber, Popover, Spin } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import 'reactflow/dist/style.css';
-import { fieldRows, lineageNeighborhood, linkId, schemaLimits, tableLimits, type GraphLimits } from './graph';
+import {
+  fieldRows, groupLineageTasks, lineageNeighborhood, linkId, schemaLimits, tableLimits, taskNodeId, type GraphLimits,
+} from './graph';
 import {
   createTableMetadataReader, fetchFieldLineage, fetchTableDetails, type CatalogSource, type FieldLink, type LineageAsset,
-  type LineageTask, type Topology,
+  type LineageLink, type LineageTask, type Topology,
 } from './service';
 import TopologyBrowser from './TopologyBrowser';
-import TopologyCanvas, { taskNodeId } from './TopologyCanvas';
+import TopologyCanvas from './TopologyCanvas';
 import TopologyInspector from './TopologyInspector';
 import type { FieldView } from './TopologyNodes';
 import useLineageRead from './useLineageRead';
@@ -37,7 +39,7 @@ function restoreView(search: string) {
   }
   return {
     scope: { sourceId: get('dataSourceId'), databaseFqn: get('database'), schemaFqn: get('schema') },
-    focusedId, selectedId: get('node') ?? focusedId, fieldId: get('fields'), limits,
+    focusedId, selectedId: get('node') ?? focusedId, fieldId: get('fields'), pairId: get('pair'), limits,
   };
 }
 
@@ -84,6 +86,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
   const [focusedId, setFocusedId] = useState(initial.focusedId);
   const [selectedId, setSelectedId] = useState(initial.selectedId);
   const [fieldId, setFieldId] = useState(initial.fieldId);
+  const [pairId, setPairId] = useState(initial.pairId);
   const [overviewSettings, setOverviewSettings] = useState(initial.focusedId ? schemaLimits : initial.limits);
   const [tableSettings, setTableSettings] = useState(initial.focusedId ? initial.limits : tableLimits);
   const [layout, setLayout] = useState(0);
@@ -93,20 +96,32 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
   const limits = focus ? tableSettings : overviewSettings;
   const graph = useMemo(() => lineageNeighborhood(topology, focus ? [focus] : catalog.roots, limits),
     [catalog.roots, focus, limits, topology]);
-  const assets = useMemo(() => new Map(graph.assets.map((asset) => [asset.id, asset])), [graph.assets]);
+  const catalogAssets = useMemo(() => new Map(topology?.assets.map((asset) => [asset.id, asset])), [topology]);
+  const tasks = useMemo(() => groupLineageTasks(topology?.edges ?? []), [topology]);
+  const groupedTasks = useMemo(() => new Set([...tasks].filter(([, group]) => group.links.length > 1)
+    .map(([id]) => id)), [tasks]);
+  const visibleGroups = useMemo(() => [...groupLineageTasks(graph.links).keys()]
+    .filter((id) => groupedTasks.has(id)).map((id) => tasks.get(id)!), [graph.links, groupedTasks, tasks]);
+  const activePair = pairId ? topology?.edges.find((link) => linkId(link) === pairId
+    && catalogAssets.has(link.sourceId) && catalogAssets.has(link.targetId)) : undefined;
+  const canvas = useMemo(() => activePair ? {
+    assets: [...new Set([activePair.sourceId, activePair.targetId])].map((id) => catalogAssets.get(id)!),
+    links: [activePair],
+  } : graph, [activePair, catalogAssets, graph]);
+  const assets = useMemo(() => new Map(canvas.assets.map((asset) => [asset.id, asset])), [canvas.assets]);
   const activeFieldAsset = fieldId ? assets.get(fieldId) : undefined;
   const fieldScope = useMemo(() => {
     if (!activeFieldAsset) return undefined;
     const pairs = new Set<string>();
     const ids = new Set([activeFieldAsset.id]);
-    for (const link of graph.links) {
+    for (const link of canvas.links) {
       if (link.sourceId !== activeFieldAsset.id && link.targetId !== activeFieldAsset.id) continue;
       pairs.add(linkId(link));
       ids.add(link.sourceId);
       ids.add(link.targetId);
     }
     return { pairs, assets: [...ids].map((id) => assets.get(id)!) };
-  }, [activeFieldAsset, assets, graph.links]);
+  }, [activeFieldAsset, assets, canvas.links]);
 
   const loadMappings = useMemo(() => activeFieldAsset && fieldScope?.pairs.size
     ? () => fetchFieldLineage(activeFieldAsset) : undefined, [activeFieldAsset, fieldScope?.pairs.size]);
@@ -116,9 +131,9 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
   const columnResult = useLineageRead(loadColumns, revision);
   const listedTables = useMemo(() => new Map(catalog.tables.data?.map((table) => [table.id, table])), [catalog.tables.data]);
   const readNeighbors = useMemo(() => {
-    const neighbors = graph.assets.filter(({ type, id }) => type === 'table' && !listedTables.has(id));
+    const neighbors = canvas.assets.filter(({ type, id }) => type === 'table' && !listedTables.has(id));
     return neighbors.length ? (signal: AbortSignal) => fetchTableDetails(neighbors, signal, readTable) : undefined;
-  }, [graph.assets, listedTables, readTable]);
+  }, [canvas.assets, listedTables, readTable]);
   const neighborDetails = useLineageRead(readNeighbors, revision).data;
   const summaries = useMemo(() => {
     const result = new Map<string, DataExplorationTable>(listedTables);
@@ -149,6 +164,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
     setFocusedId(id);
     setSelectedId(id);
     setFieldId(undefined);
+    setPairId(undefined);
   }
 
   function changeScope(next: CatalogScope) {
@@ -165,6 +181,17 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
     setFieldId(fields.has(id) ? undefined : id);
   }, [fields]);
 
+  const openPair = useCallback((link: LineageLink) => {
+    setPairId(linkId(link));
+    setFieldId(link.sourceId);
+    setSelectedId(link.task ? taskNodeId(link.task) : link.sourceId);
+  }, []);
+
+  function closePair() {
+    setPairId(undefined);
+    setFieldId(undefined);
+  }
+
   function openTask(task: LineageTask) {
     // Keep the current graph on the history entry so Back returns to this view.
     const query = new URLSearchParams(history.location.search);
@@ -175,6 +202,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
       tableId: focus?.id,
       node: selectedId,
       fields: activeFieldAsset?.id,
+      pair: activePair && linkId(activePair),
       ...Object.fromEntries(graphOptions.map(({ key }) => [key, String(limits[key])])),
     };
     for (const [key, value] of Object.entries(values)) {
@@ -190,7 +218,7 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
   const scopeFqn = catalog.schema?.fullyQualifiedName;
   const title = focus?.name ?? (source.tableCatalog ? 'Schema 血缘总览' : '数据源血缘');
   const selectedAsset: LineageAsset | undefined = selectedId ? assets.get(selectedId) : undefined;
-  const selectedLink = graph.links.find((link) => link.task && taskNodeId(link) === selectedId);
+  const selectedGroup = selectedId ? tasks.get(selectedId) : undefined;
   const fieldLabel = mappingResult.loading ? '正在读取字段映射'
     : mappingResult.failed ? '字段映射读取失败'
       : mappings.length > 0 ? `${mappings.length} 条字段映射` : '暂无字段映射';
@@ -213,18 +241,34 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
             <GraphSettings limits={limits} onChange={focus ? setTableSettings : setOverviewSettings}
               onLayout={() => setLayout((current) => current + 1)} />
           </header>
-          {activeFieldAsset && <div className="data-topology-field-toolbar">
-            <span title={activeFieldAsset.fullyQualifiedName}>
-              <strong>{activeFieldAsset.name}</strong> · {fieldLabel}
+          {!activePair && visibleGroups.length > 0 && <div className="data-topology-task-strip" aria-label="多表任务">
+            {visibleGroups.map(({ task, links }) => {
+              const id = taskNodeId(task);
+              const name = task.name || `任务 ${task.id}`;
+              return (
+                <button key={id} type="button" title={name} aria-pressed={selectedId === id}
+                  onClick={() => setSelectedId(id)}>
+                  <ApartmentOutlined /><strong>{name}</strong><span>{links.length} 对表</span>
+                </button>
+              );
+            })}
+          </div>}
+          {(activeFieldAsset || activePair) && <div className="data-topology-field-toolbar">
+            {activePair && <Button type="text" size="small" icon={<ArrowLeftOutlined />} onClick={closePair}>返回关系图</Button>}
+            <span title={activeFieldAsset?.fullyQualifiedName}>
+              {activePair
+                ? <strong>{assets.get(activePair.sourceId)?.name} → {assets.get(activePair.targetId)?.name}</strong>
+                : <strong>{activeFieldAsset?.name}</strong>}
+              {activeFieldAsset && <small role="status">{fieldLabel}</small>}
             </span>
-            <Button type="text" size="small" onClick={() => setFieldId(undefined)}>收起字段</Button>
+            {activeFieldAsset && <Button type="text" size="small" onClick={() => setFieldId(undefined)}>收起字段</Button>}
           </div>}
           <div className="data-topology-canvas">
-            {graph.assets.length ? <TopologyCanvas
-              key={JSON.stringify([scopeFqn, focus?.id, layout])}
-              assets={graph.assets} links={graph.links} sources={topology?.sources ?? sources} summaries={summaries}
+            {canvas.assets.length ? <TopologyCanvas
+              key={JSON.stringify([scopeFqn, focus?.id, activePair && linkId(activePair), layout])}
+              assets={canvas.assets} links={canvas.links} sources={topology?.sources ?? sources} summaries={summaries}
               focusedId={focus?.id} selectedId={selectedId} fields={fields} mappings={mappings} onSelect={setSelectedId}
-              onFields={toggleFields}
+              groupedTasks={groupedTasks} onFields={toggleFields} onPair={openPair}
             /> : <div className="data-topology-empty">
               {busy ? <Spin aria-label="正在读取血缘" />
                 : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={
@@ -233,10 +277,10 @@ export default function TopologyWorkspace({ sources, source, topology, topologyL
             </div>}
           </div>
         </section>
-        <TopologyInspector asset={selectedAsset} link={selectedLink} assets={assets}
+        <TopologyInspector asset={selectedAsset} group={selectedGroup} assets={catalogAssets} pairId={pairId}
           expanded={Boolean(selectedId && fields.has(selectedId))}
           summary={selectedId ? summaries.get(selectedId) : undefined} readTable={readTable}
-          onFields={toggleFields} onOpenTask={openTask} />
+          onFields={toggleFields} onOpenTask={openTask} onPair={openPair} />
       </div>
     </>
   );

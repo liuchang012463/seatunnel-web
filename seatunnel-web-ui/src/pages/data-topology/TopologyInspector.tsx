@@ -1,8 +1,9 @@
 import { readTaskDefinition } from '@/pages/common/workflow/TaskDefinitionView';
 import type { DataExplorationTable } from '@/pages/data-source/types';
-import { ApartmentOutlined, EyeOutlined, LinkOutlined, TableOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, ArrowRightOutlined, EyeOutlined, LinkOutlined, TableOutlined } from '@ant-design/icons';
 import { Alert, Button, Spin, Tag } from 'antd';
 import { useMemo } from 'react';
+import { linkId, type TaskGroup } from './graph';
 import type { LineageAsset, LineageLink, LineageTask, ReadTableMetadata } from './service';
 import { formatTableCount, taskKindLabel } from './TopologyNodes';
 import useLineageRead from './useLineageRead';
@@ -61,22 +62,25 @@ function TableInspector({ asset, summary, expanded, readTable, onFields }: {
   );
 }
 
-function TaskInspector({ task, source, target, onOpenTask }: {
-  task: LineageTask;
-  source?: LineageAsset;
-  target?: LineageAsset;
+function TaskInspector({ group, assets, pairId, onOpenTask, onPair }: {
+  group: TaskGroup;
+  assets: Map<string, LineageAsset>;
+  pairId?: string;
   onOpenTask: (task: LineageTask) => void;
+  onPair: (link: LineageLink) => void;
 }) {
+  const { task, links } = group;
   const load = useMemo(() => task.deleted ? undefined : () => readTaskDefinition(task.kind, task.id), [task]);
   const { data, loading, failed } = useLineageRead(load);
   const deleted = task.deleted || data === null;
   const name = data?.jobName || task.name || `任务 ${task.id}`;
   const releaseState = data?.releaseState === 'ONLINE' ? '已上线'
     : data?.releaseState === 'OFFLINE' ? '已下线' : data?.releaseState;
-  const endpoints = [
-    { label: '来源', asset: source, name: data?.sourceTable },
-    { label: '去向', asset: target, name: data?.sinkTable },
-  ];
+  const active = links.find((link) => linkId(link) === pairId) ?? (links.length === 1 ? links[0] : undefined);
+  const endpoints = active ? [
+    { label: '来源', asset: assets.get(active.sourceId), name: data?.sourceTable },
+    { label: '去向', asset: assets.get(active.targetId), name: data?.sinkTable },
+  ] : [];
   return (
     <>
       <header className="data-topology-panel-heading">
@@ -93,7 +97,7 @@ function TaskInspector({ task, source, target, onOpenTask }: {
           <div><dt>任务定义 ID</dt><dd><code>{task.id}</code></dd></div>
         </dl>
       </section>
-      <section className="data-topology-panel-section">
+      {active && <section className="data-topology-panel-section">
         <h4>数据流向</h4>
         <ul className="data-topology-panel-list data-topology-flow">
           {endpoints.map(({ label, asset, name: table }) => (
@@ -103,7 +107,30 @@ function TaskInspector({ task, source, target, onOpenTask }: {
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
+      {links.length > 1 && <section className="data-topology-panel-section">
+        <div className="data-topology-pair-heading"><h4>表关系</h4><span>{links.length} 对表</span></div>
+        <ul className="data-topology-panel-list data-topology-pairs">
+          {links.map((link) => {
+            const id = linkId(link);
+            const source = assets.get(link.sourceId);
+            const target = assets.get(link.targetId);
+            if (!source || !target) return null;
+            const same = source.name === target.name;
+            return (
+              <li key={id}>
+                <button type="button" aria-pressed={pairId === id} onClick={() => onPair(link)}
+                  title={`${source.fullyQualifiedName} → ${target.fullyQualifiedName}`}>
+                  <strong>{source.name}</strong>
+                  <span>{same ? [source.database, source.schema].filter(Boolean).join('.') : '来源表'}</span>
+                  <ArrowRightOutlined />
+                  <span>{same ? [target.database, target.schema].filter(Boolean).join('.') : target.name}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>}
       {data?.jobDesc && <section className="data-topology-panel-section"><h4>任务说明</h4><p>{data.jobDesc}</p></section>}
       <div className="data-topology-panel-section">
         {loading && <Spin size="small" aria-label="正在读取任务信息" />}
@@ -116,21 +143,24 @@ function TaskInspector({ task, source, target, onOpenTask }: {
   );
 }
 
-export default function TopologyInspector({ asset, link, assets, summary, expanded, readTable, onFields, onOpenTask }: {
+export default function TopologyInspector({
+  asset, group, assets, pairId, summary, expanded, readTable, onFields, onOpenTask, onPair,
+}: {
   asset?: LineageAsset;
-  link?: LineageLink;
+  group?: TaskGroup;
   assets: Map<string, LineageAsset>;
+  pairId?: string;
   summary?: DataExplorationTable;
   expanded: boolean;
   readTable: ReadTableMetadata;
   onFields: (id: string) => void;
   onOpenTask: (task: LineageTask) => void;
+  onPair: (link: LineageLink) => void;
 }) {
   return (
     <aside className="data-topology-inspector" aria-label="节点详情">
       {asset ? <TableInspector asset={asset} summary={summary} expanded={expanded} readTable={readTable} onFields={onFields} />
-        : link?.task ? <TaskInspector task={link.task} source={assets.get(link.sourceId)}
-          target={assets.get(link.targetId)} onOpenTask={onOpenTask} />
+        : group ? <TaskInspector group={group} assets={assets} pairId={pairId} onOpenTask={onOpenTask} onPair={onPair} />
           : <>
             <header className="data-topology-panel-heading"><h3>节点详情</h3></header>
             <section className="data-topology-panel-section"><p>点击表或任务查看详情。</p></section>

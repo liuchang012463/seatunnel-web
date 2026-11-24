@@ -1,5 +1,5 @@
 import type { DataExplorationColumn } from '@/pages/data-source/types';
-import type { FieldLink, LineageAsset, LineageLink, Topology } from './service';
+import type { FieldLink, LineageAsset, LineageLink, LineageTask, Topology } from './service';
 
 export interface GraphLimits {
   upstream: number;
@@ -12,6 +12,25 @@ export const tableLimits: GraphLimits = { upstream: 3, downstream: 3, nodesPerLa
 
 export function linkId({ sourceId, targetId }: Pick<LineageLink, 'sourceId' | 'targetId'>) {
   return `${sourceId}:${targetId}`;
+}
+
+export interface TaskGroup {
+  task: LineageTask;
+  links: LineageLink[];
+}
+
+export const taskNodeId = (task: LineageTask) => `task:${task.kind}:${task.id}`;
+
+export function groupLineageTasks(links: LineageLink[]) {
+  const groups = new Map<string, TaskGroup>();
+  for (const link of links) {
+    if (!link.task) continue;
+    const id = taskNodeId(link.task);
+    const group = groups.get(id) ?? { task: link.task, links: [] };
+    group.links.push(link);
+    groups.set(id, group);
+  }
+  return groups;
 }
 
 export function lineageNeighborhood(topology: Topology | undefined, roots: LineageAsset[], limits: GraphLimits) {

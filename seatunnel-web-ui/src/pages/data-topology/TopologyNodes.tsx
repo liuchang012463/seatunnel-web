@@ -56,7 +56,11 @@ export const TopologyAssetNode = memo(function TopologyAssetNode({ id, data }: N
       <div className="data-topology-node-heading">
         {dbType ? <DatabaseIcons dbType={dbType} /> : <TableOutlined />}
         <div className="data-topology-node-label">
-          <strong title={asset.fullyQualifiedName}>{asset.name}</strong>
+          <strong className="data-topology-table-name" title={asset.fullyQualifiedName}>
+            {asset.name.length > 26
+              ? <><span>{asset.name.slice(0, -12)}</span><span>{asset.name.slice(-12)}</span></>
+              : <span>{asset.name}</span>}
+          </strong>
         </div>
       </div>
       {table && <p className="data-topology-node-description" title={summary?.description}>

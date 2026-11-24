@@ -1,4 +1,5 @@
-import { fieldRows, lineageNeighborhood } from './graph';
+import { fieldRows, groupLineageTasks, lineageNeighborhood } from './graph';
+import { topologyPositions } from './layout';
 import type { LineageAsset, LineageLink, Topology } from './service';
 
 function table(id: string): LineageAsset {
@@ -60,4 +61,27 @@ describe('fieldRows', () => {
     expect(sourceRows.filter(({ outgoing }) => outgoing).map(({ fqn }) => fqn)).toEqual([fromColumn]);
     expect(targetRows.map(({ name, incoming }) => [name, Boolean(incoming)])).toEqual([['id', false], ['name', true]]);
   });
+});
+
+it('groups table pairs by task kind and ID without introducing cross-pair edges', () => {
+  const task = { id: '9', kind: 'BATCH' as const, deleted: false };
+  const first = { sourceId: 'a1', targetId: 'b1', task };
+  const second = { sourceId: 'a2', targetId: 'b2', task };
+  const streaming = { sourceId: 'a3', targetId: 'b3', task: { ...task, kind: 'STREAMING' as const } };
+  const groups = groupLineageTasks([first, streaming, second]);
+  expect(groups.get('task:BATCH:9')?.links).toEqual([first, second]);
+  expect(groups.get('task:STREAMING:9')?.links).toEqual([streaming]);
+});
+
+it('aligns independent source and target pairs with unequal field heights', () => {
+  const nodes = [
+    { id: 'a1', height: 200 },
+    { id: 'a2', height: 100 },
+    { id: 'b2', height: 100 },
+    { id: 'b1', height: 120 },
+  ].map((node) => ({ ...node, width: 236 }));
+  const xy = topologyPositions(nodes, [{ source: 'a1', target: 'b1' }, { source: 'a2', target: 'b2' }]);
+  expect(xy.get('a1')?.y).toEqual(xy.get('b1')?.y);
+  expect(xy.get('a2')?.y).toEqual(xy.get('b2')?.y);
+  expect(xy.get('a2')?.y).toBeGreaterThan(200);
 });
