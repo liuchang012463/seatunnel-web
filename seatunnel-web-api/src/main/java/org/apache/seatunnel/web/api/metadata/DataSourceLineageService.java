@@ -97,15 +97,14 @@ public class DataSourceLineageService {
 
     public List<FieldLink> fieldLineage(String entityType, UUID entityId) {
         Map<String, Source> scope = boundSources();
-        String type = canonicalAssetType(entityType);
-        if (type == null || scope.isEmpty()) {
+        if (!"table".equals(entityType) || scope.isEmpty()) {
             throw invalidAsset();
         }
         long started = System.nanoTime();
         openMetadataClient.assertFixedVersion();
-        EntityLineage lineage = openMetadataClient.getEntityLineage(type, entityId);
+        EntityLineage lineage = openMetadataClient.getEntityLineage(entityType, entityId);
         Asset root = lineage == null ? null : asset(lineage.getEntity(), scope);
-        if (root == null || !entityId.toString().equals(root.id()) || !type.equals(root.type())) {
+        if (root == null || !entityId.toString().equals(root.id()) || !entityType.equals(root.type())) {
             throw invalidAsset();
         }
 
@@ -122,14 +121,15 @@ public class DataSourceLineageService {
         collectFields(lineage.getUpstreamEdges(), entityId, assets, fields);
         collectFields(lineage.getDownstreamEdges(), entityId, assets, fields);
         log.debug("Read field lineage: entityType={}, entityId={}, mappings={}, elapsedMs={}",
-                type, entityId, fields.size(), (System.nanoTime() - started) / 1_000_000);
+                entityType, entityId, fields.size(), (System.nanoTime() - started) / 1_000_000);
         return List.copyOf(fields);
     }
 
     private Map<String, Source> boundSources() {
         Map<Long, DataSource> sources = new HashMap<>();
         for (DataSource source : safe(dataSourceDao.queryAll())) {
-            if (source != null && source.getId() != null && source.getStatus() != DataSourceLifecycleStatus.REVOKED) {
+            if (source != null && source.getId() != null && source.getStatus() != DataSourceLifecycleStatus.REVOKED
+                    && DataExplorationService.supportsTableExploration(source.getDbType())) {
                 sources.put(source.getId(), source);
             }
         }
@@ -164,30 +164,20 @@ public class DataSourceLineageService {
     }
 
     private static Asset asset(UUID id, String entityType, String fqn, Map<String, Source> scope) {
-        String type = canonicalAssetType(entityType);
-        if (id == null || type == null || fqn == null) {
+        if (id == null || !"table".equals(entityType) || fqn == null) {
             return null;
         }
         List<String> parts = OpenMetadataFqn.parts(fqn);
-        if (parts.size() < 2) {
+        if (parts.size() != 4) {
             return null;
         }
         Source source = scope.get(parts.getFirst());
-        boolean table = "table".equals(type);
-        if (source == null || table && parts.size() != 4) {
+        if (source == null) {
             return null;
         }
-        return new Asset(id.toString(), source.id(), type,
-                table ? unquote(parts.get(1)) : null, table ? unquote(parts.get(2)) : null,
+        return new Asset(id.toString(), source.id(), entityType,
+                unquote(parts.get(1)), unquote(parts.get(2)),
                 unquote(parts.getLast()), fqn);
-    }
-
-    private static String canonicalAssetType(String value) {
-        if ("table".equals(value)) {
-            return value;
-        }
-        ExplorationAssetType type = ExplorationAssetType.fromValue(value);
-        return type == null ? null : type.entityType();
     }
 
     private static JobReference jobReference(String description) {

@@ -15,6 +15,7 @@ import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.FieldLink;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.Task;
 import org.apache.seatunnel.web.spi.bean.vo.DataSourceLineageVO.TaskKind;
+import org.apache.seatunnel.web.spi.enums.DbType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,15 +55,22 @@ class DataSourceLineageServiceTest {
         var first = new DataSource();
         first.setId(1L);
         first.setName("订单库");
+        first.setDbType(DbType.MYSQL);
         var second = new DataSource();
         second.setId(2L);
         second.setName("数仓");
+        second.setDbType(DbType.POSTGRE_SQL);
         var unused = new DataSource();
         unused.setId(3L);
+        unused.setDbType(DbType.DAMENG);
         var revoked = new DataSource();
         revoked.setId(4L);
+        revoked.setDbType(DbType.MYSQL);
         revoked.setStatus(DataSourceLifecycleStatus.REVOKED);
-        when(sources.queryAll()).thenReturn(List.of(first, second, unused, revoked));
+        var nonDatabase = new DataSource();
+        nonDatabase.setId(5L);
+        nonDatabase.setDbType(DbType.KAFKA);
+        when(sources.queryAll()).thenReturn(List.of(first, second, unused, revoked, nonDatabase));
         when(bindings.queryByDataSourceIds(Set.of(1L, 2L, 3L))).thenReturn(
                 List.of(binding(1), binding(2), binding(3)));
     }

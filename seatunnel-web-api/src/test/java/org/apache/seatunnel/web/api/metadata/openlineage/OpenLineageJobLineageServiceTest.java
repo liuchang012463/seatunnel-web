@@ -371,45 +371,21 @@ class OpenLineageJobLineageServiceTest {
         assertEquals("seatunnel_web.orders", event.path("inputs").get(0).path("name").asText());
     }
 
-    /**
-     * A message-broker job reads and writes topics; a topic is the dataset of the plugin, so a
-     * Kafka job must publish its topics instead of falling back to the instance table. The
-     * multi-source case has no dataSourceId in the configuration, so each plugin's datasource is
-     * resolved by its bootstrap servers — the key the local datasource stores as
-     * "bootstrapServers".
-     */
     @Test
-    void publishesTheTopicsOfAKafkaJobAsDatasets() throws Exception {
+    void skipsMixedKafkaAndDatabaseJobsForRelationalLineage() {
         JobInstanceVO submitted = instance();
-        // The instance snapshot names a table: only the parsed topics may be published.
         submitted.setSourceTable("instance.source.table");
         submitted.setSinkTable("instance.sink.table");
         submitted.setRuntimeConfig("""
-                source = [
-                    { Kafka { topic="orders-topic", bootstrap.servers="kafka-a:9092" } },
-                    { Kafka { topic="customers-topic", bootstrap.servers="kafka-b:9092" } }
-                ]
-                sink {
-                    Kafka {
-                        topic="orders-dwd-topic"
-                        bootstrap.servers="kafka-b:9092"
-                    }
-                }
+                source { Kafka { topic="orders-topic" } }
+                sink { Jdbc { table="public.orders" } }
                 """);
-        DataSource sourceA = dataSource(10L, "bi_src_mysql", "MYSQL");
-        sourceA.setConnectionParams("{\"bootstrapServers\":\"kafka-a:9092\"}");
-        DataSource sourceB = dataSource(20L, "bi_tidb_doris", "DORIS");
-        sourceB.setConnectionParams("{\"bootstrapServers\":\"kafka-b:9092\"}");
-        when(dataSourceDao.queryAll()).thenReturn(List.of(sourceA, sourceB));
+        when(dataSourceDao.queryById(10L)).thenReturn(dataSource(10L, "source_kafka", "KAFKA"));
 
         service.recordStart(submitted, "engine-job-77", true);
 
-        assertEquals(1, published.size());
-        JsonNode event = MAPPER.readTree(published.get(0));
-        assertEquals(2, event.path("inputs").size());
-        assertEquals("orders-topic", event.path("inputs").get(0).path("name").asText());
-        assertEquals("customers-topic", event.path("inputs").get(1).path("name").asText());
-        assertEquals("orders-dwd-topic", event.path("outputs").get(0).path("name").asText());
+        assertTrue(published.isEmpty());
+        verifyNoInteractions(bridge, exploration);
     }
 
     /**

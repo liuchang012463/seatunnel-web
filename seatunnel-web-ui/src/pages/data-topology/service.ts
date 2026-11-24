@@ -3,7 +3,7 @@ import {
   EXPLORATION_TABLE_PAGE_SIZE, fetchDataExplorationTable, fetchDataExplorationTables, fetchDataSourceAll,
 } from '@/pages/data-source/service';
 import type { CommonApiResponse, DataExplorationTable, DataExplorationTableDetail } from '@/pages/data-source/types';
-import { isAssetExplorationDbType } from '@/utils/assetExplorationStatus';
+import { getDataSourceCategory } from '@/pages/data-source/dataSourceRegistry';
 import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 import type { TaskKind } from '@/pages/common/workflow/TaskDefinitionView';
 
@@ -92,14 +92,14 @@ export async function readMetadata<T>(request: Promise<CommonApiResponse<T>>) {
 export async function fetchCatalogSources(): Promise<CatalogSource[]> {
   const records = withoutSystemManagedSources(normalizeDataSourceList(await readMetadata(fetchDataSourceAll())));
   return records.flatMap((record) => {
-    if (!record.id) return [];
+    if (!record.id || !supportsTableLineage(record.dbType)) return [];
     const { unit, system } = displayOwner(record);
     return [{
       id: String(record.id),
       name: record.name || String(record.id),
       dbType: record.dbType,
       ready: record.metadataSyncStatus === 'READY',
-      tableCatalog: !isAssetExplorationDbType(record.dbType),
+      tableCatalog: true,
       unitId: record.unitId == null ? undefined : String(record.unitId),
       businessSystemId: record.businessSystemId == null ? undefined : String(record.businessSystemId),
       unitName: unit,
@@ -108,12 +108,16 @@ export async function fetchCatalogSources(): Promise<CatalogSource[]> {
   });
 }
 
+function supportsTableLineage(dbType?: string | null) {
+  return getDataSourceCategory(dbType ?? undefined).key === 'RELATIONAL' || dbType?.toUpperCase() === 'DORIS';
+}
+
 export function catalogSources(records: CatalogSource[], topology?: Topology) {
   const linked = new Set(topology?.sources.map(({ id }) => id));
   const sources = new Map(records.filter(({ id, ready }) => ready || linked.has(id)).map((item) => [item.id, item]));
   for (const source of topology?.sources ?? []) {
-    if (!sources.has(source.id)) {
-      sources.set(source.id, { ...source, tableCatalog: !isAssetExplorationDbType(source.dbType ?? undefined) });
+    if (!sources.has(source.id) && supportsTableLineage(source.dbType)) {
+      sources.set(source.id, { ...source, tableCatalog: true });
     }
   }
   return [...sources.values()];

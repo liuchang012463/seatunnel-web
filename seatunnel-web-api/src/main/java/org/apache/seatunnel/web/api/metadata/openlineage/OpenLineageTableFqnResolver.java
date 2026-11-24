@@ -33,7 +33,7 @@ class OpenLineageTableFqnResolver {
         Map<Dataset, TableIdentity> identities = new HashMap<>();
         Stream.concat(snapshot.inputs().stream(), snapshot.outputs().stream())
                 .distinct()
-                .filter(this::isTableDataset)
+                .filter(OpenLineageTableFqnResolver::isTableDataset)
                 .forEach(dataset -> {
                     List<String> path = OpenMetadataFqn.parts(dataset.name());
                     if (path.size() < 2 || path.size() > 4) {
@@ -51,7 +51,7 @@ class OpenLineageTableFqnResolver {
         return identities;
     }
 
-    private boolean isTableDataset(Dataset dataset) {
+    static boolean isTableDataset(Dataset dataset) {
         return dataset != null && dataset.datasourceId() != null && dataset.datasourceId() > 0
                 && dataset.name() != null
                 && DataExplorationService.supportsTableExploration(DbType.of(dataset.dbTypeName()));

@@ -950,6 +950,14 @@ public class OpenLineageJobLineageService {
                     snapshot.eventType(), snapshot.instanceId(), snapshot.engineJobId());
             return PublishOutcome.SKIPPED;
         }
+        // An OpenLineage event connects every input to every output. Only publish it when
+        // all participating datasets belong to supported database connectors.
+        if (!snapshot.inputs().stream().allMatch(OpenLineageTableFqnResolver::isTableDataset)
+                || !snapshot.outputs().stream().allMatch(OpenLineageTableFqnResolver::isTableDataset)) {
+            log.debug("Skipping OpenLineage {} with unsupported dataset types, instanceId={}",
+                    snapshot.eventType(), snapshot.instanceId());
+            return PublishOutcome.SKIPPED;
+        }
         // A terminal is published again by the pulse, so the bridge must not send it a second
         // time on its own: the run would see two terminal events.
         boolean retryOnMissingTopic = snapshot.eventType() == EventType.START
