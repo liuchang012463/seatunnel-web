@@ -15,7 +15,7 @@ import ReactFlow, {
   type OnNodesChange,
   type XYPosition,
 } from 'reactflow';
-import { linkId, taskNodeId } from './graph';
+import { tableLineageRoutes } from './graph';
 import { topologyPositions } from './layout';
 import type { FieldLink, LineageAsset, LineageLink, LineageSource } from './service';
 import { fieldHandle, tableNodeSize, taskNodeSize, TopologyAssetNode, TopologyTaskNode, type FieldView } from './TopologyNodes';
@@ -33,10 +33,8 @@ interface Props {
   selectedId?: string;
   fields: Map<string, FieldView>;
   mappings: FieldLink[];
-  groupedTasks: Set<string>;
   onSelect: (id: string) => void;
   onFields: (id: string) => void;
-  onPair: (link: LineageLink) => void;
 }
 
 function FitGraph({ ids }: { ids: string[] }) {
@@ -60,43 +58,29 @@ function FitGraph({ ids }: { ids: string[] }) {
   return null;
 }
 
-function tableEdge(id: string, source: string, target: string, link: LineageLink,
-  grouped: boolean, selected: boolean): Edge {
+function tableEdge(id: string, source: string, target: string, selected: boolean): Edge {
   const color = selected ? '#80c9f4' : tableEdgeColor;
   return {
     id, source, target, type: 'default', sourceHandle: 'out', targetHandle: 'in',
-    data: grouped ? { link } : undefined,
-    className: grouped ? 'data-topology-pair-edge' : undefined,
     markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
     style: { stroke: color, strokeWidth: selected ? 2 : 1.5 },
   };
 }
 
 export default function TopologyCanvas({
-  assets, links, sources, summaries, focusedId, selectedId, fields, mappings, groupedTasks, onSelect, onFields, onPair,
+  assets, links, sources, summaries, focusedId, selectedId, fields, mappings, onSelect, onFields,
 }: Props) {
   const [nodes, setNodes, changeNodes] = useNodesState([]);
   const dragged = useRef(new Map<string, XYPosition>());
-  const taskNodes = useMemo(() => links.flatMap(({ task }) => task && !groupedTasks.has(taskNodeId(task))
-    ? [{ id: taskNodeId(task), task }] : []), [groupedTasks, links]);
+  const { taskNodes, paths } = useMemo(() => tableLineageRoutes(links), [links]);
   const fitIds = useMemo(() => [
     ...assets.map(({ id }) => id),
     ...taskNodes.map(({ id }) => id),
   ], [assets, taskNodes]);
 
-  const tablePaths = useMemo(() => links.flatMap((link) => {
-    const id = link.task ? taskNodeId(link.task) : undefined;
-    const grouped = Boolean(id && groupedTasks.has(id));
-    return !id || grouped ? [{ id: `direct:${linkId(link)}`, source: link.sourceId, target: link.targetId, link, grouped }]
-      : [
-        { id: `in:${id}`, source: link.sourceId, target: id, link, grouped },
-        { id: `out:${id}`, source: id, target: link.targetId, link, grouped },
-      ];
-  }), [groupedTasks, links]);
-
   const edges = useMemo<Edge[]>(() => [
-    ...tablePaths.map(({ id, source, target, link, grouped }) =>
-      tableEdge(id, source, target, link, grouped, Boolean(link.task && taskNodeId(link.task) === selectedId))),
+    ...paths.map(({ id, source, target, taskId }) =>
+      tableEdge(id, source, target, taskId !== undefined && taskId === selectedId)),
     ...mappings.map((mapping) => ({
       id: JSON.stringify([mapping.sourceId, mapping.fromColumn, mapping.targetId, mapping.toColumn]),
       source: mapping.sourceId,
@@ -106,7 +90,7 @@ export default function TopologyCanvas({
       markerEnd: { type: MarkerType.ArrowClosed, color: fieldEdgeColor },
       style: { stroke: fieldEdgeColor, strokeWidth: 1.4 },
     })),
-  ], [mappings, selectedId, tablePaths]);
+  ], [mappings, paths, selectedId]);
 
   const positions = useMemo(() => topologyPositions([
     ...assets.map(({ id, type }) => {
@@ -115,11 +99,12 @@ export default function TopologyCanvas({
       const fieldHeight = view ? Math.max(1, view.rows.length + Number(Boolean(view.loading || view.failed))) * 27 : 0;
       return { id, width: tableNodeSize.width, height: height + fieldHeight };
     }),
-    ...taskNodes.map(({ id }) => ({ id, ...taskNodeSize, offsetY: 4 })),
-  ], tablePaths), [assets, fields, taskNodes, tablePaths]);
+    ...taskNodes.map(({ id, link }) => ({ id, ...taskNodeSize, offsetY: 4, tablePair: link })),
+  ], paths), [assets, fields, paths, taskNodes]);
 
   useEffect(() => {
     const sourceTypes = new Map(sources.map(({ id, dbType }) => [id, dbType]));
+    const assetNames = new Map(assets.map(({ id, name }) => [id, name]));
     const next: Node[] = assets.map((asset) => ({
       id: asset.id,
       type: 'asset',
@@ -132,11 +117,11 @@ export default function TopologyCanvas({
         summary: summaries.get(asset.id), onFields,
       },
     }));
-    for (const { id, task } of taskNodes) {
+    for (const { id, task, link } of taskNodes) {
       next.push({
         id,
         type: 'task',
-        ariaLabel: task.name || `任务 ${task.id}`,
+        ariaLabel: `${task.name || `任务 ${task.id}`}，${assetNames.get(link.sourceId)} → ${assetNames.get(link.targetId)}`,
         position: dragged.current.get(id) ?? positions.get(id)!,
         dragHandle: '.data-topology-node-heading',
         selected: id === selectedId,
@@ -169,7 +154,6 @@ export default function TopologyCanvas({
       maxZoom={2}
       onNodesChange={onNodesChange}
       onNodeClick={(_, node) => onSelect(node.id)}
-      onEdgeClick={(_, edge) => { if (edge.data?.link) onPair(edge.data.link); }}
     >
       <Background color="var(--st-color-divider)" gap={20} />
       <Controls showInteractive={false} />

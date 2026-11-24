@@ -19,13 +19,33 @@ export interface TaskGroup {
   links: LineageLink[];
 }
 
-export const taskNodeId = (task: LineageTask) => `task:${task.kind}:${task.id}`;
+export const taskGroupId = (task: LineageTask) => `task:${task.kind}:${task.id}`;
+
+export const taskNodeId = (link: LineageLink) => `task:${linkId(link)}`;
+
+export function tableLineageRoutes(links: LineageLink[]) {
+  const taskNodes: { id: string; task: LineageTask; link: LineageLink }[] = [];
+  const paths: { id: string; source: string; target: string; taskId?: string }[] = [];
+  for (const link of links) {
+    const { sourceId, targetId, task } = link;
+    if (!task) {
+      paths.push({ id: `direct:${linkId(link)}`, source: sourceId, target: targetId });
+      continue;
+    }
+    // A task definition can be shared, but each node belongs to just one directional table pair.
+    const id = taskNodeId(link);
+    taskNodes.push({ id, task, link });
+    paths.push({ id: `in:${id}`, source: sourceId, target: id, taskId: id },
+      { id: `out:${id}`, source: id, target: targetId, taskId: id });
+  }
+  return { taskNodes, paths };
+}
 
 export function groupLineageTasks(links: LineageLink[]) {
   const groups = new Map<string, TaskGroup>();
   for (const link of links) {
     if (!link.task) continue;
-    const id = taskNodeId(link.task);
+    const id = taskGroupId(link.task);
     const group = groups.get(id) ?? { task: link.task, links: [] };
     group.links.push(link);
     groups.set(id, group);

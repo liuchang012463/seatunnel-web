@@ -62,10 +62,10 @@ function TableInspector({ asset, summary, expanded, readTable, onFields }: {
   );
 }
 
-function TaskInspector({ group, assets, pairId, onOpenTask, onPair }: {
+function TaskInspector({ group, assets, selectedPairId, onOpenTask, onPair }: {
   group: TaskGroup;
   assets: Map<string, LineageAsset>;
-  pairId?: string;
+  selectedPairId?: string;
   onOpenTask: (task: LineageTask) => void;
   onPair: (link: LineageLink) => void;
 }) {
@@ -76,7 +76,7 @@ function TaskInspector({ group, assets, pairId, onOpenTask, onPair }: {
   const name = data?.jobName || task.name || `任务 ${task.id}`;
   const releaseState = data?.releaseState === 'ONLINE' ? '已上线'
     : data?.releaseState === 'OFFLINE' ? '已下线' : data?.releaseState;
-  const active = links.find((link) => linkId(link) === pairId) ?? (links.length === 1 ? links[0] : undefined);
+  const active = links.find((link) => linkId(link) === selectedPairId);
   const endpoints = active ? [
     { label: '来源', asset: assets.get(active.sourceId), name: data?.sourceTable },
     { label: '去向', asset: assets.get(active.targetId), name: data?.sinkTable },
@@ -119,7 +119,7 @@ function TaskInspector({ group, assets, pairId, onOpenTask, onPair }: {
             const same = source.name === target.name;
             return (
               <li key={id}>
-                <button type="button" aria-pressed={pairId === id} onClick={() => onPair(link)}
+                <button type="button" aria-pressed={selectedPairId === id} onClick={() => onPair(link)}
                   title={`${source.fullyQualifiedName} → ${target.fullyQualifiedName}`}>
                   <strong>{source.name}</strong>
                   <span>{same ? [source.database, source.schema].filter(Boolean).join('.') : '来源表'}</span>
@@ -144,12 +144,12 @@ function TaskInspector({ group, assets, pairId, onOpenTask, onPair }: {
 }
 
 export default function TopologyInspector({
-  asset, group, assets, pairId, summary, expanded, readTable, onFields, onOpenTask, onPair,
+  asset, group, assets, selectedPairId, summary, expanded, readTable, onFields, onOpenTask, onPair,
 }: {
   asset?: LineageAsset;
   group?: TaskGroup;
   assets: Map<string, LineageAsset>;
-  pairId?: string;
+  selectedPairId?: string;
   summary?: DataExplorationTable;
   expanded: boolean;
   readTable: ReadTableMetadata;
@@ -160,7 +160,8 @@ export default function TopologyInspector({
   return (
     <aside className="data-topology-inspector" aria-label="节点详情">
       {asset ? <TableInspector asset={asset} summary={summary} expanded={expanded} readTable={readTable} onFields={onFields} />
-        : group ? <TaskInspector group={group} assets={assets} pairId={pairId} onOpenTask={onOpenTask} onPair={onPair} />
+        : group ? <TaskInspector group={group} assets={assets} selectedPairId={selectedPairId}
+          onOpenTask={onOpenTask} onPair={onPair} />
           : <>
             <header className="data-topology-panel-heading"><h3>节点详情</h3></header>
             <section className="data-topology-panel-section"><p>点击表或任务查看详情。</p></section>

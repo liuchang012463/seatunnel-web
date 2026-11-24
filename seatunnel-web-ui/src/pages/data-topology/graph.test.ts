@@ -1,4 +1,4 @@
-import { fieldRows, groupLineageTasks, lineageNeighborhood } from './graph';
+import { fieldRows, groupLineageTasks, lineageNeighborhood, tableLineageRoutes, taskNodeId } from './graph';
 import { topologyPositions } from './layout';
 import type { LineageAsset, LineageLink, Topology } from './service';
 
@@ -84,4 +84,26 @@ it('aligns independent source and target pairs with unequal field heights', () =
   expect(xy.get('a1')?.y).toEqual(xy.get('b1')?.y);
   expect(xy.get('a2')?.y).toEqual(xy.get('b2')?.y);
   expect(xy.get('a2')?.y).toBeGreaterThan(200);
+});
+
+it('gives repeated tasks separate paths and aligns each node with its own downstream table', () => {
+  const task = { id: '9', kind: 'BATCH' as const, deleted: false };
+  const first = { sourceId: 'source', targetId: 'first', task };
+  const second = { sourceId: 'source', targetId: 'second', task };
+  const direct = { sourceId: 'source', targetId: 'direct' };
+  const { taskNodes, paths } = tableLineageRoutes([second, first, direct]);
+  const firstTask = taskNodeId(first);
+  const secondTask = taskNodeId(second);
+  expect(firstTask).not.toEqual(secondTask);
+  expect(paths.map(({ source, target }) => [source, target])).toEqual([
+    ['source', secondTask], [secondTask, 'second'],
+    ['source', firstTask], [firstTask, 'first'],
+    ['source', 'direct'],
+  ]);
+  const xy = topologyPositions([
+    ...['source', 'first', 'second'].map((id) => ({ id, width: 236, height: 104 })),
+    ...taskNodes.map(({ id, link }) => ({ id, width: 100, height: 28, offsetY: 4, tablePair: link })),
+  ], paths.filter(({ taskId }) => taskId));
+  expect(xy.get(firstTask)?.y).toEqual(xy.get('first')!.y + 4);
+  expect(xy.get(secondTask)?.y).toEqual(xy.get('second')!.y + 4);
 });
