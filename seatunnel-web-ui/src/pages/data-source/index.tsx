@@ -6,7 +6,6 @@ import {
   Button,
   Drawer,
   Dropdown,
-  Empty,
   message,
   Modal,
   Pagination,
@@ -15,11 +14,12 @@ import {
   Tabs,
   Table,
 } from 'antd';
-import type { TableColumnsType } from 'antd';
+import type { GetRef, TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AddOrEditDataSourceModal from './components/AddOrEditDataSourceModal';
+import CatalogText from './components/CatalogText';
 import DataSourceCard from './components/DataSourceCard';
 import EmptyState from './components/EmptyState';
 import SearchBar from './components/SearchBar';
@@ -73,6 +73,7 @@ const DataSourcePage: React.FC = () => {
   const intl = useIntl();
   const location = useLocation();
   const modalRef = useRef<DataSourceModalRef>(null);
+  const catalogTableRef = useRef<GetRef<typeof Table>>(null);
   // 源端 / 目标端页签：支持路径 /target-connection 与 ?usage=SINK
   const usageView =
     location.pathname.endsWith('/target-connection') ||
@@ -94,6 +95,10 @@ const DataSourcePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<DataSourceViewMode>('card');
   const [masterDataOpen, setMasterDataOpen] = useState(false);
   const [usageCounts, setUsageCounts] = useState<Partial<Record<'SOURCE' | 'SINK', number>>>({});
+
+  useEffect(() => {
+    catalogTableRef.current?.scrollTo({ top: 0 });
+  }, [dataSourceList]);
 
   const refreshUnitOptions = async () => {
     try {
@@ -504,25 +509,22 @@ const DataSourcePage: React.FC = () => {
       align: 'left',
       className: 'datasource-catalog-col--left',
       width: 250,
-      ellipsis: true,
       render: (_value, record) => (
         <div className="datasource-catalog-name-cell">
-          <button
-            type="button"
+          <CatalogText
+            text={record.name || '-'}
             className="datasource-catalog-name-link"
-            title={record.name}
             disabled={
               !record.systemManaged &&
               (record.status === 'REVOKED' || record.metadataSyncStatus === 'DELETING')
             }
             onClick={() => (record.systemManaged ? handleOpenWarehouse() : handleEdit(record))}
-          >
-            {record.name || '-'}
-          </button>
-          <span className="datasource-catalog-name-url" title={record.jdbcUrl}>
-            {record.jdbcUrl || '-'}
-          </span>
-          <span className="datasource-catalog-name-sub">更新于 {formatDateTime(record.updateTime)}</span>
+          />
+          <CatalogText text={record.jdbcUrl || '-'} className="datasource-catalog-name-url" />
+          <CatalogText
+            text={`更新于 ${formatDateTime(record.updateTime)}`}
+            className="datasource-catalog-name-sub"
+          />
         </div>
       ),
     },
@@ -532,13 +534,12 @@ const DataSourcePage: React.FC = () => {
       align: 'left',
       className: 'datasource-catalog-col--left',
       width: 130,
-      ellipsis: true,
       render: (_value, record) => {
         const category = getDataSourceCategory(record.dbType);
         return (
-          <span className="datasource-catalog-datatype" title={record.dbType}>
+          <span className="datasource-catalog-datatype">
             <DatabaseIcons dbType={record.dbType} width="16" height="16" />
-            {category.label}
+            <CatalogText text={category.label} />
           </span>
         );
       },
@@ -549,16 +550,11 @@ const DataSourcePage: React.FC = () => {
       align: 'left',
       className: 'datasource-catalog-col--left',
       width: 150,
-      ellipsis: true,
       render: (_value, record) => {
         const owner = [record.unitName, record.businessSystemName || record.systemName]
           .filter(Boolean)
           .join(' / ');
-        return (
-          <span className="datasource-catalog-owner" title={owner || undefined}>
-            {owner || '-'}
-          </span>
-        );
+        return <CatalogText text={owner || '-'} className="datasource-catalog-owner" />;
       },
     },
     {
@@ -579,7 +575,7 @@ const DataSourcePage: React.FC = () => {
       title: '探查状态',
       key: 'profileStatus',
       align: 'center',
-      width: 96,
+      width: 140,
       render: (_value, record) => {
         if (isAssetExplorationDbType(record.dbType)) {
           const status = assetExplorationStatus(record);
@@ -595,6 +591,7 @@ const DataSourcePage: React.FC = () => {
       key: 'actions',
       align: 'center',
       width: 208,
+      fixed: 'right',
       render: (_value, record) => {
         const currentStatus = record.status || 'ENABLED';
         const isRevoked = currentStatus === 'REVOKED';
@@ -693,6 +690,26 @@ const DataSourcePage: React.FC = () => {
     pagination.pageNo,
     pagination.pageSize,
   ]);
+
+  const emptyState = !loading && !listError ? (
+    <EmptyState onCreate={handleCreate} filtered={hasActiveFilters} onClearFilters={resetFilters} />
+  ) : null;
+  const paginationControls = (
+    <div className="datasource-page-pagination flex justify-end">
+      <Pagination
+        current={pagination.pageNo}
+        pageSize={pagination.pageSize}
+        total={pagination.total}
+        disabled={pagination.total === 0}
+        showSizeChanger
+        showQuickJumper
+        pageSizeOptions={[12, 24, 48, 96]}
+        showTotal={(total) => `共 ${total} 条`}
+        onChange={(pageNo, pageSize) => setPagination((current) => ({ ...current, pageNo, pageSize }))}
+        onShowSizeChange={(_, pageSize) => setPagination((current) => ({ ...current, pageNo: 1, pageSize }))}
+      />
+    </div>
+  );
 
   return (
     <>
@@ -858,79 +875,49 @@ const DataSourcePage: React.FC = () => {
                   initial="hidden"
                   animate="visible"
                 >
-                  {dataSourceList.length > 0 ? (
-                    <section className="datasource-catalog-panel">
-                      <div className="datasource-catalog-panel__body">
-                        {viewMode === 'card' ? (
-                          <div className="datasource-card-grid">
-                            {dataSourceList.map((record, index) => (
-                              <DataSourceCard
-                                key={String(record.id || record.name || `data-source-${index}`)}
-                                record={record}
-                                onEdit={handleEdit}
-                                onDelete={(currentRecord) => {
-                                  void handleDelete(currentRecord);
-                                }}
-                                onTestConnection={(currentRecord) => {
-                                  void handleTestConnection(currentRecord);
-                                }}
-                                onViewExploration={handleViewExploration}
-                                onStatusChange={handleStatusChange}
-                                onOpenWarehouse={handleOpenWarehouse}
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <Table<DataSourceRecord>
-                            rowKey={(record) => String(record.id || record.name)}
-                            className="datasource-catalog-table"
-                            columns={dataSourceColumns}
-                            dataSource={dataSourceList}
-                            pagination={false}
-                            scroll={{ x: 1038, y: 'calc(100vh - 360px)' }}
-                            tableLayout="fixed"
-                            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据源" /> }}
-                          />
-                        )}
-                      </div>
+                  {viewMode === 'list' ? (
+                    <section className="datasource-catalog-panel datasource-catalog-panel--list">
+                      <Table<DataSourceRecord>
+                        ref={catalogTableRef}
+                        rowKey={(record) => String(record.id || record.name)}
+                        className="datasource-catalog-table"
+                        columns={dataSourceColumns}
+                        dataSource={dataSourceList}
+                        pagination={false}
+                        scroll={{ x: 1070, y: '100%' }}
+                        tableLayout="fixed"
+                        locale={{ emptyText: emptyState }}
+                      />
+                      {paginationControls}
                     </section>
                   ) : (
-                    !loading &&
-                    !listError && (
-                      <EmptyState
-                        onCreate={handleCreate}
-                        filtered={hasActiveFilters}
-                        onClearFilters={resetFilters}
-                      />
-                    )
-                  )}
-
-                  {pagination.total > 0 && (
-                    <div className="datasource-page-pagination flex justify-end">
-                      <Pagination
-                        current={pagination.pageNo}
-                        pageSize={pagination.pageSize}
-                        total={pagination.total}
-                        showSizeChanger
-                        showQuickJumper
-                        pageSizeOptions={[12, 24, 48, 96]}
-                        showTotal={(total) => `共 ${total} 条`}
-                        onChange={(pageNo, pageSize) =>
-                          setPagination((current) => ({
-                            ...current,
-                            pageNo,
-                            pageSize,
-                          }))
-                        }
-                        onShowSizeChange={(_, pageSize) =>
-                          setPagination((current) => ({
-                            ...current,
-                            pageNo: 1,
-                            pageSize,
-                          }))
-                        }
-                      />
-                    </div>
+                    <>
+                      {dataSourceList.length > 0 ? (
+                        <section className="datasource-catalog-panel">
+                          <div className="datasource-catalog-panel__body">
+                            <div className="datasource-card-grid">
+                              {dataSourceList.map((record, index) => (
+                                <DataSourceCard
+                                  key={String(record.id || record.name || `data-source-${index}`)}
+                                  record={record}
+                                  onEdit={handleEdit}
+                                  onDelete={(currentRecord) => {
+                                    void handleDelete(currentRecord);
+                                  }}
+                                  onTestConnection={(currentRecord) => {
+                                    void handleTestConnection(currentRecord);
+                                  }}
+                                  onViewExploration={handleViewExploration}
+                                  onStatusChange={handleStatusChange}
+                                  onOpenWarehouse={handleOpenWarehouse}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </section>
+                      ) : emptyState}
+                      {pagination.total > 0 && paginationControls}
+                    </>
                   )}
                 </motion.div>
               </Spin>

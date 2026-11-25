@@ -34,6 +34,8 @@ import type {
 } from './types';
 
 const DATA_SOURCE_API_PREFIX = '/api/v1/data-source';
+// 新增和编辑弹窗在表单内呈现保存失败，不与全局错误通知重复。
+const DATA_SOURCE_SAVE_OPTIONS: RequestOptions = { skipErrorHandler: true };
 const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
 const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
 const DATA_EXPLORATION_API_PREFIX = '/api/v1/data-exploration';
@@ -96,21 +98,21 @@ export async function fetchDataSourceAll(): Promise<CommonApiResponse<DataSource
 }
 
 export async function createDataSource(payload: Record<string, unknown>): Promise<CommonApiResponse<boolean>> {
-  return HttpUtils.post(DATA_SOURCE_API_PREFIX, payload);
+  return HttpUtils.post(DATA_SOURCE_API_PREFIX, payload, DATA_SOURCE_SAVE_OPTIONS);
 }
 
 export async function updateDataSource(
   id: string,
   payload: Record<string, unknown>,
 ): Promise<CommonApiResponse<boolean>> {
-  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}`, payload);
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}`, payload, DATA_SOURCE_SAVE_OPTIONS);
 }
 
 export async function updateDataSourceUsage(
   id: string,
   payload: { sourceEnabled: boolean; sinkEnabled: boolean },
 ): Promise<CommonApiResponse<boolean>> {
-  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/usage`, payload);
+  return HttpUtils.put(`${DATA_SOURCE_API_PREFIX}/${id}/usage`, payload, DATA_SOURCE_SAVE_OPTIONS);
 }
 
 /**

@@ -1,6 +1,7 @@
+import { BizError } from '@/utils/request';
 import { useIntl } from '@umijs/max';
 import { Button, Form, message, Modal } from 'antd';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { dataSourceGroupList } from '../constants';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import { DATA_SOURCE_REGISTRY, supportsDataSourceUsage } from '../dataSourceRegistry';
@@ -11,6 +12,7 @@ import {
   updateDataSourceUsage,
 } from '../service';
 import type {
+  CommonApiResponse,
   DataSourceFormValues,
   DataSourceModalOpenPayload,
   DataSourceModalRef,
@@ -22,10 +24,13 @@ import { getDataSourceConnectionErrorMessage } from '../connectionError';
 import { presentConnectionTestResult } from '../connectionTestFeedback';
 import DataSourceTypeSelector from './DataSourceTypeSelector';
 import DynamicDataSourceForm from './DynamicDataSourceForm';
+import './AddOrEditDataSourceModal.less';
 
 interface AddOrEditDataSourceModalProps {
   onManageMasterData?: () => void;
 }
+
+type SubmissionFeedback = { phase: 'pending' | 'success' | 'error'; text: string };
 
 const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSourceModalProps>(({ onManageMasterData }, ref) => {
   const intl = useIntl();
@@ -43,13 +48,17 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   const [usageOnly, setUsageOnly] = useState(false);
   const [hideSinkUsage, setHideSinkUsage] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [submission, setSubmission] = useState<SubmissionFeedback>();
 
   const successCallbackRef = useRef<(() => void) | undefined>();
+  const submissionLock = useRef(false);
+  const isSubmitting = submission?.phase === 'pending';
+  const isSubmitLocked = isSubmitting || submission?.phase === 'success';
 
   const isCreateMode = operateType === ('CREATE' as DataSourceOperateType);
   const isEditMode = operateType === ('EDIT' as DataSourceOperateType);
 
-  const resetModalState = () => {
+  const resetModalState = useCallback(() => {
     setCurrentRecord(undefined);
     setSelectedDbType('');
     setShowFormStep(false);
@@ -57,14 +66,27 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
     setDefaultUsage(undefined);
     setUsageOnly(false);
     setHideSinkUsage(false);
+    setSubmission(undefined);
+    submissionLock.current = false;
     basicForm.resetFields();
     configForm.resetFields();
-  };
+  }, [basicForm, configForm]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setOpen(false);
     resetModalState();
-  };
+  }, [resetModalState]);
+
+  useEffect(() => {
+    if (submission?.phase !== 'success') return;
+    // Keep the result in the live region before closing and returning focus to the trigger.
+    const timer = window.setTimeout(() => {
+      message.success(submission.text);
+      handleClose();
+      successCallbackRef.current?.();
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [handleClose, submission]);
 
   const initializeEditForm = (record: DataSourceRecord, hideSink = false) => {
     basicForm.setFieldsValue({
@@ -104,6 +126,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       usageOnly: requestedUsageOnly,
       hideSinkUsage: requestedHideSinkUsage,
     }: DataSourceModalOpenPayload) => {
+      if (submissionLock.current) return;
       /**
        * 每次打开前，先清理上一次弹窗状态。
        * 这里非常关键，避免 MySQL / PostgreSQL 动态表单互相污染。
@@ -149,7 +172,9 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       setShowFormStep(false);
       setHideBackButton(false);
     },
-    close: handleClose,
+    close: () => {
+      if (!submissionLock.current) handleClose();
+    },
   }));
 
   const handleSelectDbType = (dbType: string) => {
@@ -162,6 +187,7 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   };
 
   const handleBackToTypeSelection = () => {
+    setSubmission(undefined);
     setShowFormStep(false);
     setSelectedDbType('');
     setHideBackButton(false);
@@ -217,78 +243,74 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
   };
 
   const handleSubmit = async () => {
+    // Acquire the lock before validation, so rapid clicks cannot send two requests.
+    if (submissionLock.current) return;
+    submissionLock.current = true;
+    setSubmission({ phase: 'pending', text: '正在保存数据源…' });
+    let saved = false;
+
     try {
+      let response: CommonApiResponse<boolean>;
       if (usageOnly) {
         const basicValues = await basicForm.validateFields(['usages']);
         if (!currentRecord?.id) {
+          setSubmission({ phase: 'error', text: '找不到数据源，请关闭弹窗并刷新列表。' });
           return;
         }
         const usages = basicValues.usages || [];
-        const response = await updateDataSourceUsage(currentRecord.id, {
+        response = await updateDataSourceUsage(currentRecord.id, {
           sourceEnabled: usages.includes('SOURCE'),
           // 管理页隐藏目标端时保留后台 sink，避免用户侧误清目标端配置
           sinkEnabled: hideSinkUsage
             ? Boolean(currentRecord.sinkEnabled)
             : usages.includes('SINK'),
         });
-        if (response.code !== 0) {
+      } else {
+        const basicValues = await basicForm.validateFields();
+        const connectionValues = await configForm.validateFields();
+        const payload = buildSubmitPayload(
+          selectedDbType,
+          basicValues,
+          connectionValues,
+          currentRecord,
+          hideSinkUsage ? { preserveExistingSink: isEditMode } : undefined,
+        );
+
+        if (isCreateMode) {
+          response = await createDataSource(payload);
+        } else if (isEditMode && currentRecord?.id) {
+          response = await updateDataSource(currentRecord.id, payload);
+        } else {
+          setSubmission({ phase: 'error', text: '找不到数据源，请关闭弹窗并刷新列表。' });
           return;
         }
+      }
 
-        message.success(
-          intl.formatMessage({
-            id: 'pages.datasource.modal.message.success',
-            defaultMessage: 'Success',
-          }),
-        );
-        handleClose();
-        successCallbackRef.current?.();
+      if (response?.code !== 0) {
+        const detail = response?.message || response?.msg;
+        setSubmission({ phase: 'error', text: detail ? `${detail}，请确认后重试。` : '保存失败，请稍后重试。' });
         return;
       }
 
-      const basicValues = await basicForm.validateFields();
-      const connectionValues = await configForm.validateFields();
-
-      const payload = buildSubmitPayload(
-        selectedDbType,
-        basicValues,
-        connectionValues,
-        currentRecord,
-        hideSinkUsage ? { preserveExistingSink: isEditMode } : undefined,
-      );
-
-      if (isCreateMode) {
-        const response = await createDataSource(payload);
-
-        if (response.code !== 0) {
-          // message.error(response.message || response.msg || "创建数据源失败");
-          return;
-        }
-      }
-
-      if (isEditMode) {
-        if (!currentRecord?.id) {
-          return;
-        }
-
-        const response = await updateDataSource(currentRecord.id, payload);
-
-        if (response.code !== 0) {
-          return;
-        }
-      }
-
-      message.success(
-        intl.formatMessage({
+      saved = true;
+      setSubmission({
+        phase: 'success',
+        text: intl.formatMessage({
           id: 'pages.datasource.modal.message.success',
-          defaultMessage: 'Success',
+          defaultMessage: '保存成功',
         }),
-      );
-
-      handleClose();
-      successCallbackRef.current?.();
-    } catch (error: any) {
-      if (error?.errorFields) return;
+      });
+    } catch (error) {
+      let text = '保存失败，请稍后重试。';
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        text = '请检查并补全标记的字段后重试。';
+      } else if (error instanceof BizError && error.message) {
+        text = `${error.message}，请确认后重试。`;
+      }
+      setSubmission({ phase: 'error', text });
+    } finally {
+      // A saved form stays locked while the success status is announced.
+      if (!saved) submissionLock.current = false;
     }
   };
 
@@ -312,6 +334,8 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
       open={open}
       centered
       maskClosable={false}
+      keyboard={!isSubmitLocked}
+      closable={!isSubmitLocked}
       onCancel={handleClose}
       destroyOnHidden
       styles={{
@@ -421,11 +445,11 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
           <div>
             {showFormStep ? (
               isCreateMode && !hideBackButton ? (
-                <Button onClick={handleBackToTypeSelection} style={{ height: 34, borderRadius: 6 }}>
+                <Button disabled={isSubmitLocked} onClick={handleBackToTypeSelection} style={{ height: 34, borderRadius: 6 }}>
                   上一步
                 </Button>
               ) : (
-                <Button onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
+                <Button disabled={isSubmitLocked} onClick={handleClose} style={{ height: 34, borderRadius: 6 }}>
                   取消
                 </Button>
               )
@@ -436,12 +460,23 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
             )}
           </div>
 
+          {showFormStep && (
+            <div
+              className="datasource-editor-submit-status"
+              data-phase={submission?.phase}
+              role="status"
+              aria-atomic="true"
+            >
+              {submission?.text}
+            </div>
+          )}
+
           {showFormStep ? (
             <div style={{ display: 'flex', gap: 10 }}>
               {!usageOnly ? (
                 <Button
                   loading={testingConnection}
-                  disabled={testingConnection}
+                  disabled={testingConnection || isSubmitLocked}
                   onClick={() => void handleTestConnection()}
                   style={{ height: 34, borderRadius: 6 }}
                 >
@@ -449,7 +484,13 @@ const AddOrEditDataSourceModal = forwardRef<DataSourceModalRef, AddOrEditDataSou
                 </Button>
               ) : null}
 
-              <Button type="primary" onClick={handleSubmit} style={{ height: 34, borderRadius: 6, paddingInline: 18 }}>
+              <Button
+                type="primary"
+                loading={isSubmitting}
+                disabled={isSubmitLocked}
+                onClick={handleSubmit}
+                style={{ height: 34, borderRadius: 6, paddingInline: 18 }}
+              >
                 完成
               </Button>
             </div>

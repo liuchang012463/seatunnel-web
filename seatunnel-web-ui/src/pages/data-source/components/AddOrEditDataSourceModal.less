@@ -1,0 +1,17 @@
+.datasource-editor-submit-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--st-color-text-secondary);
+  font-size: var(--st-type-content-md-size);
+  line-height: var(--st-type-content-md-line);
+  overflow-wrap: anywhere;
+  text-align: end;
+
+  &[data-phase='error'] {
+    color: var(--st-color-error);
+  }
+
+  &[data-phase='success'] {
+    color: var(--st-color-success);
+  }
+}

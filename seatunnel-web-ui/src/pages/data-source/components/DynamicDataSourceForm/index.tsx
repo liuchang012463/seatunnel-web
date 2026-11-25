@@ -19,6 +19,7 @@ const EMPTY_SAVED_SECRET_FIELDS: string[] = [];
 const EMPTY_EXCLUDED_CONFIG_FIELDS: string[] = [];
 
 const sectionTitleClass = 'm-0 text-[15px] font-semibold text-slate-800';
+const DATA_SOURCE_NAME_MAX_LENGTH = 100;
 const sectionDescClass = 'mt-1 mb-0 text-[14px] leading-[22px] text-slate-500';
 
 const isEmptyValue = (value: any) => {
@@ -455,6 +456,12 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                     defaultMessage: 'DS Name is required',
                   }),
                 },
+                {
+                  validator: (_, value?: string) =>
+                    value && value.length > DATA_SOURCE_NAME_MAX_LENGTH
+                      ? Promise.reject(new Error(`数据源名称不能超过 ${DATA_SOURCE_NAME_MAX_LENGTH} 个字符`))
+                      : Promise.resolve(),
+                },
               ]}
             >
               <Input
@@ -462,7 +469,8 @@ const renderFieldLabel = (field: any): React.ReactNode => {
                   id: 'pages.datasource.form.inputPlaceholder',
                   defaultMessage: 'Input...',
                 })}
-                maxLength={100}
+                maxLength={DATA_SOURCE_NAME_MAX_LENGTH}
+                showCount
               />
             </Form.Item>
 

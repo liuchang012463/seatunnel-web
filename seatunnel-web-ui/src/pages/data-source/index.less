@@ -276,6 +276,14 @@
   overflow-x: auto;
 }
 
+.datasource-catalog-panel--list {
+  background: var(--st-color-bg-panel);
+
+  .datasource-page-pagination {
+    padding-inline: 12px;
+  }
+}
+
 .datasource-view-switcher {
   .datasource-view-option {
     display: inline-flex;
@@ -296,10 +304,33 @@
 }
 
 .datasource-catalog-table {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   padding: 12px;
 
-  .ant-table-wrapper,
+  /* Only the table body scrolls. The header and external pagination do not shrink. */
+  .ant-spin-nested-loading,
+  .ant-spin-container,
+  .ant-table,
+  .ant-table-container {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .ant-table-header {
+    flex: 0 0 auto;
+  }
+
+  .ant-table-body {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
   .ant-table-container,
   .ant-table-content {
     max-width: 100%;
@@ -343,43 +374,67 @@
     background: var(--st-color-hover);
   }
 
+  .ant-table-placeholder > td {
+    padding: 0;
+    border: 0;
+  }
+
+  .ant-table-placeholder .datasource-empty-state {
+    margin: 0;
+    border: 0;
+  }
+
   .ant-tag {
     margin-inline-end: 0;
     line-height: 20px;
   }
 }
 
-.datasource-catalog-name-link {
+.datasource-catalog-text {
+  display: block;
+  min-width: 0;
   max-width: 100%;
-  padding: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:focus-visible {
+    outline: 2px solid var(--st-color-focus);
+    outline-offset: -2px;
+  }
+}
+
+.datasource-catalog-name-link {
+  padding: 0;
   color: var(--st-color-accent);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   background: transparent;
   border: 0;
   cursor: pointer;
 
-  &:hover:not(:disabled) {
+  &:hover:not([aria-disabled='true']) {
     opacity: 0.85;
   }
 
-  &:disabled {
+  &[aria-disabled='true'] {
     opacity: 0.7;
     cursor: default;
   }
 }
 
 .datasource-catalog-datatype {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   color: var(--st-color-text-secondary);
   font-size: 14px;
+
+  > :first-child {
+    flex: 0 0 auto;
+  }
 }
 
 .datasource-catalog-owner {
@@ -392,33 +447,19 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-
-  .datasource-catalog-name-link {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 .datasource-catalog-name-sub {
-  overflow: hidden;
   color: var(--st-color-text-muted);
   font-size: 14px;
   line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .datasource-catalog-name-url {
-  display: block;
-  overflow: hidden;
   color: var(--st-color-text-muted);
   font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
   font-size: 14px;
   line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .datasource-catalog-actions {
@@ -712,21 +753,10 @@
 }
 
 .datasource-create-button {
-  // height: 42px;
   padding-inline: 18px;
   flex-shrink: 0;
-  /* Keep dark text on both cyan states, including the global primary-button hover rule. */
-  color: #001018 !important;
-  background: #2187a8;
-  border-color: #2187a8;
   border-radius: var(--st-radius-md);
   font-weight: 500;
-
-  &:hover {
-    color: #001018 !important;
-    background: #2a9ac0 !important;
-    border-color: #2a9ac0 !important;
-  }
 }
 
 .datasource-search-bar {
