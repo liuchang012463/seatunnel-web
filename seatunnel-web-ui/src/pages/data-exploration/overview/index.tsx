@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import CatalogText from '@/pages/data-source/components/CatalogText';
 import {
   fetchBusinessSystemOptions,
   fetchDataInventoryOverview,
@@ -185,8 +186,8 @@ const DataExplorationOverviewPage: React.FC = () => {
       width: 230,
       render: (_, record) => (
         <div className="overview-source-name">
-          <div className="overview-source-name__title" title={record.name}>{record.name || '-'}</div>
-          <div className="overview-source-name__url" title={record.jdbcUrl}>{record.jdbcUrl || '未提供连接地址'}</div>
+          <CatalogText className="overview-source-name__title" text={record.name || '-'} />
+          <CatalogText className="overview-source-name__url" text={record.jdbcUrl || '未提供连接地址'} />
         </div>
       ),
     },

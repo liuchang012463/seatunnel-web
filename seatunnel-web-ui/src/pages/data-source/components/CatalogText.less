@@ -1,0 +1,17 @@
+.datasource-catalog-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:focus-visible {
+    outline: 2px solid var(--st-color-focus);
+    outline-offset: -2px;
+  }
+
+  &--multiline {
+    white-space: normal;
+  }
+}

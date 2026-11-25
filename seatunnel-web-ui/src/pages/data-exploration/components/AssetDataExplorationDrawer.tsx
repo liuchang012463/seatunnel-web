@@ -29,12 +29,14 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Tree,
   message,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
+import CatalogText from '@/pages/data-source/components/CatalogText';
 import {
   fetchDataExplorationAsset,
   fetchDataExplorationAssets,
@@ -70,6 +72,56 @@ import {
 import AssetExplorationSettingsModal from './AssetExplorationSettingsModal';
 import { assetExplorationStatus } from '@/utils/assetExplorationStatus';
 import './AssetDataExplorationDrawer.less';
+
+function AssetResultRow({
+  asset, selected, onSelect,
+}: { asset: DataExplorationAsset; selected: boolean; onSelect: () => void }) {
+  const name = assetDisplayName(asset);
+  const secondary = asset.fullyQualifiedName ||
+    (asset.description ? decodeHtmlEntities(asset.description) : assetTypeLabel(asset.assetType));
+  const labels = useRef<HTMLSpanElement>(null);
+  const [clippedText, setClippedText] = useState('');
+
+  useLayoutEffect(() => {
+    const fields = Array.from(labels.current?.children || []);
+    const measure = () => setClippedText(fields
+      .filter((field) => field.clientWidth > 0 && field.scrollWidth > field.clientWidth)
+      .map((field) => field.textContent).join('\n'));
+    measure();
+    const observer = new ResizeObserver(measure);
+    fields.forEach((field) => observer.observe(field));
+    return () => observer.disconnect();
+  }, [name, secondary]);
+
+  return (
+    <Tooltip
+      title={clippedText || null}
+      trigger={['hover', 'focus']}
+      styles={{ body: { overflowWrap: 'anywhere', whiteSpace: 'pre-line' } }}
+    >
+      <button
+        type="button"
+        className="asset-exploration__row-main"
+        aria-current={selected ? 'true' : undefined}
+        aria-label={`查看 ${name} 详情`}
+        onClick={onSelect}
+      >
+        <span className="asset-exploration__row-icon">{assetIcon(asset.assetType)}</span>
+        <span className="asset-exploration__row-copy" ref={labels}>
+          <strong>{name}</strong>
+          <small>{secondary}</small>
+        </span>
+        <span className="asset-exploration__row-meta">
+          {typeof asset.fieldCount === 'number' && asset.fieldCount > 0 && <span>{asset.fieldCount} 列</span>}
+          {typeof asset.childCount === 'number' && <span>{asset.childCount} 项</span>}
+          {asset.sizeInByte !== null && asset.sizeInByte !== undefined && (
+            <span>{formatAssetBytes(asset.sizeInByte)}</span>
+          )}
+        </span>
+      </button>
+    </Tooltip>
+  );
+}
 
 export interface AssetDataExplorationDrawerProps {
   dataSourceId?: string;
@@ -753,9 +805,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
       </div>
       <div className="exploration-drawer__title-copy">
         <div className="exploration-drawer__title-name">数据探查</div>
-        <div className="exploration-drawer__title-path" title={dataSourceName}>
-          {dataSourceName || '正在连接数据源'} · {currentTerm}
-        </div>
+        <CatalogText className="exploration-drawer__title-path" text={`${dataSourceName || '正在连接数据源'} · ${currentTerm}`} />
       </div>
       <div className="exploration-drawer__title-status asset-exploration__title-status">
         {metadataLoading ? <Spin size="small" /> : <Tag color={metadataTag.color}>{metadataTag.label}</Tag>}
@@ -1003,10 +1053,10 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
         <header className="exploration-drawer__asset-header">
           <div className="exploration-drawer__asset-copy">
             <div className="exploration-drawer__eyebrow">接口分组</div>
-            <h1 title={selectedAsset?.fullyQualifiedName}>{assetDisplayName(selectedAsset)}</h1>
-            <div className="exploration-drawer__fqn" title={selectedAsset?.fullyQualifiedName}>
+            <h1><CatalogText text={assetDisplayName(selectedAsset)} /></h1>
+            <div className="exploration-drawer__fqn">
               <span>限定名</span>
-              <code>{selectedAsset?.fullyQualifiedName || '—'}</code>
+              <code><CatalogText text={selectedAsset?.fullyQualifiedName || '—'} /></code>
             </div>
           </div>
           <div className="exploration-drawer__asset-badges">
@@ -1172,14 +1222,14 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
             <div className="exploration-drawer__eyebrow">
               {assetTypeEyebrow(selectedAsset.assetType)}
             </div>
-            <h1 title={selectedAsset.fullyQualifiedName}>
-              {normalizeAssetType(selectedAsset.assetType) === 'API_ENDPOINT'
+            <h1>
+              <CatalogText text={normalizeAssetType(selectedAsset.assetType) === 'API_ENDPOINT'
                 ? apiEndpointPath(selectedAsset)
-                : assetDisplayName(selectedAsset)}
+                : assetDisplayName(selectedAsset)} />
             </h1>
-            <div className="exploration-drawer__fqn" title={selectedAsset.fullyQualifiedName}>
+            <div className="exploration-drawer__fqn">
               <span>限定名</span>
-              <code>{selectedAsset.fullyQualifiedName || '—'}</code>
+              <code><CatalogText text={selectedAsset.fullyQualifiedName || '—'} /></code>
             </div>
           </div>
           <div className="exploration-drawer__asset-badges">
@@ -1259,7 +1309,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
     <div className="exploration-drawer__workspace asset-exploration__workspace">
       <aside className="exploration-drawer__nav" aria-label={`${currentTerm}目录`}>
         <div className="exploration-drawer__nav-context">
-          <div className="exploration-drawer__eyebrow">CATALOG</div>
           <div className="asset-exploration__nav-title">
             <strong>{currentTerm}</strong>
             <span>{totalLabel} 项</span>
@@ -1378,28 +1427,7 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
                     className={`asset-exploration__row${isSelected ? ' is-selected' : ''}`}
                     key={key}
                   >
-                    <button
-                      type="button"
-                      className="asset-exploration__row-main"
-                      aria-current={isSelected ? 'true' : undefined}
-                      aria-label={`查看 ${assetDisplayName(asset)} 详情`}
-                      onClick={() => selectAsset(asset)}
-                    >
-                      <span className="asset-exploration__row-icon">{assetIcon(asset.assetType)}</span>
-                      <span className="asset-exploration__row-copy">
-                        <strong title={assetDisplayName(asset)}>{assetDisplayName(asset)}</strong>
-                        <small title={asset.fullyQualifiedName}>{asset.fullyQualifiedName || (asset.description ? decodeHtmlEntities(asset.description) : assetTypeLabel(asset.assetType))}</small>
-                      </span>
-                      <span className="asset-exploration__row-meta">
-                        {typeof asset.fieldCount === 'number' && asset.fieldCount > 0 && (
-                          <span>{asset.fieldCount} 列</span>
-                        )}
-                        {typeof asset.childCount === 'number' && <span>{asset.childCount} 项</span>}
-                        {asset.sizeInByte !== null && asset.sizeInByte !== undefined && (
-                          <span>{formatAssetBytes(asset.sizeInByte)}</span>
-                        )}
-                      </span>
-                    </button>
+                    <AssetResultRow asset={asset} selected={isSelected} onSelect={() => selectAsset(asset)} />
                     {asset.hasChildren && (
                       <button
                         type="button"
@@ -1450,7 +1478,6 @@ const AssetDataExplorationDrawer: React.FC<AssetDataExplorationDrawerProps> = ({
 
       <aside className="exploration-drawer__inspector" aria-label="元数据检查器">
         <div className="exploration-drawer__inspector-header">
-          <div className="exploration-drawer__eyebrow">INSPECTOR</div>
           <strong>元数据摘要</strong>
         </div>
         <div className="exploration-drawer__inspector-scroll">

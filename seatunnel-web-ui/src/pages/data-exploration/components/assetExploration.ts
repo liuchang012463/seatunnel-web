@@ -17,7 +17,7 @@ export const ASSET_TYPE_LABELS: Record<ExplorationAssetType, string> = {
   API_ENDPOINT: '接口',
 };
 
-/** 面板眉题：中文为主；三栏工作台区域标识仍用 CATALOG / INSPECTOR（见 DESIGN.md §1）。 */
+/** 详情面板中的中文资源类型。 */
 export const ASSET_TYPE_EYEBROWS: Record<ExplorationAssetType, string> = {
   TOPIC: '主题',
   SEARCH_INDEX: '索引',

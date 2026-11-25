@@ -3,6 +3,7 @@ import React from 'react';
 import StatusChip from '@/components/StatusChip';
 import DatabaseIcons from '../icon/DatabaseIcons';
 import type { DataSourceLifecycleStatus, DataSourceRecord } from '../types';
+import CatalogText from './CatalogText';
 import DataSourceLifecycleStatusTag from './DataSourceLifecycleStatus';
 import DataSourceStatus from './DataSourceStatus';
 import { profileStatusConfig } from './profileStatus';
@@ -56,9 +57,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
 
       <div className="datasource-card-body">
         <div className="datasource-card-header">
-          <div className="datasource-card-title" title={record.name}>
-            {record.name || '-'}
-          </div>
+          <CatalogText text={record.name || '-'} className="datasource-card-title" multiline />
           {isSystemManaged ? (
             <span
               style={{
@@ -81,9 +80,7 @@ const DataSourceCard: React.FC<DataSourceCardProps> = ({
           </button>
         </div>
 
-        <div className="datasource-card-jdbc-url" title={record.jdbcUrl}>
-          {record.jdbcUrl || '-'}
-        </div>
+        <CatalogText text={record.jdbcUrl || '-'} className="datasource-card-jdbc-url" />
 
         <div className="datasource-card-status">
           <DataSourceStatus status={record.connStatus} />
