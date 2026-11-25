@@ -28,6 +28,9 @@ import java.util.List;
 @Slf4j
 public class JobLogAiConfiguration {
 
+    // The configured base URL supplies the provider's full API prefix, including any version.
+    private static final String COMPLETIONS_PATH = "/chat/completions";
+
     @Bean
     @ConditionalOnExpression(
             "'${spring.ai.llm.api-key:}' != '' && '${spring.ai.llm.base-url:}' != '' && '${spring.ai.llm.chat.options.model:}' != ''")
@@ -35,9 +38,6 @@ public class JobLogAiConfiguration {
         String apiKey = properties.getApiKey();
         String baseUrl = properties.getBaseUrl().trim().replaceAll("/+$", "");
         URI endpoint = URI.create(baseUrl);
-        // Keep the legacy v1 default unless the provider's base URL already supplies an API version.
-        String completionsPath = endpoint.getPath().matches(".*/v[0-9]+")
-                ? "/chat/completions" : "/v1/chat/completions";
         String model = properties.getModel();
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model(model)
@@ -54,12 +54,12 @@ public class JobLogAiConfiguration {
         OpenAiApi api = OpenAiApi.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
-                .completionsPath(completionsPath)
+                .completionsPath(COMPLETIONS_PATH)
                 .headers(headers)
                 .restClientBuilder(restClient)
                 .build();
         log.info("LLM chat client configured: host={}, completionsPath={}, syncHttpVersion={}",
-                endpoint.getHost(), completionsPath, cleartext ? "HTTP/1.1" : "default");
+                endpoint.getHost(), COMPLETIONS_PATH, cleartext ? "HTTP/1.1" : "default");
         return ChatClient.create(OpenAiChatModel.builder()
                 .openAiApi(api)
                 .defaultOptions(options)

@@ -67,8 +67,8 @@ class JobLogAiConfigurationTest {
 
     @ParameterizedTest
     @CsvSource({
-            "/, /v1/chat/completions",
-            "/gateway, /gateway/v1/chat/completions",
+            "/, /chat/completions",
+            "/gateway, /gateway/chat/completions",
             "/v1, /v1/chat/completions",
             "/api/coding/v3/, /api/coding/v3/chat/completions"
     })
