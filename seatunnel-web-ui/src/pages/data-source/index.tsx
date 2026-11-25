@@ -28,7 +28,6 @@ import { PAGE_ANIMATION, PAGE_DEFAULT_PAGINATION } from './constants';
 import {
   DATA_SOURCE_CATEGORIES,
   DATA_SOURCE_REGISTRY,
-  PLANNED_DATA_SOURCE_CATEGORIES,
   filterDataSourceTypesByUsage,
   getDataSourceCategory,
 } from './dataSourceRegistry';
@@ -811,19 +810,6 @@ const DataSourcePage: React.FC = () => {
                       }}
                     >
                       {category.label}
-                    </Button>
-                  ))}
-                  {/* 图库/时序尚未接入连接器：展示规划分类，不可筛选 */}
-                  {PLANNED_DATA_SOURCE_CATEGORIES.map((category) => (
-                    <Button
-                      key={category.key}
-                      type="default"
-                      disabled
-                      title={category.note}
-                      className="datasource-planned-category"
-                    >
-                      {category.label}
-                      <span className="datasource-planned-category__tag">待接入</span>
                     </Button>
                   ))}
                 </div>
