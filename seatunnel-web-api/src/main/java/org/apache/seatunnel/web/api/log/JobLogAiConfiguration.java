@@ -1,5 +1,6 @@
 package org.apache.seatunnel.web.api.log;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -20,6 +22,7 @@ import java.util.List;
  */
 @Configuration
 @EnableConfigurationProperties(LlmProperties.class)
+@Slf4j
 public class JobLogAiConfiguration {
 
     @Bean
@@ -27,7 +30,11 @@ public class JobLogAiConfiguration {
             "'${spring.ai.llm.api-key:}' != '' && '${spring.ai.llm.base-url:}' != '' && '${spring.ai.llm.chat.options.model:}' != ''")
     public ChatClient jobLogChatClient(LlmProperties properties) {
         String apiKey = properties.getApiKey();
-        String baseUrl = properties.getBaseUrl();
+        String baseUrl = properties.getBaseUrl().trim().replaceAll("/+$", "");
+        URI endpoint = URI.create(baseUrl);
+        // Keep the legacy v1 default unless the provider's base URL already supplies an API version.
+        String completionsPath = endpoint.getPath().matches(".*/v[0-9]+")
+                ? "/chat/completions" : "/v1/chat/completions";
         String model = properties.getModel();
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model(model)
@@ -37,8 +44,10 @@ public class JobLogAiConfiguration {
         OpenAiApi api = OpenAiApi.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
+                .completionsPath(completionsPath)
                 .headers(headers)
                 .build();
+        log.info("LLM chat client configured: host={}, completionsPath={}", endpoint.getHost(), completionsPath);
         return ChatClient.create(OpenAiChatModel.builder()
                 .openAiApi(api)
                 .defaultOptions(options)
