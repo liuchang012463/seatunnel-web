@@ -1,4 +1,4 @@
-import HttpUtils, { type ApiResponse } from '@/utils/HttpUtils';
+import HttpUtils, { type ApiResponse, type RequestOptions } from '@/utils/HttpUtils';
 import type {
   FileResourceEntry,
   FileResourceListParams,
@@ -264,18 +264,19 @@ export async function deleteFileResource(resource: Pick<FileResourceEntry, 'id' 
   if (response.code !== 0) throw responseError(response, '删除文件资源失败');
 }
 
-export function downloadFileResource(resource: Pick<FileResourceEntry, 'id' | 'path' | 'objectKey'>): Promise<unknown> {
+export function downloadFileResource(resource: Pick<FileResourceEntry, 'id' | 'path' | 'objectKey'>, options?: RequestOptions): Promise<unknown> {
   if (resource.id !== undefined && resource.id !== null && String(resource.id) !== '') {
-    return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(resource.id))}/download`);
+    return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(resource.id))}/download`, options);
   }
-  return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/download${queryString({ path: resource.path || resource.objectKey })}`);
+  return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/download${queryString({ path: resource.path || resource.objectKey })}`, options);
 }
 
 export function previewFileResourceAsPdf(resource: Pick<FileResourceEntry, 'id'>): Promise<unknown> {
   if (resource.id === undefined || resource.id === null || String(resource.id) === '') {
     return Promise.reject(new Error('缺少文件资源 ID，无法预览'));
   }
-  return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(resource.id))}/preview-pdf`);
+  // The preview modal owns this error and explains whether a retry can help.
+  return HttpUtils.download(`${FILE_RESOURCE_API_PREFIX}/${encodeURIComponent(String(resource.id))}/preview-pdf`, { skipErrorHandler: true });
 }
 
 export async function fetchFileResourceUploadRecords(

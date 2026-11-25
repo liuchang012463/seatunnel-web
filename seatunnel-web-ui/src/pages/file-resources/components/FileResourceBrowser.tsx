@@ -294,6 +294,7 @@ const FileResourceBrowser: React.FC<FileResourceBrowserProps> = ({
                 key="preview"
                 type="link"
                 size="small"
+                aria-label={`预览 ${resourceName(record)}`}
                 icon={<EyeOutlined />}
                 onClick={() => void onPreview(record)}
               >
