@@ -1,5 +1,5 @@
 import { ReloadOutlined } from "@ant-design/icons";
-import { Alert, Button, Select, Spin } from "antd";
+import { Alert, Button, Empty, Select, Spin } from "antd";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -10,6 +10,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchChartData, fetchSummaryData } from "./api";
 import BarChart from "./BarChart";
+import ChartRenderBoundary from "./ChartRenderBoundary";
 import "./index.less";
 import LineChart from "./LineChart";
 import { toMegabytes } from "@/pages/common/utils/throughput";
@@ -47,81 +48,74 @@ const cardStagger = {
   },
 };
 
-const App: React.FC = () => {
-  const [chartData, setChartData] = useState<ChartData>({
-    recordsTrend: { data: [], xAxis: [] },
-    bytesTrend: { data: [], xAxis: [] },
-    recordsSpeedTrend: { data: [], xAxis: [] },
-    bytesSpeedTrend: { data: [], xAxis: [] },
-  });
+const emptySummary: SummaryData = {
+  totalRecords: 0,
+  totalBytes: 0,
+  definitionCount: 0,
+  totalTasks: 0,
+  successTasks: 0,
+  failedTasks: 0,
+  runningTasks: 0,
+  stoppedTasks: 0,
+  avgRecordDelay: 0,
+  totalBytesUnit: "-",
+  totalRecordsUnit: "-",
+};
 
-  const [loading, setLoading] = useState(false);
-  const [pageReady, setPageReady] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+type PanelResult<T> = { status: "loading" | "error" } | { status: "ready"; data: T };
+type ChartPanelData = ChartData & { recordsUnit: string; bytesUnit: string };
 
-  const [summaryData, setSummaryData] = useState<SummaryData>({
-    totalRecords: 0,
-    totalBytes: 0,
-    definitionCount: 0,
-    totalTasks: 0,
-    successTasks: 0,
-    failedTasks: 0,
-    runningTasks: 0,
-    stoppedTasks: 0,
-    avgRecordDelay: 0,
-    totalBytesUnit: "-",
-    totalRecordsUnit: "-",
-  });
-
-  const [taskType, setTaskType] = useState<TaskType>("BATCH");
-  const [timeRange, setTimeRange] = useState<TimeRange>("D30");
-  const requestGeneration = useRef(0);
-
-  const refreshData = useCallback(async () => {
-    const generation = ++requestGeneration.current;
+function useMetricsPanel<T>(load: () => Promise<T>) {
+  const generation = useRef(0);
+  const [snapshot, setSnapshot] = useState<{ load: typeof load; result: PanelResult<T> }>();
+  const reload = useCallback(async () => {
+    const request = ++generation.current;
+    setSnapshot({ load, result: { status: "loading" } });
     try {
-      setLoading(true);
-      setPageReady(false);
-      setErrorMessage(null);
-
-      const [summary, apiData] = await Promise.all([
-        fetchSummaryData(timeRange, taskType),
-        fetchChartData(timeRange, taskType),
-      ]);
-      const processedData: ChartData = {
-        recordsTrend: transformChartData(apiData.recordsTrend, timeRange),
-        bytesTrend: transformChartData(apiData.bytesTrend, timeRange),
-        recordsSpeedTrend: transformChartData(
-          apiData.recordsSpeedTrend,
-          timeRange
-        ),
-        bytesSpeedTrend: transformChartData(
-          apiData.bytesSpeedTrend,
-          timeRange
-        ),
-      };
-
-      if (generation !== requestGeneration.current) return;
-      setSummaryData(summary);
-      setChartData(processedData);
-      setPageReady(true);
-    } catch (error: unknown) {
-      if (generation === requestGeneration.current) {
-        setErrorMessage("任务概览暂不可用，请检查连接后重试");
-      }
-    } finally {
-      if (generation === requestGeneration.current) {
-        setLoading(false);
-      }
+      const data = await load();
+      if (request === generation.current) setSnapshot({ load, result: { status: "ready", data } });
+    } catch {
+      if (request === generation.current) setSnapshot({ load, result: { status: "error" } });
     }
-  }, [timeRange, taskType]);
+  }, [load]);
 
   useEffect(() => {
-    refreshData();
-    return () => {
-      requestGeneration.current += 1;
+    void reload();
+    return () => { generation.current += 1; };
+  }, [reload]);
+
+  // A response from the previous filter should never be shown under a new time range or task type.
+  const result: PanelResult<T> = snapshot?.load === load ? snapshot.result : { status: "loading" };
+  return { result, reload };
+}
+
+const App: React.FC = () => {
+  const [taskType, setTaskType] = useState<TaskType>("BATCH");
+  const [timeRange, setTimeRange] = useState<TimeRange>("D30");
+  const loadSummary = useCallback(() => fetchSummaryData(timeRange, taskType), [timeRange, taskType]);
+  const loadCharts = useCallback(async (): Promise<ChartPanelData> => {
+    const data = await fetchChartData(timeRange, taskType);
+    return {
+      recordsTrend: transformChartData(data.recordsTrend, timeRange),
+      bytesTrend: transformChartData(data.bytesTrend, timeRange),
+      recordsSpeedTrend: transformChartData(data.recordsSpeedTrend, timeRange),
+      bytesSpeedTrend: transformChartData(data.bytesSpeedTrend, timeRange),
+      // The trends are scaled by the chart endpoint, not by the summary totals.
+      recordsUnit: data.recordsTrend.find((item) => item.unit)?.unit || "条",
+      bytesUnit: data.bytesTrend.find((item) => item.unit)?.unit || "B",
     };
-  }, [refreshData]);
+  }, [timeRange, taskType]);
+
+  const { result: summaryResult, reload: reloadSummary } = useMetricsPanel(loadSummary);
+  const { result: chartResult, reload: reloadCharts } = useMetricsPanel(loadCharts);
+  const summaryReady = summaryResult.status === "ready";
+  const summaryData = summaryResult.status === "ready" ? summaryResult.data : emptySummary;
+  const chartData = chartResult.status === "ready" ? chartResult.data : undefined;
+  const loading = summaryResult.status === "loading" || chartResult.status === "loading";
+  const refreshData = () => {
+    void reloadSummary();
+    void reloadCharts();
+  };
 
   const completedTasks =
     summaryData.successTasks + summaryData.failedTasks + summaryData.stoppedTasks;
@@ -318,27 +312,9 @@ const App: React.FC = () => {
       <main className="metrics-page__main">
         <div className="metrics-page__inner">
           <div className="mx-auto max-w-[1600px]">
-            {errorMessage ? (
-              <Alert
-                className="mb-4"
-                type="error"
-                showIcon
-                message="任务概览加载失败"
-                description={errorMessage}
-                action={
-                  <Button
-                    size="small"
-                    onClick={() => void refreshData()}
-                    aria-label="重试加载任务概览"
-                  >
-                    重试
-                  </Button>
-                }
-              />
-            ) : null}
             <motion.div
               initial="hidden"
-              animate={pageReady ? "visible" : "hidden"}
+              animate="visible"
               variants={sectionStagger}
             >
               <motion.div
@@ -369,19 +345,28 @@ const App: React.FC = () => {
                 <Button
                   icon={<ReloadOutlined />}
                   loading={loading}
-                  onClick={() => void refreshData()}
+                  onClick={refreshData}
                   aria-label="刷新任务概览"
                 >
                   刷新
                 </Button>
               </motion.div>
 
-              <Spin spinning={loading}>
-                <motion.section variants={fadeUp} className="mb-8">
+                <motion.section variants={fadeUp} className="mb-8" aria-label="汇总指标">
+                  {summaryResult.status === "loading" && <PanelLoading label="正在加载汇总指标" />}
+                  {summaryResult.status === "error" && (
+                    <PanelError
+                      message="汇总指标加载失败"
+                      description="请重试汇总指标。趋势数据可独立查看。"
+                      retryLabel="重试加载汇总指标"
+                      onRetry={() => void reloadSummary()}
+                    />
+                  )}
+                  {summaryReady && (
                   <motion.div
                     variants={cardStagger}
                     initial="hidden"
-                    animate={pageReady ? "visible" : "hidden"}
+                    animate="visible"
                     className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
                   >
                     {statCards.map((item) => (
@@ -410,43 +395,58 @@ const App: React.FC = () => {
                       </motion.div>
                     ))}
                   </motion.div>
+                  )}
                 </motion.section>
 
-                <motion.section variants={fadeUp} className="mb-8">
+                <motion.section variants={fadeUp} className="mb-8" aria-label={overviewTitle}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
                       {overviewTitle}
                     </h2>
                   </div>
+                  {chartData ? (
                   <div className={`grid grid-cols-1 gap-6 ${showRecordMetrics ? "xl:grid-cols-2" : "xl:grid-cols-1"}`}>
                     {showRecordMetrics ? (
                       <motion.div variants={fadeUp} className="min-w-0">
-                        <ChartCard title={recordsTrendTitle}>
+                        <ChartCard title={recordsTrendTitle} values={chartData.recordsTrend.data}>
                           <BarChart
                             data={chartData.recordsTrend.data}
                             xAxisData={chartData.recordsTrend.xAxis}
                             title={recordsTrendTitle}
-                            unit={String(summaryData.totalRecordsUnit || "条")}
-                            loading={loading}
+                            unit={chartData.recordsUnit}
                           />
                         </ChartCard>
                       </motion.div>
                     ) : null}
 
                     <motion.div variants={fadeUp} className="min-w-0">
-                      <ChartCard title={bytesTrendTitle}>
+                      <ChartCard title={bytesTrendTitle} values={chartData.bytesTrend.data}>
                         <BarChart
                           data={chartData.bytesTrend.data}
                           xAxisData={chartData.bytesTrend.xAxis}
                           title={bytesTrendTitle}
-                          unit={String(summaryData.totalBytesUnit || "B")}
-                          loading={loading}
+                          unit={chartData.bytesUnit}
                         />
                       </ChartCard>
                     </motion.div>
                   </div>
+                  ) : (
+                    <div className="metrics-chart-card p-4">
+                      {chartResult.status === "loading" ? (
+                        <PanelLoading label="正在加载趋势和效率数据" />
+                      ) : (
+                        <PanelError
+                          message="趋势和效率数据加载失败"
+                          description="请重试图表数据。汇总指标可独立查看。"
+                          retryLabel="重试加载图表数据"
+                          onRetry={() => void reloadCharts()}
+                        />
+                      )}
+                    </div>
+                  )}
                 </motion.section>
 
+                {chartData && (
                 <motion.section variants={fadeUp} className="mb-8">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
@@ -456,32 +456,32 @@ const App: React.FC = () => {
                   <div className={`grid grid-cols-1 gap-6 ${showRecordMetrics ? "xl:grid-cols-2" : "xl:grid-cols-1"}`}>
                     {showRecordMetrics ? (
                       <motion.div variants={fadeUp}>
-                        <ChartCard title={recordsSpeedTitle}>
+                        <ChartCard title={recordsSpeedTitle} values={chartData.recordsSpeedTrend.data}>
                           <LineChart
                             data={chartData.recordsSpeedTrend.data}
                             xAxisData={chartData.recordsSpeedTrend.xAxis}
                             title={recordsSpeedTitle}
                             unit="records/s"
-                            loading={loading}
                           />
                         </ChartCard>
                       </motion.div>
                     ) : null}
 
                     <motion.div variants={fadeUp}>
-                      <ChartCard title={bytesSpeedTitle}>
+                      <ChartCard title={bytesSpeedTitle} values={chartData.bytesSpeedTrend.data}>
                         <LineChart
                           data={chartData.bytesSpeedTrend.data.map(toMegabytes)}
                           xAxisData={chartData.bytesSpeedTrend.xAxis}
                           title={bytesSpeedTitle}
                           unit="MB/s"
-                          loading={loading}
                         />
                       </ChartCard>
                     </motion.div>
                   </div>
                 </motion.section>
+                )}
 
+                {summaryReady && (
                 <motion.section variants={fadeUp}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-[color:var(--st-color-text-primary)]">
@@ -492,7 +492,7 @@ const App: React.FC = () => {
                   <motion.div
                     variants={cardStagger}
                     initial="hidden"
-                    animate={pageReady ? "visible" : "hidden"}
+                    animate="visible"
                     className="grid grid-cols-1 gap-4 xl:grid-cols-3"
                   >
                     {summaryList.map((item) => (
@@ -514,7 +514,7 @@ const App: React.FC = () => {
                     ))}
                   </motion.div>
                 </motion.section>
-              </Spin>
+                )}
             </motion.div>
           </div>
         </div>
@@ -523,10 +523,30 @@ const App: React.FC = () => {
   );
 };
 
+const PanelLoading = ({ label }: { label: string }) => (
+  <div className="metrics-panel-loading" role="status">
+    <Spin size="small" />
+    <span>{label}</span>
+  </div>
+);
+
+const PanelError = ({
+  message, description, retryLabel, onRetry,
+}: { message: string; description: string; retryLabel: string; onRetry: () => void }) => (
+  <Alert
+    type="error"
+    showIcon
+    message={message}
+    description={description}
+    action={<Button size="small" onClick={onRetry} aria-label={retryLabel}>重试</Button>}
+  />
+);
+
 const ChartCard: React.FC<{
   title: string;
+  values: (number | null)[];
   children: React.ReactNode;
-}> = ({ title, children }) => {
+}> = ({ title, values, children }) => {
   return (
     <motion.div
       whileHover={{ y: -2, transition: { duration: 0.18 } }}
@@ -538,7 +558,11 @@ const ChartCard: React.FC<{
         </h3>
       </div>
       <div className="metrics-chart-card__body p-4 pt-0 md:p-6 md:pt-0">
-        {children}
+        {values.some((value) => value != null) ? (
+          <ChartRenderBoundary title={title}>{children}</ChartRenderBoundary>
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前统计范围暂无数据" />
+        )}
       </div>
     </motion.div>
   );

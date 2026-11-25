@@ -47,6 +47,8 @@
     border: 1px solid var(--st-color-border);
     border-radius: var(--st-radius-md);
     background: var(--st-color-bg-panel);
+
+    small { font-size: 14px; }
   }
 
   .data-topology-browser,
@@ -153,7 +155,7 @@
     gap: 12px;
     min-height: 32px;
     h2 { margin: 0; font-size: 15px; line-height: 22px; }
-    > span { color: var(--st-color-text-muted); font-size: 12px; }
+    > span { color: var(--st-color-text-muted); font-size: 14px; }
     > .ant-input-affix-wrapper { max-width: 260px; }
   }
 
@@ -240,7 +242,7 @@
     min-width: 0;
     gap: 2px;
     h2 { margin: 0; font-size: 15px; line-height: 20px; }
-    > span, > small { font-size: 12px; }
+    > span, > small { font-size: 14px; }
   }
 
   .data-topology-settings {
@@ -254,7 +256,7 @@
       align-items: center;
       gap: 5px;
       color: var(--st-color-text-secondary);
-      font-size: 12px;
+      font-size: 14px;
     }
 
     .ant-input-number { width: 58px; }
@@ -304,10 +306,10 @@
     padding: 13px 14px;
     border-bottom: 1px solid var(--st-color-divider);
 
-    h4 { margin: 0; font-size: 13px; line-height: 20px; }
+    h4 { margin: 0; font-size: 14px; line-height: 20px; }
     p { margin: 0; color: var(--st-color-text-secondary); overflow-wrap: anywhere; }
     dl, dd, ul { margin: 0; }
-    dt { color: var(--st-color-text-muted); font-size: 12px; }
+    dt { color: var(--st-color-text-muted); font-size: 14px; }
     dd { overflow-wrap: anywhere; }
   }
 
@@ -352,7 +354,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 6px;
-    > span { color: var(--st-color-text-muted); font-size: 12px; }
+    > span { color: var(--st-color-text-muted); font-size: 14px; }
   }
 
   .data-topology-pairs {
@@ -372,7 +374,7 @@
       background: var(--st-color-bg-page);
       text-align: left;
       color: var(--st-color-text-secondary);
-      font-size: 11px;
+      font-size: 14px;
       cursor: pointer;
     }
     button:hover, button[aria-pressed='true'] {
@@ -382,7 +384,7 @@
     strong {
       grid-column: 1 / -1;
       color: var(--st-color-text-primary);
-      font-size: 12px;
+      font-size: 14px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -392,7 +394,7 @@
 
   .data-topology-pairs button:focus-visible { outline: 1px solid var(--st-color-focus); }
 
-  .data-topology-fqn { color: var(--st-color-text-muted); font-size: 11px; overflow-wrap: anywhere; }
+  .data-topology-fqn { color: var(--st-color-text-muted); font-size: 14px; overflow-wrap: anywhere; }
   .data-topology-task-tags .ant-tag { margin: 0 6px 0 0; }
 
   .data-topology-asset,
@@ -418,7 +420,7 @@
       padding: 0 6px;
       gap: 5px;
       color: var(--st-color-accent-strong);
-      font-size: 11px;
+      font-size: 14px;
     }
   }
 
@@ -460,7 +462,8 @@
     margin: 0;
     padding: 0 9px;
     color: var(--st-color-text-secondary);
-    font-size: 12px;
+    font-size: 14px;
+    line-height: 19px;
   }
 
   .data-topology-node-types,
@@ -471,7 +474,7 @@
     height: 23px;
     padding: 0 9px;
     color: var(--st-color-text-muted);
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .data-topology-node-types > span {
@@ -536,7 +539,7 @@
 
   .data-topology-field > span { flex: 1; }
   .data-topology-field > small { max-width: 45%; color: var(--st-color-text-muted); }
-  .data-topology-field-status { color: var(--st-color-text-muted); font-size: 12px; }
+  .data-topology-field-status { color: var(--st-color-text-muted); font-size: 14px; }
 
   .react-flow__handle { opacity: 0; pointer-events: none; }
   .data-topology-asset > .react-flow__handle { top: 18px; }

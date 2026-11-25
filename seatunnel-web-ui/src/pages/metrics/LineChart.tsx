@@ -8,10 +8,9 @@ interface LineChartProps {
   xAxisData: string[];
   title: string;
   unit: string;
-  loading: boolean;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loading }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!chartRef.current) return;
@@ -64,6 +63,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
         data: xAxisData,
         axisLabel: {
           color: '#d5d5d5',
+          fontSize: 14,
         },
         axisLine: {
           lineStyle: {
@@ -82,6 +82,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
         name: '',
         axisLabel: {
           color: '#d5d5d5',
+          fontSize: 14,
           formatter: (value: number) => formatMetric(value, unit),
         },
         axisLine: {
@@ -124,7 +125,12 @@ const LineChart: React.FC<LineChartProps> = ({ data, xAxisData, title, unit, loa
       },
     };
 
-    chart.setOption(option);
+    try {
+      chart.setOption(option);
+    } catch (error) {
+      chart.dispose();
+      throw error;
+    }
 
     // 响应式调整
     const handleResize = () => chart.resize();

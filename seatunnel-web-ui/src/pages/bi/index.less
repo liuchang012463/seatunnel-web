@@ -398,7 +398,7 @@
 .bi-dashboard .volume-line { stroke: var(--cyan); stroke-width: 3; filter: drop-shadow(0 0 4px rgba(113, 228, 255, 0.5)); }
 .bi-dashboard .added-line { stroke: var(--amber); stroke-width: 1.8; opacity: 0.9; }
 .bi-dashboard .chart-last-dot { fill: var(--cyan); stroke: #dff6ff; stroke-width: 2; filter: drop-shadow(0 0 4px var(--cyan)); }
-.bi-dashboard .chart-y-labels { position: absolute; top: 8px; bottom: 22px; left: -30px; display: flex; flex-direction: column; justify-content: space-between; color: var(--text-sub); font: 400 13px var(--font-num); }
+.bi-dashboard .chart-y-labels { position: absolute; top: 8px; bottom: 22px; left: -30px; display: flex; flex-direction: column; justify-content: space-between; color: var(--text-sub); font: 400 14px var(--font-num); }
 /* 与折线同宽铺满，刻度均匀分散，禁止挤到右侧重叠 */
 .bi-dashboard .chart-x-labels {
   position: absolute;
@@ -410,7 +410,7 @@
   gap: 4px;
   overflow: hidden;
   color: var(--text-sub);
-  font: 400 12px var(--font-num);
+  font: 400 14px var(--font-num);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -772,13 +772,13 @@
 
 .bi-dashboard .topology-loading { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-sub); background: rgba(9, 24, 46, .78); }
 
-.bi-dashboard .trend-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; pointer-events: none; }
+.bi-dashboard .trend-fallback { flex: 1 0 auto; display: grid; place-items: center; padding: 12px 14px; }
+.bi-dashboard .trend-fallback .ant-alert { width: 100%; }
+.bi-dashboard .trend-empty { display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+.bi-dashboard .trend-updating { position: absolute; top: 4px; right: 0; padding: 2px 6px; background: var(--panel); color: var(--text-sub); font-size: 14px; }
+.bi-dashboard .topology-update { color: var(--text-sub); font-size: 14px; }
 
-.bi-dashboard .dashboard-error, .bi-dashboard .dashboard-note { position: absolute; z-index: 12; right: 24px; bottom: 18px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: var(--text); border: 1px solid rgba(240, 31, 31, .6); background: rgba(13, 32, 60, .97); font-size: 14px; }
-
-.bi-dashboard .dashboard-error button { padding: 4px 9px; color: var(--text); border: 1px solid var(--primary); background: var(--primary-deep); cursor: pointer; }
-
-.bi-dashboard .dashboard-note { right: auto; bottom: 18px; left: 24px; border-color: rgba(217, 182, 33, .5); color: var(--amber); }
+.bi-dashboard .dashboard-note { position: absolute; z-index: 12; bottom: 18px; left: 24px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid rgba(217, 182, 33, .5); color: var(--amber); background: rgba(13, 32, 60, .97); font-size: 14px; }
 
 @keyframes bi-dashboard-spin { to { transform: rotate(360deg); } }
 

@@ -7,10 +7,9 @@ interface BChartProps {
   xAxisData: string[];
   title: string;
   unit: string;
-  loading: boolean;
 }
 
-const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading }) => {
+const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +67,7 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
         data: xAxisData,
         axisLabel: {
           color: '#d5d5d5',
+          fontSize: 14,
         },
         axisLine: {
           lineStyle: {
@@ -88,6 +88,7 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
         name: '',
         axisLabel: {
           color: '#d5d5d5',
+          fontSize: 14,
           formatter: '{value} ' + unit,
         },
         axisLine: {
@@ -135,7 +136,12 @@ const BarChart: React.FC<BChartProps> = ({ data, xAxisData, title, unit, loading
       },
     };
 
-    chart.setOption(option);
+    try {
+      chart.setOption(option);
+    } catch (error) {
+      chart.dispose();
+      throw error;
+    }
 
     // 响应式调整
     const handleResize = () => chart.resize();

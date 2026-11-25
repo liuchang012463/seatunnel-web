@@ -37,7 +37,7 @@ interface Props {
   onFields: (id: string) => void;
 }
 
-function FitGraph({ ids }: { ids: string[] }) {
+function FitGraph({ ids, focusedId }: { ids: string[]; focusedId?: string }) {
   const initialized = useNodesInitialized();
   const width = useStore((state) => state.width);
   const { getNodes, setViewport } = useReactFlow();
@@ -46,15 +46,25 @@ function FitGraph({ ids }: { ids: string[] }) {
     if (!initialized || width <= 48 || (fitted.current?.ids === ids && fitted.current.width === width)) return;
     const frame = requestAnimationFrame(() => {
       const visible = new Set(ids);
-      const bounds = getNodesBounds(getNodes().filter(({ id }) => visible.has(id)));
+      const nodes = getNodes().filter(({ id }) => visible.has(id));
+      const bounds = getNodesBounds(nodes);
       if (!bounds.width) return;
-      const zoom = Math.min(1, Math.max(0.05, (width - 48) / bounds.width));
-      // Anchor the first row so disconnected tables start in view under the linked graph.
-      setViewport({ zoom, x: (width - bounds.width * zoom) / 2 - bounds.x * zoom, y: 24 - bounds.y * zoom });
+      const focused = nodes.find(({ id }) => id === focusedId);
+      const focusBounds = focused ? getNodesBounds([focused]) : undefined;
+      const x = bounds.width <= width - 48
+        ? (width - bounds.width) / 2 - bounds.x
+        : focusBounds
+          ? Math.min(24 - bounds.x, Math.max(
+            width - 24 - bounds.x - bounds.width,
+            (width - focusBounds.width) / 2 - focusBounds.x,
+          ))
+          : 24 - bounds.x;
+      // Start at readable scale. Fit view and the minimap still expose the full layout on demand.
+      setViewport({ zoom: 1, x, y: 24 - (focusBounds?.y ?? bounds.y) });
       fitted.current = { ids, width };
     });
     return () => cancelAnimationFrame(frame);
-  }, [getNodes, ids, initialized, setViewport, width]);
+  }, [focusedId, getNodes, ids, initialized, setViewport, width]);
   return null;
 }
 
@@ -159,7 +169,7 @@ export default function TopologyCanvas({
       <Controls showInteractive={false} />
       <MiniMap pannable zoomable style={{ width: 126, height: 86 }}
         nodeColor="var(--st-color-line-strong)" maskColor="rgb(9 24 43 / 55%)" />
-      <FitGraph ids={fitIds} />
+      <FitGraph ids={fitIds} focusedId={focusedId} />
     </ReactFlow>
   );
 }

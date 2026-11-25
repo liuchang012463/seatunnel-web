@@ -2,7 +2,7 @@ import { Link } from '@umijs/max';
 import { withLayoutPrefix } from '@/utils/iframeLayout';
 import MetricsGrid from './MetricsGrid';
 import { integerFormat, numberFormat, asNumber, toRecords, toBytes, chartRecordsToRaw, chartBytesToRaw, formatRecords, formatBytes, formatTime } from './metricFormat';
-import { Spin } from 'antd';
+import { Alert, Button, Spin } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -65,12 +65,58 @@ type TrendPoint = {
   bytes: number;
 };
 
+type RangePanel<T> = {
+  range: TimeRange;
+  status: 'loading' | 'ready' | 'error';
+  data?: T;
+  updatedAt?: string;
+};
+
+const emptyCharts: TaskTypeChart[] = [];
+
+function useRangePanel<T>(range: TimeRange, fetchPanel: (range: TimeRange) => Promise<T>) {
+  const requestId = useRef(0);
+  const [snapshot, setSnapshot] = useState<RangePanel<T>>();
+  const load = useCallback(async () => {
+    const currentId = ++requestId.current;
+    // Keep the last successful snapshot while polling the same range, but never under a new filter.
+    setSnapshot((previous) => ({ ...(previous?.range === range ? previous : undefined), range, status: 'loading' }));
+    try {
+      const data = await fetchPanel(range);
+      if (currentId === requestId.current) {
+        setSnapshot({ range, status: 'ready', data, updatedAt: formatTime(new Date()) });
+      }
+    } catch {
+      if (currentId === requestId.current) setSnapshot({ range, status: 'error' });
+    }
+  }, [fetchPanel, range]);
+
+  useEffect(() => () => { requestId.current += 1; }, [load]);
+  const state: RangePanel<T> = snapshot?.range === range ? snapshot : { range, status: 'loading' };
+  return { state, load };
+}
+
 const TASK_TYPES: TaskTypeMeta[] = [
   { key: 'BATCH', label: '批量引接', detail: '批量任务', tone: 'cyan', icon: <Database size={17} /> },
   { key: 'STREAM', label: '实时引接', detail: '流式任务', tone: 'green', icon: <Activity size={17} /> },
   { key: 'FILE_INGEST', label: '文件导入', detail: '离线导入', tone: 'amber', icon: <FileText size={17} /> },
   { key: 'FILE_TRANSFER', label: '文件同步', detail: '文件传输', tone: 'blue', icon: <Archive size={17} /> },
 ];
+
+const fetchTaskSummaries = (range: TimeRange) =>
+  Promise.all(TASK_TYPES.map(async (taskType) => ({
+    ...taskType,
+    summary: await fetchSummaryData(range, taskType.key),
+  })));
+
+const fetchTaskTrends = (range: TimeRange) =>
+  Promise.all(TASK_TYPES.map(async ({ key }) => {
+    const charts = await fetchChartData(range, key);
+    if (!Array.isArray(charts.recordsTrend) || !Array.isArray(charts.bytesTrend)) {
+      throw new Error('趋势响应缺少数据序列');
+    }
+    return { key, charts };
+  }));
 
 const TIME_RANGES: { value: TimeRange; label: string; shortLabel: string }[] = [
   { value: 'H24', label: '近一天', shortLabel: '一天' },
@@ -171,109 +217,57 @@ const IngestionSituationPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('H24');
   const [selectedTaskType, setSelectedTaskType] = useState<TaskType | null>(null);
   const [hoveredTaskType, setHoveredTaskType] = useState<TaskType | null>(null);
-  const [taskMetrics, setTaskMetrics] = useState<TaskTypeMetric[] | null>(null);
-  const [chartMetrics, setChartMetrics] = useState<TaskTypeChart[]>([]);
+  const { state: summary, load: loadSummary } = useRangePanel<TaskTypeMetric[]>(timeRange, fetchTaskSummaries);
+  const { state: trend, load: loadTrend } = useRangePanel<TaskTypeChart[]>(timeRange, fetchTaskTrends);
+  const taskMetrics = summary.data ?? null;
+  const chartMetrics = trend.data ?? emptyCharts;
+  const summaryLoading = summary.status === 'loading';
+  const summaryFailed = summary.status === 'error';
   const [inventorySummary, setInventorySummary] = useState<DataInventorySummary | null>(null);
   const [inventoryLoading, setInventoryLoading] = useState(true);
   const [profileCoverage, setProfileCoverage] = useState<DataInventoryProfileCoverage | null>(null);
   const [sourceTypes, setSourceTypes] = useState<DataInventoryDistributionItem[]>([]);
   const [businessSystems, setBusinessSystems] = useState<DataInventoryDistributionItem[]>([]);
-  const [updatedAt, setUpdatedAt] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [inventoryUpdatedAt, setInventoryUpdatedAt] = useState('');
   const [inventoryError, setInventoryError] = useState('');
-  const [trendError, setTrendError] = useState('');
   const [activeSourceTab, setActiveSourceTab] = useState<'overview' | 'breakdown'>('overview');
   const [activeSourceVariant, setActiveSourceVariant] = useState('');
   const [activeSystemTab, setActiveSystemTab] = useState<'systems' | 'modes'>('systems');
-  const requestId = useRef(0);
+  const inventoryRequestId = useRef(0);
+  const loading = summaryLoading || trend.status === 'loading' || inventoryLoading;
 
-  const loadDashboard = useCallback(async () => {
-    const currentRequestId = ++requestId.current;
-    setLoading(true);
+  const loadInventory = useCallback(async () => {
+    const currentRequestId = ++inventoryRequestId.current;
     setInventoryLoading(true);
-    const isCurrentRequest = () => currentRequestId === requestId.current;
-
-    let summarySucceeded = false;
-    let chartSucceeded = false;
-
-    const summaryRequest = Promise.all(TASK_TYPES.map((taskType) => fetchSummaryData(timeRange, taskType.key)))
-      .then((summaries) => {
-        if (!isCurrentRequest()) return;
-        if (summaries.some((summary) => !summary)) {
-          setTaskMetrics(null);
-          setError('任务概览指标暂不可用，请稍后重试。');
-          return;
-        }
-        setTaskMetrics(
-          TASK_TYPES.map((taskType, index) => ({
-            ...taskType,
-            summary: summaries[index],
-          })),
-        );
-        summarySucceeded = true;
-        setError('');
-      })
-      .catch(() => {
-        if (!isCurrentRequest()) return;
-        setError('任务概览指标暂不可用，请稍后重试。');
-      });
-
-    const inventoryRequest = fetchDataInventoryOverview()
-      .then((response) => {
-        if (!isCurrentRequest()) return;
-        if (response.code === 0 && response.data) {
-          setInventorySummary(response.data.summary || null);
-          setSourceTypes(response.data.sourceTypes || []);
-          setBusinessSystems(response.data.businessSystems || []);
-          setProfileCoverage(response.data.coverage || null);
-          setInventoryError('');
-        } else {
-          setInventorySummary(null);
-          setSourceTypes([]);
-          setBusinessSystems([]);
-          setProfileCoverage(null);
-          setInventoryError('资源目录指标暂不可用');
-        }
-        setInventoryLoading(false);
-      })
-      .catch(() => {
-        if (!isCurrentRequest()) return;
+    const isCurrentRequest = () => currentRequestId === inventoryRequestId.current;
+    try {
+      const response = await fetchDataInventoryOverview();
+      if (!isCurrentRequest()) return;
+      if (response.code !== 0 || !response.data) throw new Error('资源目录指标暂不可用');
+      setInventorySummary(response.data.summary || null);
+      setSourceTypes(response.data.sourceTypes || []);
+      setBusinessSystems(response.data.businessSystems || []);
+      setProfileCoverage(response.data.coverage || null);
+      setInventoryError('');
+      setInventoryUpdatedAt(formatTime(new Date()));
+    } catch {
+      if (isCurrentRequest()) {
         setInventorySummary(null);
         setSourceTypes([]);
         setBusinessSystems([]);
         setProfileCoverage(null);
         setInventoryError('资源目录指标暂不可用');
-        setInventoryLoading(false);
-      });
+        setInventoryUpdatedAt('');
+      }
+    } finally {
+      if (isCurrentRequest()) setInventoryLoading(false);
+    }
+  }, []);
 
-    const chartRequest = Promise.all(
-        TASK_TYPES.map(async (taskType) => ({
-          key: taskType.key,
-          charts: await fetchChartData(timeRange, taskType.key),
-        })),
-      )
-      .then((charts) => {
-        if (!isCurrentRequest()) return;
-        setChartMetrics(charts);
-        chartSucceeded = true;
-        setTrendError('');
-      })
-      .catch(() => {
-        if (!isCurrentRequest()) return;
-        setChartMetrics([]);
-        setTrendError('趋势数据暂不可用');
-      });
-
-    const primaryRequests = Promise.all([summaryRequest, chartRequest]).then(() => {
-      if (!isCurrentRequest()) return;
-      // Both branches catch their own errors, so Promise.all always resolves. Only claim a
-      // fresh timestamp when both payloads actually arrived.
-      setUpdatedAt(summarySucceeded && chartSucceeded ? formatTime(new Date()) : '');
-      setLoading(false);
-    });
-    await Promise.all([primaryRequests, inventoryRequest]);
-  }, [timeRange]);
+  const loadDashboard = useCallback(
+    () => Promise.all([loadSummary(), loadTrend(), loadInventory()]),
+    [loadInventory, loadSummary, loadTrend],
+  );
 
   useEffect(() => {
     let pending = false;
@@ -290,7 +284,7 @@ const IngestionSituationPage: React.FC = () => {
     const timer = window.setInterval(() => void refresh(), 20_000);
     return () => {
       clearInterval(timer);
-      requestId.current += 1;
+      inventoryRequestId.current += 1;
     };
   }, [loadDashboard]);
 
@@ -534,7 +528,7 @@ const IngestionSituationPage: React.FC = () => {
   ];
 
   return (
-    <div className="bi-dashboard" aria-busy={loading}>
+    <div className="bi-dashboard">
       <div className="ambient ambient-one" />
       <div className="ambient ambient-two" />
 
@@ -679,7 +673,7 @@ const IngestionSituationPage: React.FC = () => {
             <div className="panel-foot">
               <span><span className="status-dot online" />数据资产</span>
               <span>{inventorySummary ? integerFormat.format(inventorySummary.databaseCount) + ' 个数据库' : '等待更新'}</span>
-              <span className="foot-update">{updatedAt ? '更新 ' + updatedAt : ''}</span>
+              <span className="foot-update">{inventoryUpdatedAt ? '更新 ' + inventoryUpdatedAt : ''}</span>
             </div>
           </section>
 
@@ -798,7 +792,7 @@ const IngestionSituationPage: React.FC = () => {
                 <span className="data-label">{rangeLabel}数据量</span>
                 <strong>{taskMetrics ? bytesDisplay.value + ' ' + bytesDisplay.unit : '—'}</strong>
                 <span className="trend-records">
-                  {taskMetrics ? recordsDisplay.value + ' ' + recordsDisplay.unit : '等待指标加载'}
+                  {taskMetrics ? recordsDisplay.value + ' ' + recordsDisplay.unit : summaryFailed ? '汇总指标未加载' : '等待指标加载'}
                 </span>
               </div>
               <div className="range-tabs" role="group" aria-label="趋势时间范围">
@@ -816,6 +810,8 @@ const IngestionSituationPage: React.FC = () => {
                 ))}
               </div>
             </div>
+            {trendPoints.length > 0 && (
+            <>
             <div className="trend-legend">
               <span><i className="legend-line volume" />累计数据量</span>
               <span><i className="legend-line added" />区间新增量</span>
@@ -848,10 +844,27 @@ const IngestionSituationPage: React.FC = () => {
               <div className="chart-x-labels">
                 {trendLabels.map((label, index) => <span key={index}>{label}</span>)}
               </div>
-              {trendPoints.length === 0 && (
-                <div className="trend-empty">{trendError || '当前统计范围暂无数据量趋势'}</div>
+              {trend.status === 'loading' && trend.updatedAt && (
+                <div className="trend-updating" role="status">更新中 · 最近成功 {trend.updatedAt}</div>
               )}
             </div>
+            </>
+            )}
+            {trend.status === 'error' && (
+              <div className="trend-fallback">
+                <Alert
+                  type="error"
+                  showIcon
+                  message="趋势数据暂不可用"
+                  action={<Button size="small" onClick={() => void loadTrend()} aria-label="重试加载数据量趋势">重试</Button>}
+                />
+              </div>
+            )}
+            {trendPoints.length === 0 && trend.status !== 'error' && (
+              <div className="trend-fallback trend-empty" role="status">
+                {trend.status === 'loading' ? <><Spin size="small" /> 正在加载数据量趋势</> : '当前统计范围暂无数据量趋势'}
+              </div>
+            )}
           </section>
         </aside>
 
@@ -895,7 +908,12 @@ const IngestionSituationPage: React.FC = () => {
               <span><i className="legend-dot online" />采集方式 → 引擎</span>
               <span><i className="legend-dot purple" />资源目录汇总</span>
               <span className="legend-help"><Eye size={13} />悬停采集方式查看执行汇总</span>
-              <span className="topology-count">{topologySources.length} 种数据源 · {visibleMetrics.length} 种采集方式</span>
+              <span className="topology-count">
+                {topologySources.length} 种数据源 · {taskMetrics ? visibleMetrics.length : '—'} 种采集方式
+              </span>
+              {summaryLoading && summary.updatedAt && (
+                <span className="topology-update" role="status">更新中 · 最近成功 {summary.updatedAt}</span>
+              )}
             </div>
 
             <div className="topology-stage">
@@ -1123,8 +1141,18 @@ const IngestionSituationPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              {loading && !taskMetrics && (
-                <div className="topology-loading"><Spin size="large" /><span>正在读取引接指标</span></div>
+              {summaryLoading && !taskMetrics && (
+                <div className="topology-loading" role="status"><Spin size="large" /><span>正在读取引接指标</span></div>
+              )}
+              {summaryFailed && (
+                <div className="topology-loading">
+                  <Alert
+                    type="error"
+                    showIcon
+                    message="任务汇总暂不可用"
+                    action={<Button size="small" onClick={() => void loadSummary()} aria-label="重试加载任务汇总">重试</Button>}
+                  />
+                </div>
               )}
             </div>
           </section>
@@ -1134,7 +1162,7 @@ const IngestionSituationPage: React.FC = () => {
           <section className="panel inspect-panel">
             <div className="panel-heading compact">
               <h2>任务执行统计</h2>
-              <span className="live-counter"><span className="live-dot" />{taskMetrics ? integerFormat.format(totals.tasks) + ' 项' : '加载中'}</span>
+              <span className="live-counter"><span className="live-dot" />{taskMetrics ? integerFormat.format(totals.tasks) + ' 项' : summaryFailed ? '暂不可用' : '加载中'}</span>
             </div>
             <div className="inspect-body">
               <div className="inspect-summary">
@@ -1211,7 +1239,7 @@ const IngestionSituationPage: React.FC = () => {
                   </button>
                 );
               })}
-              {visibleMetrics.length === 0 && <div className="live-empty">{taskMetrics ? '当前筛选没有任务' : '等待任务指标'}</div>}
+              {visibleMetrics.length === 0 && <div className="live-empty">{taskMetrics ? '当前筛选没有任务' : summaryFailed ? '任务汇总暂不可用' : '等待任务指标'}</div>}
             </div>
             <div className="list-scroll-hint"><span />点击任务类型可筛选大屏指标</div>
           </section>
@@ -1285,17 +1313,11 @@ const IngestionSituationPage: React.FC = () => {
         </aside>
       </main>
 
-      {error && (
-        <div className="dashboard-error" role="alert">
-          <span>{error}</span>
-          <button type="button" onClick={() => void loadDashboard()}>重试</button>
-        </div>
-      )}
       {inventoryError && inventorySummary && (
         <div className="dashboard-note" role="status">{inventoryError}</div>
       )}
       <div className="sr-only" aria-live="polite">
-        {updatedAt ? '指标已于 ' + updatedAt + ' 更新' : ''}
+        {summary.status === 'ready' && summary.updatedAt ? '任务指标已于 ' + summary.updatedAt + ' 更新' : ''}
       </div>
     </div>
   );
