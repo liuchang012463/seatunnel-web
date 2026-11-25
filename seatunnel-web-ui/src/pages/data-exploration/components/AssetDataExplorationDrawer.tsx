@@ -88,6 +88,7 @@ function AssetResultRow({
       .filter((field) => field.clientWidth > 0 && field.scrollWidth > field.clientWidth)
       .map((field) => field.textContent).join('\n'));
     measure();
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     fields.forEach((field) => observer.observe(field));
     return () => observer.disconnect();

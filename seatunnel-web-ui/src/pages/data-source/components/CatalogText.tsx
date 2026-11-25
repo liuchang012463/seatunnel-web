@@ -1,5 +1,5 @@
 import { Tooltip } from 'antd';
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import './CatalogText.less';
 
 type CatalogTextProps = {
@@ -27,6 +27,7 @@ export default function CatalogText({ text, className, onClick, disabled, multil
       element.scrollWidth > element.clientWidth || (Boolean(multiline) && element.scrollHeight > element.clientHeight)
     ));
     measure();
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
