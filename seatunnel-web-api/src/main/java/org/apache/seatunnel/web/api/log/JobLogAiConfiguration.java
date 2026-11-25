@@ -11,8 +11,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.net.http.HttpClient;
 import java.util.List;
 
 /**
@@ -41,13 +44,22 @@ public class JobLogAiConfiguration {
                 .build();
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.TEXT_EVENT_STREAM));
+        RestClient.Builder restClient = RestClient.builder();
+        boolean cleartext = "http".equalsIgnoreCase(endpoint.getScheme());
+        if (cleartext) {
+            // Some Uvicorn-based model servers lose the POST body when the JDK attempts an h2c upgrade.
+            HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+            restClient.requestFactory(new JdkClientHttpRequestFactory(httpClient));
+        }
         OpenAiApi api = OpenAiApi.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .completionsPath(completionsPath)
                 .headers(headers)
+                .restClientBuilder(restClient)
                 .build();
-        log.info("LLM chat client configured: host={}, completionsPath={}", endpoint.getHost(), completionsPath);
+        log.info("LLM chat client configured: host={}, completionsPath={}, syncHttpVersion={}",
+                endpoint.getHost(), completionsPath, cleartext ? "HTTP/1.1" : "default");
         return ChatClient.create(OpenAiChatModel.builder()
                 .openAiApi(api)
                 .defaultOptions(options)

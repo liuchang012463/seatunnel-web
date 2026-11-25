@@ -82,7 +82,18 @@ class JobLogAiConfigurationTest {
                     exchange.sendResponseHeaders(404, -1);
                     return;
                 }
-                boolean stream = new ObjectMapper().readTree(exchange.getRequestBody()).path("stream").asBoolean();
+                // A cleartext h2c upgrade can make Uvicorn-based endpoints lose the POST body.
+                if (exchange.getRequestHeaders().containsKey("Upgrade")) {
+                    exchange.sendResponseHeaders(400, -1);
+                    return;
+                }
+                var request = new ObjectMapper().readTree(exchange.getRequestBody());
+                if (!"test-model".equals(request.path("model").asText())
+                        || !"test".equals(request.path("messages").path(0).path("content").asText())) {
+                    exchange.sendResponseHeaders(400, -1);
+                    return;
+                }
+                boolean stream = request.path("stream").asBoolean();
                 String response = stream
                         ? """
                           data: {"id":"test","choices":[{"index":0,"delta":{"role":"assistant","content":"streaming"},"finish_reason":"stop"}]}
