@@ -40,8 +40,11 @@ const SideNav: React.FC<Props> = ({
           const active = item.key === activeMenu;
 
           return (
-            <div
+            <button
               key={item.key}
+              type="button"
+              className="knowledge-page__category"
+              aria-pressed={active}
               onClick={() => {
                 onChange(item.key);
                 onResetSelection();
@@ -57,7 +60,7 @@ const SideNav: React.FC<Props> = ({
                 transition: "all 0.2s ease",
               }}
             >
-              <div
+              <span
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -65,6 +68,7 @@ const SideNav: React.FC<Props> = ({
                 }}
               >
                 <span
+                  aria-hidden="true"
                   style={{
                     width: 28,
                     height: 28,
@@ -93,8 +97,8 @@ const SideNav: React.FC<Props> = ({
                 >
                   {item.label}
                 </span>
-              </div>
-            </div>
+              </span>
+            </button>
           );
         })}
       </div>

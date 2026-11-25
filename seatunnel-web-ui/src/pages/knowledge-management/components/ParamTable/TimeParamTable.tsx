@@ -1,19 +1,11 @@
-import { Empty, Space, Table, Tag, Typography } from "antd";
+import { Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import React from "react";
 import { BLUE, BORDER_COLOR } from "../../constants/ui";
-import { MenuKey, ParamItem, TimeParamItem } from "../../types";
+import { ParamItem, TimeParamItem } from "../../types";
+import type { ParamTableProps } from "./index";
 
 const { Text } = Typography;
-
-interface Props {
-  activeMenu: MenuKey;
-  dataSource: ParamItem[];
-  loading?: boolean;
-  pagination?: any;
-  onEdit: (record: ParamItem) => void;
-  onDelete: (record: ParamItem) => void;
-}
 
 const sourceTextMap: Record<string, string> = {
   SYSTEM: "系统内置",
@@ -37,10 +29,10 @@ const actionStyle: React.CSSProperties = {
   transform: "translateY(0) scale(1)",
 };
 
-const TimeParamTable: React.FC<Props> = ({
+const TimeParamTable: React.FC<ParamTableProps> = ({
   dataSource,
   loading,
-  pagination,
+  emptyText,
   onEdit,
   onDelete,
 }) => {
@@ -225,11 +217,12 @@ const TimeParamTable: React.FC<Props> = ({
 
   return (
     <div
+      className="knowledge-page__table"
       style={{
         border: `1px solid ${BORDER_COLOR}`,
         borderRadius: 20,
         overflow: "hidden",
-        background: "#fff",
+        background: "var(--st-color-bg-panel)",
       }}
     >
       <Table<ParamItem>
@@ -237,15 +230,9 @@ const TimeParamTable: React.FC<Props> = ({
         loading={loading}
         columns={columns}
         dataSource={dataSource}
-        pagination={pagination}
-        locale={{
-          emptyText: (
-            <div style={{ padding: "56px 0" }}>
-              <Empty description="暂无时间变量" />
-            </div>
-          ),
-        }}
-        scroll={{ x: 1300, y: "calc(100vh - 430px)" }}
+        pagination={false}
+        locale={{ emptyText }}
+        scroll={{ x: 1300, y: "100%" }}
       />
     </div>
   );

@@ -85,11 +85,12 @@ describe('master-data service', () => {
     await updateBusinessSystem(2, systemPayload);
     await deleteBusinessSystem(2);
 
-    expect(HttpUtils.post).toHaveBeenNthCalledWith(1, '/api/v1/data-source-units', unitPayload);
-    expect(HttpUtils.put).toHaveBeenNthCalledWith(1, '/api/v1/data-source-units/1', unitPayload);
+    const saveOptions = { skipErrorHandler: true };
+    expect(HttpUtils.post).toHaveBeenNthCalledWith(1, '/api/v1/data-source-units', unitPayload, saveOptions);
+    expect(HttpUtils.put).toHaveBeenNthCalledWith(1, '/api/v1/data-source-units/1', unitPayload, saveOptions);
     expect(HttpUtils.delete).toHaveBeenNthCalledWith(1, '/api/v1/data-source-units/1');
-    expect(HttpUtils.post).toHaveBeenNthCalledWith(2, '/api/v1/business-systems', systemPayload);
-    expect(HttpUtils.put).toHaveBeenNthCalledWith(2, '/api/v1/business-systems/2', systemPayload);
+    expect(HttpUtils.post).toHaveBeenNthCalledWith(2, '/api/v1/business-systems', systemPayload, saveOptions);
+    expect(HttpUtils.put).toHaveBeenNthCalledWith(2, '/api/v1/business-systems/2', systemPayload, saveOptions);
     expect(HttpUtils.delete).toHaveBeenNthCalledWith(2, '/api/v1/business-systems/2');
   });
 

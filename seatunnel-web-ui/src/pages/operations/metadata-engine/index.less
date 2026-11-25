@@ -17,8 +17,7 @@
   gap: 16px;
 }
 
-.meta-engine-icon,
-.meta-engine-config-page-icon {
+.meta-engine-icon {
   display: grid;
   flex: 0 0 auto;
   width: 48px;
@@ -31,8 +30,7 @@
   border-radius: 16px;
 }
 
-.meta-engine-heading h1,
-.meta-engine-config-page-heading h1 {
+.meta-engine-heading h1 {
   margin: 0;
   color: var(--st-color-text-primary);
   font-size: 28px;
@@ -40,8 +38,7 @@
   line-height: 37px;
 }
 
-.meta-engine-heading p,
-.meta-engine-config-page-heading p {
+.meta-engine-heading p {
   margin: 3px 0 0;
   color: var(--st-color-text-secondary);
   font-size: 14px;
@@ -578,11 +575,10 @@
 .meta-engine-config-page-header {
   width: 100%;
   max-width: 1920px;
-  margin: 0 auto 22px;
+  margin: 0 auto 12px;
 }
 
 .meta-engine-config-page-header > .ant-btn {
-  margin-bottom: 17px;
   padding-inline: 0;
   color: var(--st-color-text-secondary);
   background: transparent;
@@ -593,17 +589,6 @@
   color: var(--st-color-accent);
   background: transparent;
   border-color: transparent;
-}
-
-.meta-engine-config-page-heading {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.meta-engine-config-page-icon {
-  width: 46px;
-  height: 46px;
 }
 
 .meta-engine-config-layout {
@@ -623,7 +608,7 @@
 
 .meta-engine-config-section-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
   padding-bottom: 17px;
@@ -638,16 +623,8 @@
   line-height: 26px;
 }
 
-.meta-engine-config-section-heading p {
-  max-width: 680px;
-  margin: 0;
-  color: var(--st-color-text-muted);
-  font-size: 14px;
-  line-height: 18px;
-}
-
 .meta-engine-config-section-heading .ant-tag {
-  margin: 12px 0 0;
+  margin: 0;
   border-radius: 999px;
 }
 
@@ -703,10 +680,13 @@
   border-top: 1px solid var(--st-color-divider);
 }
 
-.meta-engine-config-action-bar > .ant-typography {
-  color: var(--st-color-text-muted) !important;
-  font-size: 14px;
+.meta-engine-config-action-bar [role='status'] {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+.meta-engine-config-action-bar [data-phase='error'] { color: var(--st-color-error); }
+.meta-engine-config-action-bar [data-phase='success'] { color: var(--st-color-success); }
 
 @media (max-width: 1180px) {
   .meta-engine-shell {

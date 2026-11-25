@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 import type {
   ApiResponse,
   BusinessSystemPageParams,
@@ -16,6 +16,7 @@ import type {
 
 export const DATA_SOURCE_UNIT_API_PREFIX = '/api/v1/data-source-units';
 export const BUSINESS_SYSTEM_API_PREFIX = '/api/v1/business-systems';
+const saveOptions: RequestOptions = { skipErrorHandler: true };
 
 /**
  * The pagination wrapper is shared by the two master-data endpoints.  Keep
@@ -74,14 +75,14 @@ export async function fetchActiveDataSourceUnits(): Promise<ApiResponse<DataSour
 export async function createDataSourceUnit(
   payload: DataSourceUnitPayload,
 ): Promise<ApiResponse<MasterDataId>> {
-  return HttpUtils.post(DATA_SOURCE_UNIT_API_PREFIX, payload);
+  return HttpUtils.post(DATA_SOURCE_UNIT_API_PREFIX, payload, saveOptions);
 }
 
 export async function updateDataSourceUnit(
   id: MasterDataId,
   payload: DataSourceUnitPayload,
 ): Promise<ApiResponse<boolean>> {
-  return HttpUtils.put(`${DATA_SOURCE_UNIT_API_PREFIX}/${encodeURIComponent(String(id))}`, payload);
+  return HttpUtils.put(`${DATA_SOURCE_UNIT_API_PREFIX}/${encodeURIComponent(String(id))}`, payload, saveOptions);
 }
 
 export async function deleteDataSourceUnit(
@@ -106,14 +107,14 @@ export async function fetchActiveBusinessSystems(
 export async function createBusinessSystem(
   payload: BusinessSystemPayload,
 ): Promise<ApiResponse<MasterDataId>> {
-  return HttpUtils.post(BUSINESS_SYSTEM_API_PREFIX, payload);
+  return HttpUtils.post(BUSINESS_SYSTEM_API_PREFIX, payload, saveOptions);
 }
 
 export async function updateBusinessSystem(
   id: MasterDataId,
   payload: BusinessSystemPayload,
 ): Promise<ApiResponse<boolean>> {
-  return HttpUtils.put(`${BUSINESS_SYSTEM_API_PREFIX}/${encodeURIComponent(String(id))}`, payload);
+  return HttpUtils.put(`${BUSINESS_SYSTEM_API_PREFIX}/${encodeURIComponent(String(id))}`, payload, saveOptions);
 }
 
 export async function deleteBusinessSystem(

@@ -10,7 +10,7 @@
   WarningOutlined,
 } from '@ant-design/icons';
 import { Button, Spin, Tag, message } from 'antd';
-import { history } from '@umijs/max';
+import { openFromTrigger, useRestoreTriggerFocus } from '@/pages/common/utils/returnFocus';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchOpenMetadataServer,
@@ -88,6 +88,9 @@ const MetricCard: React.FC<{
 const MetadataEngineOverviewPage: React.FC = () => {
   const [config, setConfig] = useState<OpenMetadataServerConfig>();
   const [loading, setLoading] = useState(true);
+  useRestoreTriggerFocus(!loading, 'metadata-config-nav');
+  const openConfig = (event: React.MouseEvent<HTMLElement>) =>
+    openFromTrigger('/operations/metadata-engine/config', event.currentTarget.id);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,7 +165,8 @@ const MetadataEngineOverviewPage: React.FC = () => {
             <button
               type="button"
               className="meta-engine-nav-item"
-              onClick={() => history.push('/operations/metadata-engine/config')}
+              id="metadata-config-nav"
+              onClick={openConfig}
             >
               <SettingOutlined /> 连接配置
             </button>
@@ -201,7 +205,8 @@ const MetadataEngineOverviewPage: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<SettingOutlined />}
-                  onClick={() => history.push('/operations/metadata-engine/config')}
+                  id="metadata-config-edit"
+                  onClick={openConfig}
                 >
                   编辑连接配置
                 </Button>
@@ -218,7 +223,7 @@ const MetadataEngineOverviewPage: React.FC = () => {
                   <strong>还没有配置探查引擎连接</strong>
                   <p>先填写 OpenMetadata Base URL 与 Bot Token，保存后即可在这里查看控制面健康状态。</p>
                 </div>
-                <Button type="primary" onClick={() => history.push('/operations/metadata-engine/config')}>
+                <Button id="metadata-config-start" type="primary" onClick={openConfig}>
                   开始配置
                 </Button>
               </div>

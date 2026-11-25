@@ -21,6 +21,8 @@ import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/com
 import CodeBlockWithCopy from '@/pages/batch-link-up/workflow/operator/CodeBlockWithCopy';
 import type { TabKey } from '@/pages/batch-link-up/workflow/types';
 import CommonClientLinkSection, { type ConnectivityStatus } from '@/pages/common/components/CommonClientLinkSection';
+import { returnToTrigger } from '@/pages/common/utils/returnFocus';
+import { textLengthRule } from '@/pages/common/utils/textLengthRule';
 import FileResourcePicker from '../FileResourcePicker';
 import { FILE_RESOURCE_SOURCE, type FileResource } from '../types';
 import OfflineImportConfigCanvas, { type OfflineImportConfigNode } from './OfflineImportConfigCanvas';
@@ -47,6 +49,8 @@ const ENCODING_OPTIONS = [
 ];
 
 const UPLOAD_PATH = '/offline-import';
+const NAME_MAX_LENGTH = 64;
+const DESCRIPTION_MAX_LENGTH = 256;
 
 // 离线导入任务保存调度参数，但实际导入仍由任务列表手动启动。
 const DEFAULT_SCHEDULE_CONFIG = {
@@ -340,13 +344,13 @@ const CreateOfflineImportPage: React.FC = () => {
     } else if (activeStep === 'client') {
       setActiveStep('base');
     } else {
-      history.push('/sync/file-ingest/select');
+      returnToTrigger('/sync/file-ingest/select');
     }
   };
 
   const goClientStep = async () => {
     try {
-      await form.validateFields(['name']);
+      await form.validateFields(['name', 'description']);
       const values = form.getFieldsValue(true);
       setBasicConfig((previous: any) => ({
         ...previous,
@@ -1101,7 +1105,7 @@ const CreateOfflineImportPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveStep('base')}
-              className={`flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-sm transition-all duration-200 ${basePillClass}`}
+              className={`flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-[14px] transition-all duration-200 ${basePillClass}`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${baseDotClass}`}>1</span>
               基础配置
@@ -1112,7 +1116,7 @@ const CreateOfflineImportPage: React.FC = () => {
             <button
               type="button"
               onClick={() => void goClientStep()}
-              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${clientPillClass}`}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[14px] transition-all duration-200 ${clientPillClass}`}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${clientDotClass}`}>2</span>
               引擎连接
@@ -1123,7 +1127,7 @@ const CreateOfflineImportPage: React.FC = () => {
             <button
               type="button"
               onClick={goConfigStep}
-              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200 ${configPillClass}`}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[14px] transition-all duration-200 ${configPillClass}`}
               disabled={!isConfigStep && !canEnterConfig}
             >
               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-semibold transition-all duration-200 ${configDotClass}`}>3</span>
@@ -1162,11 +1166,11 @@ const CreateOfflineImportPage: React.FC = () => {
 
                   <div className="offline-import-create__task-info">
                     <div className="offline-import-create__panel-title">任务信息</div>
-                    <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }]} className="offline-import-create__field">
-                      <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={64} />
+                    <Form.Item label="任务名称" name="name" rules={[{ required: true, message: '请输入任务名称' }, textLengthRule(NAME_MAX_LENGTH)]} className="offline-import-create__field">
+                      <Input placeholder={category === 'DMP' ? '例如：生产库 DMP 备份导入' : '例如：建库脚本导入'} maxLength={NAME_MAX_LENGTH} showCount />
                     </Form.Item>
-                    <Form.Item label="任务描述" name="description" className="offline-import-create__field offline-import-create__field--last">
-                      <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={256} />
+                    <Form.Item label="任务描述" name="description" rules={[textLengthRule(DESCRIPTION_MAX_LENGTH)]} className="offline-import-create__field offline-import-create__field--last">
+                      <Input.TextArea placeholder="描述导入范围、用途、注意事项等" rows={3} maxLength={DESCRIPTION_MAX_LENGTH} showCount />
                     </Form.Item>
                   </div>
                 </div>

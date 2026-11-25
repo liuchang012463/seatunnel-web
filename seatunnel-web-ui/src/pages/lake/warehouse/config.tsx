@@ -1,4 +1,6 @@
-import { presentOperationFailure } from '@/utils/operationFailure';
+import { useFormSave } from '@/pages/common/hooks/useFormSave';
+import { returnToTrigger } from '@/pages/common/utils/returnFocus';
+import { textLengthRule } from '@/pages/common/utils/textLengthRule';
 import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
@@ -6,10 +8,8 @@ import {
   LinkOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { Button, Form, Input, Space, Tag, Typography, message } from 'antd';
-import { history } from '@umijs/max';
+import { Button, ConfigProvider, Form, Input, Space, Tag, Typography, message } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
-import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import DynamicDataSourceForm from '@/pages/data-source/components/DynamicDataSourceForm';
 import type { DataSourceFormValues, DataSourceOperateType } from '@/pages/data-source/types';
 import { fetchLakeWarehouse, saveLakeWarehouse, testLakeWarehouse } from '@/services/lake';
@@ -18,16 +18,17 @@ import { buildWarehouseJdbcUrl, INITIAL_DORIS_PASSWORD_MESSAGE, isInitialDorisPa
 import type { DorisConnectionValues } from './configUtils';
 import './index.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text, Title } = Typography;
 const DEFAULT_DRIVER_CLASS = 'com.mysql.cj.jdbc.Driver';
 const EXCLUDED_CONNECTION_FIELDS = ['database'];
+const NAME_MAX_LENGTH = 100;
 
 interface LakeBaseFormValues extends Pick<DataSourceFormValues, 'name'> {
   name: string;
 }
 
-const responseError = (response: LakeApiResponse<unknown>, fallback: string) =>
-  response.msg || response.message || fallback;
+const responseError = (response: LakeApiResponse<unknown> | undefined, fallback: string) =>
+  response?.msg || response?.message || fallback;
 
 const parseExistingConnection = (config?: LakeWarehouseConfig): DorisConnectionValues | undefined => {
   if (!config) return undefined;
@@ -77,7 +78,7 @@ const DorisConfigPage: React.FC = () => {
   const [config, setConfig] = useState<LakeWarehouseConfig>();
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const submission = useFormSave('Doris 数据湖配置');
   const [testResult, setTestResult] = useState<TestResult>();
 
   useEffect(() => {
@@ -118,7 +119,6 @@ const DorisConfigPage: React.FC = () => {
     const rawConnection = connectionForm.getFieldsValue(true) as DorisConnectionValues;
     if (isInitialDorisPasswordMissing(config, rawConnection.password)) {
       connectionForm.setFields([{ name: 'password', errors: [INITIAL_DORIS_PASSWORD_MESSAGE] }]);
-      message.error(INITIAL_DORIS_PASSWORD_MESSAGE);
       throw new InitialDorisPasswordError(INITIAL_DORIS_PASSWORD_MESSAGE);
     }
     await connectionForm.validateFields();
@@ -157,77 +157,60 @@ const DorisConfigPage: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    try {
+  const goBack = () => returnToTrigger('/lake/warehouse');
+  const handleSave = () =>
+    submission.save(async () => {
       const { base, connection } = await readForms();
-      setSaving(true);
-      const response = await saveLakeWarehouse(toWarehousePayload(base, connection, config));
-      if (response.code !== 0 || !response.data) {
+      const response = await saveLakeWarehouse(toWarehousePayload(base, connection, config), { skipErrorHandler: true });
+      if (response?.code !== 0 || !response.data) {
         throw new Error(responseError(response, '保存数据湖配置失败'));
       }
-      message.success('Doris 数据湖配置已保存');
-      history.push('/lake/warehouse');
-    } catch (error) {
-      if (error instanceof InitialDorisPasswordError || (error as { errorFields?: unknown })?.errorFields) return;
-      presentOperationFailure('保存数据湖配置失败', error);
-    } finally {
-      setSaving(false);
-    }
-  };
+      return 'Doris 数据湖配置已保存';
+    }, goBack);
 
   return (
     <div className="lake-warehouse-config-page">
       <header className="lake-config-page-header">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/lake/warehouse')}>
+        <Button icon={<ArrowLeftOutlined />} disabled={submission.locked} onClick={goBack}>
           返回数据湖管理
         </Button>
-        <div className="lake-config-page-heading">
-          <div className="lake-config-page-icon">
-            <DatabaseIcons dbType="DORIS" width="24" height="24" />
-          </div>
-          <div>
-            <Title level={1}>Doris 配置</Title>
-            <Paragraph>配置 Doris 集群连接，无需预先创建数据库。</Paragraph>
-          </div>
-        </div>
       </header>
 
       <div className="lake-config-layout">
         <main className="lake-config-main">
           <div className="lake-config-section-heading">
-            <div>
-              <Title level={2}>连接参数</Title>
-              <Paragraph>填写 Doris 集群地址、账号和驱动，业务数据库由物理入湖流程创建。</Paragraph>
-            </div>
+            <Title level={2}>Doris 连接参数</Title>
             <Tag color={config?.configured ? 'success' : 'default'}>
               {config?.configured ? '已配置' : '待配置'}
             </Tag>
           </div>
 
-          <Form name="lake-warehouse-config" form={baseForm} layout="vertical" className="lake-config-name-form">
+          <Form name="lake-warehouse-config" form={baseForm} layout="vertical" disabled={loading || submission.locked} className="lake-config-name-form">
             <Form.Item
               name="name"
               label="连接名称"
-              rules={[{ required: true, message: '请输入连接名称' }]}
+              rules={[{ required: true, message: '请输入连接名称' }, textLengthRule(NAME_MAX_LENGTH)]}
             >
-              <Input placeholder="例如：生产 Doris 数据湖" maxLength={100} />
+              <Input placeholder="例如：生产 Doris 数据湖" maxLength={NAME_MAX_LENGTH} showCount />
             </Form.Item>
           </Form>
 
           <div className="lake-doris-form-shell" aria-busy={loading}>
-            <DynamicDataSourceForm
-              key={`doris-${config?.configVersion || 'new'}`}
-              dbType="DORIS"
-              form={baseForm}
-              configForm={connectionForm}
-              operateType={'CREATE' as DataSourceOperateType}
-              hideBaseFields
-              excludedConfigFields={EXCLUDED_CONNECTION_FIELDS}
-              allowExistingPassword={Boolean(config?.passwordConfigured)}
-              initialConfig={initialConnection}
-            />
+            <ConfigProvider componentDisabled={loading || submission.locked}>
+              <DynamicDataSourceForm
+                key={`doris-${config?.configVersion || 'new'}`}
+                dbType="DORIS"
+                form={baseForm}
+                configForm={connectionForm}
+                operateType={'CREATE' as DataSourceOperateType}
+                hideBaseFields
+                excludedConfigFields={EXCLUDED_CONNECTION_FIELDS}
+                allowExistingPassword={Boolean(config?.passwordConfigured)}
+                initialConfig={initialConnection}
+              />
+            </ConfigProvider>
             <Text type="secondary">
-              连接不绑定默认数据库；配置时不创建占位库，物理入湖后自动纳管业务库表。
+              密码仅用于连接测试和加密保存，不会回显。连接无需绑定默认数据库，业务库表在物理入湖后自动纳管。
             </Text>
           </div>
 
@@ -242,12 +225,14 @@ const DorisConfigPage: React.FC = () => {
           ) : null}
 
           <div className="lake-config-action-bar">
-            <Text type="secondary">密码仅用于服务端连接测试和加密保存，不会回显。</Text>
+            <span role="status" aria-atomic="true" data-phase={submission.feedback?.phase}>
+              {submission.feedback?.text}
+            </span>
             <Space>
-              <Button icon={<LinkOutlined />} loading={testing} onClick={() => void handleTest()}>
+              <Button icon={<LinkOutlined />} loading={testing} disabled={loading || submission.locked} onClick={() => void handleTest()}>
                 连接测试
               </Button>
-              <Button type="primary" icon={<SafetyCertificateOutlined />} loading={saving} onClick={() => void handleSave()}>
+              <Button type="primary" icon={<SafetyCertificateOutlined />} loading={submission.saving} disabled={loading || testing || submission.locked} onClick={() => void handleSave()}>
                 保存
               </Button>
             </Space>

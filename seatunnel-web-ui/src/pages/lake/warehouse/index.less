@@ -17,8 +17,7 @@
   gap: 16px;
 }
 
-.lake-overview-icon,
-.lake-config-page-icon {
+.lake-overview-icon {
   display: grid;
   flex: 0 0 auto;
   width: 48px;
@@ -31,8 +30,7 @@
   border-radius: 16px;
 }
 
-.lake-overview-heading h1,
-.lake-config-page-heading h1 {
+.lake-overview-heading h1 {
   margin: 0;
   color: var(--st-color-text-primary);
   font-size: 28px;
@@ -40,8 +38,7 @@
   line-height: 37px;
 }
 
-.lake-overview-heading p,
-.lake-config-page-heading p {
+.lake-overview-heading p {
   margin: 3px 0 0;
   color: var(--st-color-text-secondary);
   font-size: 14px;
@@ -979,11 +976,10 @@
 .lake-config-page-header {
   width: 100%;
   max-width: 1920px;
-  margin: 0 auto 22px;
+  margin: 0 auto 12px;
 }
 
 .lake-config-page-header > .ant-btn {
-  margin-bottom: 17px;
   padding-inline: 0;
   color: var(--st-color-text-secondary);
   background: transparent;
@@ -994,17 +990,6 @@
   color: var(--st-color-accent);
   background: transparent;
   border-color: transparent;
-}
-
-.lake-config-page-heading {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.lake-config-page-icon {
-  width: 46px;
-  height: 46px;
 }
 
 .lake-config-layout {
@@ -1030,7 +1015,7 @@
 
 .lake-config-section-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
   padding-bottom: 17px;
@@ -1045,16 +1030,8 @@
   line-height: 26px;
 }
 
-.lake-config-section-heading p {
-  max-width: 680px;
-  margin: 0;
-  color: var(--st-color-text-muted);
-  font-size: 14px;
-  line-height: 18px;
-}
-
 .lake-config-section-heading .ant-tag {
-  margin: 12px 0 0;
+  margin: 0;
   border-radius: 999px;
 }
 
@@ -1135,23 +1112,17 @@
   border-top: 1px solid var(--st-color-divider);
 }
 
-.lake-config-action-bar > .ant-typography {
-  color: var(--st-color-text-muted) !important;
-  font-size: 14px;
+.lake-config-action-bar [role='status'] {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+.lake-config-action-bar [data-phase='error'] { color: var(--st-color-error); }
+.lake-config-action-bar [data-phase='success'] { color: var(--st-color-success); }
 
 @media (max-width: 620px) {
   .lake-warehouse-config-page {
     padding: 16px;
-  }
-
-  .lake-config-page-heading {
-    align-items: flex-start;
-  }
-
-  .lake-config-page-heading h1 {
-    font-size: 24px;
-    line-height: 31px;
   }
 
   .lake-config-main {

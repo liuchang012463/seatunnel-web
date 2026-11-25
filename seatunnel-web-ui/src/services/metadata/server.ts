@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 
 export interface MetadataApiResponse<T> {
   code: number;
@@ -53,8 +53,9 @@ export async function fetchOpenMetadataServer(): Promise<MetadataApiResponse<Ope
 
 export async function saveOpenMetadataServer(
   payload: OpenMetadataServerPayload,
+  options?: RequestOptions,
 ): Promise<MetadataApiResponse<OpenMetadataServerConfig>> {
-  return HttpUtils.put(SERVER, payload);
+  return HttpUtils.put(SERVER, payload, options);
 }
 
 export async function testOpenMetadataServer(

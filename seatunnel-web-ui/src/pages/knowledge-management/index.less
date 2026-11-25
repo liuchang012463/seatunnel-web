@@ -24,5 +24,45 @@
   flex-direction: column;
   padding: 24px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
+}
+
+.knowledge-page__category {
+  font: inherit;
+  text-align: left;
+
+  &:focus-visible {
+    outline: 2px solid var(--st-color-focus);
+    outline-offset: 2px;
+  }
+}
+
+.knowledge-page__content > :first-child,
+.knowledge-page__table .ant-table-header {
+  flex: none;
+}
+
+.knowledge-page__table,
+.knowledge-page__table :is(.ant-table-wrapper, .ant-spin-nested-loading, .ant-spin-container, .ant-table, .ant-table-container) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.knowledge-page__table .ant-table-body {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.knowledge-page__table .ant-typography code {
+  font-size: 14px;
+}
+
+.knowledge-page__pagination {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  margin: 12px 0 0;
 }

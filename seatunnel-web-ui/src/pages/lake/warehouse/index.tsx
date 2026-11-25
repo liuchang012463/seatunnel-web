@@ -13,7 +13,8 @@
   WarningOutlined,
 } from '@ant-design/icons';
 import { Button, Spin, Tag, message } from 'antd';
-import { history } from '@umijs/max';
+import { openFromTrigger, useRestoreTriggerFocus } from '@/pages/common/utils/returnFocus';
+import CatalogText from '@/pages/data-source/components/CatalogText';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import { fetchLakeDorisHardware, fetchLakeDorisStatus, fetchLakeWarehouse } from '@/services/lake';
@@ -158,7 +159,7 @@ const MetricCard: React.FC<{
       <span>{label}</span>
       <span className={`lake-cluster-metric-icon lake-cluster-metric-icon--${tone}`}>{icon}</span>
     </div>
-    <div className={`lake-cluster-metric-value lake-cluster-metric-value--${valueTone ?? tone}`}>{value}</div>
+    <CatalogText className={`lake-cluster-metric-value lake-cluster-metric-value--${valueTone ?? tone}`} text={value} />
     <div className="lake-cluster-metric-description">{description}</div>
   </div>
 );
@@ -191,6 +192,9 @@ const WarehousePage: React.FC = () => {
   const [status, setStatus] = useState<LakeDorisStatus>();
   const [hardware, setHardware] = useState<LakeDorisHardware>();
   const [loading, setLoading] = useState(true);
+  useRestoreTriggerFocus(!loading, 'warehouse-config-nav');
+  const openConfig = (event: React.MouseEvent<HTMLElement>) =>
+    openFromTrigger('/lake/warehouse/config', event.currentTarget.id);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   const load = useCallback(async () => {
@@ -298,7 +302,7 @@ const WarehousePage: React.FC = () => {
             <button type="button" className="lake-warehouse-nav-item lake-warehouse-nav-item--active">
               <CloudServerOutlined /> 集群概览
             </button>
-            <button type="button" className="lake-warehouse-nav-item" onClick={() => history.push('/lake/warehouse/config')}>
+            <button id="warehouse-config-nav" type="button" className="lake-warehouse-nav-item" onClick={openConfig}>
               <SettingOutlined /> 连接配置
             </button>
           </nav>
@@ -343,7 +347,7 @@ const WarehousePage: React.FC = () => {
                 <strong>还没有配置数据湖连接</strong>
                 <p>先配置 Doris FE 节点、查询端口和本地 JDBC 驱动，保存后即可在这里查看集群健康状态。</p>
               </div>
-              <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>开始配置</Button>
+              <Button id="warehouse-config-start" type="primary" onClick={openConfig}>开始配置</Button>
             </div>
           ) : config?.catalogReady === false ? (
             <div className="lake-cluster-notice">
@@ -352,7 +356,7 @@ const WarehousePage: React.FC = () => {
                 <strong>Doris 已连接，但数据目录尚未就绪</strong>
                 <p>{config.lastError || '系统数据源投影不存在，请重新保存连接配置以自动修复。'}</p>
               </div>
-              <Button type="primary" onClick={() => history.push('/lake/warehouse/config')}>重新保存配置</Button>
+              <Button id="warehouse-config-repair" type="primary" onClick={openConfig}>重新保存配置</Button>
             </div>
           ) : null}
 
@@ -456,9 +460,9 @@ const WarehousePage: React.FC = () => {
                   <div className="lake-hardware-details-grid">
                     <div className="lake-hardware-detail-row"><span>主机名</span><strong>{displayValue(hardware.hostName)}</strong></div>
                     <div className="lake-hardware-detail-row"><span>IPv4</span><strong>{displayValue(hardware.ipv4)}</strong></div>
-                    <div className="lake-hardware-detail-row"><span>操作系统</span><strong>{displayValue(hardware.os)}</strong></div>
+                    <div className="lake-hardware-detail-row"><span>操作系统</span><strong><CatalogText text={displayValue(hardware.os)} /></strong></div>
                     <div className="lake-hardware-detail-row"><span>运行时长</span><strong>{displayValue(hardware.uptime)}</strong></div>
-                    <div className="lake-hardware-detail-row"><span>构建版本</span><strong>{displayValue(hardware.version)}</strong></div>
+                    <div className="lake-hardware-detail-row"><span>构建版本</span><strong><CatalogText text={displayValue(hardware.version)} /></strong></div>
                     <div className="lake-hardware-detail-row"><span>网络流量</span><strong>{displayValue(hardware.networkReceive)} / {displayValue(hardware.networkTransmit)}</strong></div>
                   </div>
                 </div>

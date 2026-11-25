@@ -1,9 +1,7 @@
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { history } from '@umijs/max';
 import { App } from 'antd';
 import { useMemo } from 'react';
 import background from '@/assets/offline-import/background.png';
-import network from '@/assets/offline-import/network.png';
 import structuredArt from '@/assets/offline-import/structured.png';
 import dmpArt from '@/assets/offline-import/dmp.png';
 import sqlArt from '@/assets/offline-import/sql.png';
@@ -14,7 +12,7 @@ import dmpDivider from '@/assets/offline-import/divider-dmp.png';
 import sqlDivider from '@/assets/offline-import/divider-sql.png';
 import packageDivider from '@/assets/offline-import/divider-package.png';
 import duckdbDivider from '@/assets/offline-import/divider-duckdb.png';
-import { openPrettyNotification } from '@/utils/prettyNotification';
+import { openFromTrigger, useRestoreTriggerFocus } from '@/pages/common/utils/returnFocus';
 import { fileIngestTaskApi } from '../api';
 import { FILE_RESOURCE_SOURCE, fileTaskDraftKey } from '../types';
 import type { FileFormat } from '../types';
@@ -24,9 +22,8 @@ interface ImportEntry {
   key: string;
   label: string;
   detail: string;
-  action?: () => void;
+  action?: () => string | Promise<string>;
   disabled?: boolean;
-  notifyOnClick?: boolean;
   disabledHint?: string;
 }
 
@@ -84,33 +81,15 @@ const enterFileIngestWizard = async (
       },
     }),
   );
-  history.push(`/sync/file-ingest/${id}/detail?scene=create&from=${createButtonText}`);
+  return `/sync/file-ingest/${id}/detail?scene=create&from=${createButtonText}`;
 };
 
 const ImportSelectPage: React.FC = () => {
   const { message } = App.useApp();
+  useRestoreTriggerFocus();
 
   const choices = useMemo<ImportChoice[]>(() => {
-    const enterStructured = (fileFormat: FileFormat) => {
-      enterFileIngestWizard('structured', fileFormat).catch((error: any) => {
-        message.error(error?.message || '新建离线文件导入任务失败');
-      });
-    };
-    const enterDuckdb = () => {
-      enterFileIngestWizard('duckdb').catch((error: any) => {
-        message.error(error?.message || '新建离线文件导入任务失败');
-      });
-    };
-    const enterSqlite = () => {
-      enterFileIngestWizard('sqlite').catch((error: any) => {
-        message.error(error?.message || '新建离线文件导入任务失败');
-      });
-    };
-    const enterDatapackCsv = () => {
-      enterFileIngestWizard('datapack-csv', 'csv', true).catch((error: any) => {
-        message.error(error?.message || '新建离线数据包导入任务失败');
-      });
-    };
+    const enterStructured = (fileFormat: FileFormat) => enterFileIngestWizard('structured', fileFormat);
 
     return [
       {
@@ -138,13 +117,13 @@ const ImportSelectPage: React.FC = () => {
             key: 'kingbase-dmp',
             label: '人大金仓',
             detail: 'KingbaseES · DMP',
-            action: () => history.push('/sync/file-ingest/import/create?type=DMP&importType=KINGBASE_DMP'),
+            action: () => '/sync/file-ingest/import/create?type=DMP&importType=KINGBASE_DMP',
           },
           {
             key: 'dameng-dmp',
             label: '达梦',
             detail: 'DM · DMP',
-            action: () => history.push('/sync/file-ingest/import/create?type=DMP&importType=DAMENG_DMP'),
+            action: () => '/sync/file-ingest/import/create?type=DMP&importType=DAMENG_DMP',
           },
         ],
       },
@@ -159,13 +138,13 @@ const ImportSelectPage: React.FC = () => {
             key: 'kingbase-sql',
             label: '人大金仓',
             detail: 'KingbaseES · SQL',
-            action: () => history.push('/sync/file-ingest/import/create?type=SQL&importType=KINGBASE_SQL'),
+            action: () => '/sync/file-ingest/import/create?type=SQL&importType=KINGBASE_SQL',
           },
           {
             key: 'dameng-sql',
             label: '达梦',
             detail: 'DM · SQL',
-            action: () => history.push('/sync/file-ingest/import/create?type=SQL&importType=DAMENG_SQL'),
+            action: () => '/sync/file-ingest/import/create?type=SQL&importType=DAMENG_SQL',
           },
           {
             key: 'oracle-sql',
@@ -188,7 +167,7 @@ const ImportSelectPage: React.FC = () => {
             key: 'report-package',
             label: '离线三级采报工具',
             detail: '导入工具导出的离线文件',
-            action: enterDatapackCsv,
+            action: () => enterFileIngestWizard('datapack-csv', 'csv', true),
           },
         ],
       },
@@ -204,56 +183,31 @@ const ImportSelectPage: React.FC = () => {
             key: 'duckdb-file',
             label: 'DuckDB',
             detail: 'DuckDB 数据库文件 · .duckdb',
-            action: enterDuckdb,
+            action: () => enterFileIngestWizard('duckdb'),
           },
           {
             key: 'sqlite-file',
             label: 'SQLite',
             detail: '.db / .sqlite / .sqlite3 数据库文件',
-            action: enterSqlite,
+            action: () => enterFileIngestWizard('sqlite'),
           },
         ],
       },
     ];
-  }, [message]);
+  }, []);
 
-  const handleEntry = (entry: ImportEntry) => {
-    if (entry.disabled) {
-      if (entry.notifyOnClick) {
-        openPrettyNotification({
-          type: 'info',
-          title: '功能提示',
-          description: entry.disabledHint || '该导入方式暂未开放',
-        });
-      }
-      return;
+  const handleEntry = async (entry: ImportEntry, buttonId: string) => {
+    if (entry.disabled || !entry.action) return;
+    try {
+      openFromTrigger(await entry.action(), buttonId);
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '新建离线文件导入任务失败');
     }
-    entry.action?.();
   };
 
   return (
     <div className="import-select-page" style={{ backgroundImage: `url(${background})` }}>
-      <main className="import-select-page__body">
-        <div className="import-select-page__hero">
-          <div className="import-select-page__heading">
-            <h1 className="import-select-page__title">离线数据导入</h1>
-            <p className="import-select-page__subtitle">多格式文件 · 多类型数据库 · 一个统一的数据入口</p>
-          </div>
-
-          <img className="import-select-page__network" src={network} alt="" />
-
-          <div className="import-select-page__stats" aria-label="5 种导入类型，12 个数据入口">
-            <div className="import-select-page__stat">
-              <strong>05</strong>
-              <span>导入类型</span>
-            </div>
-            <div className="import-select-page__stat">
-              <strong>12</strong>
-              <span>数据入口</span>
-            </div>
-          </div>
-        </div>
-
+      <main className="import-select-page__body" aria-label="离线数据导入类型">
         <div className="import-select-page__grid">
           {choices.map((choice) => (
             <article className={`import-select-card import-select-card--${choice.key}`} key={choice.key}>
@@ -270,15 +224,17 @@ const ImportSelectPage: React.FC = () => {
                   <div className={`import-select-card__entry${entry.disabled ? ' import-select-card__entry--disabled' : ''}`} key={entry.key}>
                     <div className="import-select-card__entry-copy">
                       <strong>{entry.label}</strong>
-                      <span>{entry.detail}</span>
+                      <span id={entry.disabled ? `import-hint-${entry.key}` : undefined}>{entry.disabledHint || entry.detail}</span>
                     </div>
                     <button
                       className="import-select-card__enter"
                       type="button"
-                      disabled={Boolean(entry.disabled && !entry.notifyOnClick)}
-                      aria-disabled={entry.disabled || undefined}
+                      id={`import-entry-${entry.key}`}
+                      aria-label={`进入${choice.title} · ${entry.label}`}
+                      disabled={entry.disabled}
+                      aria-describedby={entry.disabled ? `import-hint-${entry.key}` : undefined}
                       title={entry.disabledHint}
-                      onClick={() => handleEntry(entry)}
+                      onClick={(event) => void handleEntry(entry, event.currentTarget.id)}
                     >
                       进入 <ArrowRightOutlined />
                     </button>

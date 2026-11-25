@@ -1,4 +1,4 @@
-import HttpUtils from '@/utils/HttpUtils';
+import HttpUtils, { type RequestOptions } from '@/utils/HttpUtils';
 import type {
   LakeApiResponse,
   LakeCatalog,
@@ -199,8 +199,9 @@ export async function fetchLakeWarehouse(): Promise<LakeApiResponse<LakeWarehous
 
 export async function saveLakeWarehouse(
   payload: Record<string, unknown>,
+  options?: RequestOptions,
 ): Promise<LakeApiResponse<LakeWarehouseConfig>> {
-  return HttpUtils.put(WAREHOUSE, payload);
+  return HttpUtils.put(WAREHOUSE, payload, options);
 }
 
 export async function testLakeWarehouse(

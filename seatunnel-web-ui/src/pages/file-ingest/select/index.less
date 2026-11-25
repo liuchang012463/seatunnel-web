@@ -13,82 +13,7 @@
     max-width: 1840px;
     flex-direction: column;
     margin: 0 auto;
-    padding: 34px 28px 48px;
-  }
-
-  &__hero {
-    position: relative;
-    display: flex;
-    min-height: 108px;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 22px;
-  }
-
-  &__heading {
-    position: relative;
-    z-index: 1;
-  }
-
-  &__title {
-    margin: 0 0 8px;
-    color: #effaff;
-    font-size: 29px;
-    font-weight: 650;
-    letter-spacing: 0.01em;
-    line-height: 1.25;
-  }
-
-  &__subtitle {
-    margin: 0;
-    color: #9cb7c4;
-    font-size: 14px;
-    letter-spacing: 0.025em;
-  }
-
-  &__network {
-    position: absolute;
-    top: 50%;
-    right: 138px;
-    width: 350px;
-    height: 104px;
-    object-fit: contain;
-    opacity: 0.92;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-
-  &__stats {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    min-width: 190px;
-    justify-content: flex-end;
-    gap: 36px;
-  }
-
-  &__stat {
-    display: flex;
-    min-width: 46px;
-    flex-direction: column;
-    align-items: center;
-
-    strong {
-      color: #18d3ef;
-      font-size: 22px;
-      font-weight: 650;
-      font-variant-numeric: tabular-nums;
-      line-height: 1.1;
-    }
-
-    span {
-      margin-top: 6px;
-      color: #8ba8b7;
-      font-size: 14px;
-      white-space: nowrap;
-    }
+    padding: 16px 24px;
   }
 
   &__grid {
@@ -252,6 +177,11 @@
       color: #708a96;
       cursor: not-allowed;
     }
+  }
+
+  &__entry--disabled &__entry-copy span {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   &__note {

@@ -1,4 +1,5 @@
 import { useIntl } from '@umijs/max';
+import { textLengthRule } from '@/pages/common/utils/textLengthRule';
 import {
   Button,
   Drawer,
@@ -41,6 +42,7 @@ import {
 } from '../types';
 
 const { TextArea } = Input;
+const NAME_MAX_LENGTH = 100;
 
 interface AddOrEditRuleModalProps {
   channels: Array<{
@@ -466,7 +468,7 @@ const AddOrEditRuleModal = forwardRef<
                 {drawerTitle}
               </h2>
 
-              <p className="m-0 mt-1 truncate text-sm text-slate-400">
+              <p className="m-0 mt-1 truncate text-[14px] text-slate-400">
                 {drawerDescription}
               </p>
             </div>
@@ -520,11 +522,11 @@ const AddOrEditRuleModal = forwardRef<
               {/* 基本信息 */}
               <section className="border-b border-slate-100 pb-6">
                 <div className="mb-5">
-                  <h3 className="m-0 text-sm font-semibold text-slate-950">
+                  <h3 className="m-0 text-[14px] font-semibold text-slate-950">
                     基本信息
                   </h3>
 
-                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-[14px] leading-5 text-slate-400">
                     设置规则名称、严重级别和启用状态。
                   </p>
                 </div>
@@ -541,10 +543,12 @@ const AddOrEditRuleModal = forwardRef<
                       whitespace: true,
                       message: '请输入规则名称',
                     },
+                    textLengthRule(NAME_MAX_LENGTH),
                   ]}
                 >
                   <Input
-                    maxLength={100}
+                    maxLength={NAME_MAX_LENGTH}
+                    showCount
                     placeholder={intl.formatMessage({
                       id: 'pages.alarm.placeholder.ruleName',
                       defaultMessage:
@@ -609,11 +613,11 @@ const AddOrEditRuleModal = forwardRef<
               {/* 触发条件 */}
               <section className="border-b border-slate-100 py-6">
                 <div className="mb-5">
-                  <h3 className="m-0 text-sm font-semibold text-slate-950">
+                  <h3 className="m-0 text-[14px] font-semibold text-slate-950">
                     触发条件
                   </h3>
 
-                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-[14px] leading-5 text-slate-400">
                     选择规则生效的任务范围和触发状态。
                   </p>
                 </div>
@@ -731,11 +735,11 @@ const AddOrEditRuleModal = forwardRef<
               {/* 投递配置 */}
               <section className="pt-6">
                 <div className="mb-5">
-                  <h3 className="m-0 text-sm font-semibold text-slate-950">
+                  <h3 className="m-0 text-[14px] font-semibold text-slate-950">
                     投递配置
                   </h3>
 
-                  <p className="m-0 mt-1 text-sm leading-5 text-slate-400">
+                  <p className="m-0 mt-1 text-[14px] leading-5 text-slate-400">
                     选择规则触发后需要发送消息的告警通道。
                   </p>
                 </div>
@@ -768,7 +772,7 @@ const AddOrEditRuleModal = forwardRef<
 
                 {enabledChannelOptions.length ===
                   0 && (
-                  <p className="m-0 mt-2 text-sm text-orange-500">
+                  <p className="m-0 mt-2 text-[14px] text-orange-500">
                     暂无可用告警通道，请先创建并启用告警通道。
                   </p>
                 )}

@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { Form, message, Modal } from "antd";
+import { Button, Empty, Form, message, Modal, Pagination } from "antd";
 
 import SideNav from "./components/SideNav";
 import ContentHeader from "./components/ContentHeader";
@@ -47,6 +47,8 @@ const Index: React.FC = () => {
   const [timePageNum, setTimePageNum] = useState(1);
   const [timePageSize, setTimePageSize] = useState(10);
   const [timeTotal, setTimeTotal] = useState(0);
+  const connectorRequest = useRef(0);
+  const timeRequest = useRef(0);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ParamItem | null>(null);
@@ -107,6 +109,7 @@ const Index: React.FC = () => {
   );
 
   const loadConnectorData = useCallback(async () => {
+    const request = ++connectorRequest.current;
     setConnectorLoading(true);
     try {
       const res = await fetchConnectorParamPage({
@@ -116,6 +119,7 @@ const Index: React.FC = () => {
         pageSize: connectorPageSize,
       });
 
+      if (request !== connectorRequest.current) return;
       const records = Array.isArray(res?.data?.bizData)
         ? res.data.bizData.map(mapConnectorVOToItem)
         : [];
@@ -125,11 +129,12 @@ const Index: React.FC = () => {
     } catch (error) {
      
     } finally {
-      setConnectorLoading(false);
+      if (request === connectorRequest.current) setConnectorLoading(false);
     }
   }, [connectorPageNum, connectorPageSize, keyword, mapConnectorVOToItem]);
 
   const loadTimeData = useCallback(async () => {
+    const request = ++timeRequest.current;
     setTimeLoading(true);
     try {
       const res = await fetchTimeVariablePage({
@@ -143,6 +148,7 @@ const Index: React.FC = () => {
        * 1. MyBatis-Plus IPage: data.records / data.total
        * 2. 你现有封装: data.bizData / data.pagination.total
        */
+      if (request !== timeRequest.current) return;
       const pageData = res?.data;
       const rawRecords = Array.isArray(pageData?.records)
         ? pageData.records
@@ -157,7 +163,7 @@ const Index: React.FC = () => {
     } catch (error) {
       
     } finally {
-      setTimeLoading(false);
+      if (request === timeRequest.current) setTimeLoading(false);
     }
   }, [keyword, timePageNum, timePageSize, mapTimeVOToItem]);
 
@@ -384,12 +390,7 @@ const Index: React.FC = () => {
       >
         <SideNav
           activeMenu={activeMenu}
-          onChange={(key) => {
-            setActiveMenu(key);
-            setKeyword("");
-            setConnectorPageNum(1);
-            setTimePageNum(1);
-          }}
+          onChange={setActiveMenu}
           onResetSelection={handleResetSelection}
         />
 
@@ -414,9 +415,21 @@ const Index: React.FC = () => {
             activeMenu={activeMenu}
             dataSource={currentList}
             loading={activeMenu === "connector" ? connectorLoading : timeLoading}
-            pagination={tablePagination}
+            emptyText={
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={keyword ? "没有匹配的结果" : activeMenu === "connector" ? "暂无 Connector 参数" : "暂无时间变量"}
+              >
+                {keyword && <Button type="link" onClick={handleResetSelection}>清除筛选</Button>}
+              </Empty>
+            }
             onEdit={openEditModal}
             onDelete={handleDelete}
+          />
+          <Pagination
+            className="knowledge-page__pagination"
+            {...tablePagination}
+            disabled={!tablePagination.total}
           />
         </div>
       </div>

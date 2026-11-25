@@ -1,19 +1,11 @@
-import { Empty, Space, Table, Tag, Typography } from "antd";
-import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import { Space, Table, Tag, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import React from "react";
 import { BORDER_COLOR } from "../../constants/ui";
-import { MenuKey, ParamItem } from "../../types";
+import { ParamItem } from "../../types";
+import type { ParamTableProps } from "./index";
 
 const { Text } = Typography;
-
-interface Props {
-  activeMenu: MenuKey;
-  dataSource: ParamItem[];
-  loading?: boolean;
-  pagination?: false | TablePaginationConfig;
-  onEdit: (record: ParamItem) => void;
-  onDelete: (record: ParamItem) => void;
-}
 
 const pillStyle: React.CSSProperties = {
   borderRadius: 999,
@@ -49,10 +41,10 @@ const actionStyle: React.CSSProperties = {
   transform: "translateY(0) scale(1)",
 };
 
-const ConnectorParamTable: React.FC<Props> = ({
+const ConnectorParamTable: React.FC<ParamTableProps> = ({
   dataSource,
   loading = false,
-  pagination,
+  emptyText,
   onEdit,
   onDelete,
 }) => {
@@ -258,7 +250,7 @@ const ConnectorParamTable: React.FC<Props> = ({
 
   return (
     <div
-      className="overflow-hidden rounded-[8px]"
+      className="knowledge-page__table overflow-hidden rounded-[8px]"
       style={{
         border: `1px solid ${BORDER_COLOR}`,
         background: "var(--st-color-bg-panel)",
@@ -270,21 +262,9 @@ const ConnectorParamTable: React.FC<Props> = ({
         loading={loading}
         columns={columns}
         dataSource={dataSource}
-        pagination={
-          pagination ?? {
-            pageSize: 10,
-            showSizeChanger: false,
-            showTotal: (total) => `共 ${total} 条`,
-          }
-        }
-        locale={{
-          emptyText: (
-            <div className="py-14">
-              <Empty description="暂无 Connector 参数" />
-            </div>
-          ),
-        }}
-        scroll={{ x: "100%", y: "calc(100vh - 430px)" }}
+        pagination={false}
+        locale={{ emptyText }}
+        scroll={{ x: "100%", y: "100%" }}
         tableLayout="fixed"
         rowClassName={() => "connector-param-table-row"}
       />
@@ -308,9 +288,6 @@ const ConnectorParamTable: React.FC<Props> = ({
             background: var(--st-color-bg-hover) !important;
           }
 
-          .ant-table-wrapper .ant-table-pagination {
-            margin: 16px 16px 18px;
-          }
         `}
       </style>
     </div>

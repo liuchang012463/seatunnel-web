@@ -5,12 +5,50 @@
   min-height: 0;
   height: 100%;
 
-  .ant-pro-page-container-children-container {
+  .ant-pro-grid-content,
+  .ant-pro-grid-content-children,
+  .ant-pro-page-container-children-container,
+  .master-data-page__tabs,
+  .master-data-page__tabs > .ant-tabs-content-holder,
+  .master-data-page__tabs .ant-tabs-content,
+  .master-data-page__tabs .ant-tabs-tabpane-active {
     display: flex;
     flex: 1 1 0%;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
+  }
+
+  .ant-pro-page-container-children-container {
     padding-block: 0;
+  }
+
+  // The tab strip, toolbar and external pager stay visible while rows scroll.
+  .master-data-page__tabs > .ant-tabs-nav,
+  .master-data-page__toolbar,
+  .master-data-page__table .ant-table-header {
+    flex: none;
+  }
+
+  .master-data-page__table,
+  .master-data-page__table :is(.ant-spin-nested-loading, .ant-spin-container, .ant-table, .ant-table-container) {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .master-data-page__table .ant-table-body {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .master-data-page__pagination {
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    margin: 12px 0 0;
   }
 
   .master-data-page__panel.ant-card {
@@ -100,7 +138,8 @@
 
   .master-data-page__filters {
     flex: 1;
-    min-width: 680px;
+    min-width: min(100%, 680px);
+    row-gap: 8px;
 
     .ant-form-item {
       margin-bottom: 0;
@@ -162,7 +201,33 @@
   }
 }
 
+// PageContainer gives ordinary children intrinsic height. These tabs contain the scrolling list.
+.ant-pro-layout .master-data-page .ant-pro-page-container-children-container > .ant-tabs.master-data-page__tabs {
+  flex: 1 1 0 !important;
+}
+
 .master-data-editor-modal {
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    [role='status'] {
+      min-width: 0;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    [data-phase='error'] { color: var(--st-color-error); }
+    [data-phase='success'] { color: var(--st-color-success); }
+    > div {
+      display: flex;
+      flex: none;
+      gap: 8px;
+    }
+  }
+
   .ant-modal-content,
   .ant-modal-header,
   .ant-modal-body,

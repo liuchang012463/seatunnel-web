@@ -9,9 +9,11 @@ import { PageContainer } from '@ant-design/pro-components';
 import {
   Button,
   Card,
+  Empty,
   Form,
   Input,
   Modal,
+  Pagination,
   Popconfirm,
   Select,
   Space,
@@ -22,7 +24,9 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import StatusChip from '@/components/StatusChip';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFormSave } from '@/pages/common/hooks/useFormSave';
+import { textLengthRule } from '@/pages/common/utils/textLengthRule';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createBusinessSystem,
   createDataSourceUnit,
@@ -61,6 +65,7 @@ interface MasterDataPageProps {
 }
 
 const DEFAULT_PAGE_SIZE = 10;
+const NAME_MAX_LENGTH = 256;
 const EMPTY_UNIT_PAGE: MasterDataPage<DataSourceUnitRecord> = {
   records: [],
   pagination: { pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, total: 0 },
@@ -157,7 +162,9 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
   const [editorKind, setEditorKind] = useState<EditorKind>('unit');
   const [editingUnit, setEditingUnit] = useState<DataSourceUnitRecord>();
   const [editingBusinessSystem, setEditingBusinessSystem] = useState<BusinessSystemRecord>();
-  const [saving, setSaving] = useState(false);
+  const submission = useFormSave(editorKind === 'unit' ? '单位' : '业务系统');
+  const unitRequest = useRef(0);
+  const systemRequest = useRef(0);
   const [busyKey, setBusyKey] = useState<string>();
   const [unitSearchForm] = Form.useForm<UnitSearchValues>();
   const [businessSystemSearchForm] = Form.useForm<BusinessSystemSearchValues>();
@@ -175,28 +182,32 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
   }, [messageApi]);
 
   const loadUnitPage = useCallback(async () => {
+    const request = ++unitRequest.current;
     setUnitLoading(true);
     try {
       const response = await fetchDataSourceUnitPage(unitQuery);
+      if (request !== unitRequest.current) return;
       ensureSuccess(response, '加载单位列表失败');
       setUnitPage(normalizePageData(response, unitQuery));
     } catch (error) {
-      messageApi.error(responseMessage(error, '加载单位列表失败'));
+      if (request === unitRequest.current) messageApi.error(responseMessage(error, '加载单位列表失败'));
     } finally {
-      setUnitLoading(false);
+      if (request === unitRequest.current) setUnitLoading(false);
     }
   }, [messageApi, unitQuery]);
 
   const loadBusinessSystemPage = useCallback(async () => {
+    const request = ++systemRequest.current;
     setBusinessSystemLoading(true);
     try {
       const response = await fetchBusinessSystemPage(businessSystemQuery);
+      if (request !== systemRequest.current) return;
       ensureSuccess(response, '加载业务系统列表失败');
       setBusinessSystemPage(normalizePageData(response, businessSystemQuery));
     } catch (error) {
-      messageApi.error(responseMessage(error, '加载业务系统列表失败'));
+      if (request === systemRequest.current) messageApi.error(responseMessage(error, '加载业务系统列表失败'));
     } finally {
-      setBusinessSystemLoading(false);
+      if (request === systemRequest.current) setBusinessSystemLoading(false);
     }
   }, [businessSystemQuery, messageApi]);
 
@@ -274,16 +285,17 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
   };
 
   const closeEditor = () => {
-    if (saving) {
+    if (submission.locked) {
       return;
     }
+    submission.clearFeedback();
     setEditorOpen(false);
     editorForm.resetFields();
   };
 
-  const handleEditorSubmit = async (values: EditorFormValues) => {
-    setSaving(true);
-    try {
+  const handleEditorSubmit = () =>
+    submission.save(async () => {
+      const values = await editorForm.validateFields();
       if (editorKind === 'unit') {
         const payload: DataSourceUnitPayload = {
           unitCode: editingUnit?.unitCode || generatedCode('UNIT', [values.unitName]),
@@ -295,34 +307,29 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
           ? await updateDataSourceUnit(editingUnit.id, payload)
           : await createDataSourceUnit(payload);
         ensureSuccess(response, editingUnit ? '更新单位失败' : '新增单位失败');
-        messageApi.success(editingUnit ? '单位已更新' : '单位已新增');
-      } else {
-        if (values.unitId == null) {
-          throw new Error('请选择所属单位');
-        }
-        const payload: BusinessSystemPayload = {
-          unitId: values.unitId,
-          systemCode: editingBusinessSystem?.systemCode
-            || generatedCode('SYSTEM', [values.unitId, values.systemName]),
-          systemName: values.systemName?.trim() || '',
-          status: normalizeStatus(values.status),
-          remark: cleanString(values.remark),
-        };
-        const response = editingBusinessSystem
-          ? await updateBusinessSystem(editingBusinessSystem.id, payload)
-          : await createBusinessSystem(payload);
-        ensureSuccess(response, editingBusinessSystem ? '更新业务系统失败' : '新增业务系统失败');
-        messageApi.success(editingBusinessSystem ? '业务系统已更新' : '业务系统已新增');
+        return editingUnit ? '单位已更新' : '单位已新增';
       }
+      if (values.unitId == null) {
+        throw new Error('请选择所属单位');
+      }
+      const payload: BusinessSystemPayload = {
+        unitId: values.unitId,
+        systemCode: editingBusinessSystem?.systemCode
+          || generatedCode('SYSTEM', [values.unitId, values.systemName]),
+        systemName: values.systemName?.trim() || '',
+        status: normalizeStatus(values.status),
+        remark: cleanString(values.remark),
+      };
+      const response = editingBusinessSystem
+        ? await updateBusinessSystem(editingBusinessSystem.id, payload)
+        : await createBusinessSystem(payload);
+      ensureSuccess(response, editingBusinessSystem ? '更新业务系统失败' : '新增业务系统失败');
+      return editingBusinessSystem ? '业务系统已更新' : '业务系统已新增';
+    }, () => {
       setEditorOpen(false);
       editorForm.resetFields();
-      await refreshCurrentList();
-    } catch (error) {
-      messageApi.error(responseMessage(error, editorKind === 'unit' ? '保存单位失败' : '保存业务系统失败'));
-    } finally {
-      setSaving(false);
-    }
-  };
+      void refreshCurrentList();
+    });
 
   const updateUnitStatus = async (record: DataSourceUnitRecord, checked: boolean) => {
     const key = `unit-status-${record.id}`;
@@ -524,6 +531,19 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
     setBusinessSystemQuery((current) => ({ ...current, pageNo, pageSize }));
   };
 
+  const resetUnitSearch = () => {
+    unitSearchForm.resetFields();
+    setUnitQuery({ pageNo: 1, pageSize: unitQuery.pageSize });
+  };
+  const resetSystemSearch = () => {
+    businessSystemSearchForm.resetFields();
+    setBusinessSystemQuery({ pageNo: 1, pageSize: businessSystemQuery.pageSize });
+  };
+  const emptyList = (name: string, filtered: boolean, reset: () => void) => (
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={filtered ? `没有匹配的${name}` : `暂无${name}`}>
+      {filtered && <Button type="link" onClick={reset}>清除筛选</Button>}
+    </Empty>
+  );
   const tabs = [
     {
       key: 'units',
@@ -574,10 +594,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                   </Button>
                   <Button
                     icon={<ReloadOutlined />}
-                    onClick={() => {
-                      unitSearchForm.resetFields();
-                      setUnitQuery({ pageNo: 1, pageSize: unitQuery.pageSize });
-                    }}
+                    onClick={resetUnitSearch}
                   >
                     重置
                   </Button>
@@ -591,20 +608,25 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             </div>
           </div>
           <Table<DataSourceUnitRecord>
+            className="master-data-page__table"
             rowKey={(record) => String(record.id)}
             loading={unitLoading}
             columns={unitColumns}
             dataSource={unitPage.records}
-            scroll={{ x: 1000 }}
-            pagination={{
-              current: unitPage.pagination.pageNo,
-              pageSize: unitPage.pagination.pageSize,
-              total: unitPage.pagination.total,
-              showSizeChanger: true,
-              pageSizeOptions: [10, 20, 50],
-              showTotal: (total) => `共 ${total} 条`,
-              onChange: handleUnitPageChange,
-            }}
+            scroll={{ x: 1000, y: '100%' }}
+            pagination={false}
+            locale={{ emptyText: emptyList('单位', Boolean(unitQuery.unitName || unitQuery.status != null), resetUnitSearch) }}
+          />
+          <Pagination
+            className="master-data-page__pagination"
+            current={unitPage.pagination.pageNo}
+            pageSize={unitPage.pagination.pageSize}
+            total={unitPage.pagination.total}
+            disabled={!unitPage.pagination.total}
+            showSizeChanger
+            pageSizeOptions={[10, 20, 50]}
+            showTotal={(total) => `共 ${total} 条`}
+            onChange={handleUnitPageChange}
           />
         </Card>
       ),
@@ -670,10 +692,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
                   </Button>
                   <Button
                     icon={<ReloadOutlined />}
-                    onClick={() => {
-                      businessSystemSearchForm.resetFields();
-                      setBusinessSystemQuery({ pageNo: 1, pageSize: businessSystemQuery.pageSize });
-                    }}
+                    onClick={resetSystemSearch}
                   >
                     重置
                   </Button>
@@ -687,20 +706,25 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
             </div>
           </div>
           <Table<BusinessSystemRecord>
+            className="master-data-page__table"
             rowKey={(record) => String(record.id)}
             loading={businessSystemLoading}
             columns={businessSystemColumns}
             dataSource={businessSystemPage.records}
-            scroll={{ x: 1100 }}
-            pagination={{
-              current: businessSystemPage.pagination.pageNo,
-              pageSize: businessSystemPage.pagination.pageSize,
-              total: businessSystemPage.pagination.total,
-              showSizeChanger: true,
-              pageSizeOptions: [10, 20, 50],
-              showTotal: (total) => `共 ${total} 条`,
-              onChange: handleBusinessSystemPageChange,
-            }}
+            scroll={{ x: 1100, y: '100%' }}
+            pagination={false}
+            locale={{ emptyText: emptyList('业务系统', Boolean(businessSystemQuery.systemName || businessSystemQuery.unitId != null || businessSystemQuery.status != null), resetSystemSearch) }}
+          />
+          <Pagination
+            className="master-data-page__pagination"
+            current={businessSystemPage.pagination.pageNo}
+            pageSize={businessSystemPage.pagination.pageSize}
+            total={businessSystemPage.pagination.total}
+            disabled={!businessSystemPage.pagination.total}
+            showSizeChanger
+            pageSizeOptions={[10, 20, 50]}
+            showTotal={(total) => `共 ${total} 条`}
+            onChange={handleBusinessSystemPageChange}
           />
         </Card>
       ),
@@ -711,6 +735,7 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
     <>
       {contextHolder}
       <Tabs
+        className="master-data-page__tabs"
         activeKey={activeTab}
         items={tabs}
         onChange={(key) => setActiveTab(key as TabKey)}
@@ -730,25 +755,38 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
         }
         width={560}
         destroyOnHidden
-        confirmLoading={saving}
+        confirmLoading={submission.saving}
+        okButtonProps={{ disabled: submission.locked }}
+        cancelButtonProps={{ disabled: submission.locked }}
+        closable={!submission.locked}
+        keyboard={!submission.locked}
         okText="保存"
         cancelText="取消"
         onCancel={closeEditor}
-        onOk={() => editorForm.submit()}
+        onOk={handleEditorSubmit}
+        footer={(buttons) => (
+          <div className="master-data-editor-modal__actions">
+            <span role="status" aria-atomic="true" data-phase={submission.feedback?.phase}>
+              {submission.feedback?.text}
+            </span>
+            <div>{buttons}</div>
+          </div>
+        )}
       >
-        <Form form={editorForm} layout="vertical" onFinish={handleEditorSubmit}>
+        <Form form={editorForm} layout="vertical" disabled={submission.locked} onFinish={handleEditorSubmit}>
           {editorKind === 'unit' ? (
             <>
               <Form.Item
                 label="单位名称"
                 name="unitName"
-                rules={[{ required: true, whitespace: true, message: '请输入单位名称' }]}
+                rules={[{ required: true, whitespace: true, message: '请输入单位名称' }, textLengthRule(NAME_MAX_LENGTH)]}
               >
                 <Input
                   id="unit-editor-name"
                   name="unitName"
                   aria-label="单位名称"
-                  maxLength={256}
+                  maxLength={NAME_MAX_LENGTH}
+                  showCount
                   placeholder="请输入单位名称"
                 />
               </Form.Item>
@@ -775,13 +813,14 @@ const MasterDataPage: React.FC<MasterDataPageProps> = ({ embedded = false }) => 
               <Form.Item
                 label="系统名称"
                 name="systemName"
-                rules={[{ required: true, whitespace: true, message: '请输入系统名称' }]}
+                rules={[{ required: true, whitespace: true, message: '请输入系统名称' }, textLengthRule(NAME_MAX_LENGTH)]}
               >
                 <Input
                   id="business-system-editor-name"
                   name="systemName"
                   aria-label="系统名称"
-                  maxLength={256}
+                  maxLength={NAME_MAX_LENGTH}
+                  showCount
                   placeholder="请输入业务系统名称"
                 />
               </Form.Item>

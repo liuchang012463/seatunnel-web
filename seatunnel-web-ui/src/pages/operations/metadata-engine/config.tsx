@@ -1,5 +1,4 @@
 import {
-  ApiOutlined,
   ArrowLeftOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -7,7 +6,8 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { Button, Checkbox, Form, Input, InputNumber, Select, Space, Tag, Typography, message } from 'antd';
-import { history } from '@umijs/max';
+import { useFormSave } from '@/pages/common/hooks/useFormSave';
+import { returnToTrigger } from '@/pages/common/utils/returnFocus';
 import React, { useEffect, useState } from 'react';
 import {
   fetchOpenMetadataServer,
@@ -19,7 +19,7 @@ import {
 } from '@/services/metadata/server';
 import './index.less';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text, Title } = Typography;
 
 type FormValues = {
   baseUrl: string;
@@ -35,8 +35,8 @@ type TestResult = {
   message: string;
 };
 
-const responseError = (response: MetadataApiResponse<unknown>, fallback: string) =>
-  response.msg || response.message || fallback;
+const responseError = (response: MetadataApiResponse<unknown> | undefined, fallback: string) =>
+  response?.msg || response?.message || fallback;
 
 const toPayload = (values: FormValues): OpenMetadataServerPayload => ({
   baseUrl: values.baseUrl?.trim(),
@@ -53,7 +53,7 @@ const MetadataEngineConfigPage: React.FC = () => {
   const [domainInfo, setDomainInfo] = useState<OpenMetadataServerConfig>();
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const submission = useFormSave('探查引擎配置');
   const [testResult, setTestResult] = useState<TestResult>();
 
   useEffect(() => {
@@ -91,18 +91,9 @@ const MetadataEngineConfigPage: React.FC = () => {
     };
   }, [form]);
 
-  const ensureToken = (values: FormValues) => {
-    if (!config?.tokenConfigured && !values.token?.trim()) {
-      message.error('首次配置必须填写 Token');
-      return false;
-    }
-    return true;
-  };
-
   const handleTest = async () => {
     try {
       const values = await form.validateFields();
-      if (!ensureToken(values)) return;
       setTesting(true);
       setTestResult(undefined);
       const response = await testOpenMetadataServer(toPayload(values));
@@ -131,27 +122,19 @@ const MetadataEngineConfigPage: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    try {
+  const goBack = () => returnToTrigger('/operations/metadata-engine');
+  const handleSave = () =>
+    submission.save(async () => {
       const values = await form.validateFields();
-      if (!ensureToken(values)) return;
-      setSaving(true);
-      const response = await saveOpenMetadataServer(toPayload(values));
-      if (response.code !== 0 || !response.data) {
+      const response = await saveOpenMetadataServer(toPayload(values), { skipErrorHandler: true });
+      if (response?.code !== 0 || !response.data) {
         throw new Error(responseError(response, '保存探查引擎配置失败'));
       }
       setDomainInfo(response.data);
       setConfig(response.data);
       form.setFieldsValue({ token: undefined });
-      message.success('探查引擎配置已保存');
-      history.push('/operations/metadata-engine');
-    } catch (error) {
-      if ((error as { errorFields?: unknown })?.errorFields) return;
-      message.error(error instanceof Error ? error.message : '保存探查引擎配置失败');
-    } finally {
-      setSaving(false);
-    }
-  };
+      return '探查引擎配置已保存';
+    }, goBack);
 
   const expectedServer = config?.expectedServerVersion || '2.0.4';
   const expectedIngestion = config?.expectedIngestionPatch || '2.0.4.0';
@@ -177,32 +160,15 @@ const MetadataEngineConfigPage: React.FC = () => {
   return (
     <div className="meta-engine-config-page">
       <header className="meta-engine-config-page-header">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/operations/metadata-engine')}>
+        <Button icon={<ArrowLeftOutlined />} disabled={submission.locked} onClick={goBack}>
           返回探查引擎管理
         </Button>
-        <div className="meta-engine-config-page-heading">
-          <div className="meta-engine-config-page-icon">
-            <ApiOutlined />
-          </div>
-          <div>
-            <Title level={1}>OpenMetadata 配置</Title>
-            <Paragraph>
-              Base URL 必须以 /api 结尾。Token 不会回显；已配置时留空表示保持原 Token。
-            </Paragraph>
-          </div>
-        </div>
       </header>
 
       <div className="meta-engine-config-layout">
         <main className="meta-engine-config-main">
           <div className="meta-engine-config-section-heading">
-            <div>
-              <Text className="meta-engine-kicker">OPENMETADATA CONNECTION</Text>
-              <Title level={2}>连接参数</Title>
-              <Paragraph>
-                配置探查控制面唯一连接。保存成功后集成自动生效，无需额外启用开关。
-              </Paragraph>
-            </div>
+            <Title level={2}>OpenMetadata 连接参数</Title>
             <Tag color={config?.configured ? 'success' : 'default'}>
               {config?.configured ? '已配置' : '待配置'}
             </Tag>
@@ -211,7 +177,7 @@ const MetadataEngineConfigPage: React.FC = () => {
           <Form
             form={form}
             layout="vertical"
-            disabled={loading}
+            disabled={loading || submission.locked}
             className="meta-engine-config-form"
             initialValues={{
               connectTimeoutMs: 10000,
@@ -221,6 +187,7 @@ const MetadataEngineConfigPage: React.FC = () => {
             <Form.Item
               name="baseUrl"
               label="Base URL"
+              extra="地址必须以 /api 结尾。"
               rules={[
                 { required: true, message: '请输入 OpenMetadata Base URL' },
                 {
@@ -243,9 +210,10 @@ const MetadataEngineConfigPage: React.FC = () => {
             <Form.Item
               name="token"
               label="Bot Token"
+              rules={[{ required: !config?.tokenConfigured, whitespace: true, message: '首次配置必须填写 Bot JWT' }]}
               extra={
                 config?.tokenConfigured
-                  ? '已配置 Token。留空保存将保留现有 Token。'
+                  ? '已配置 Token。凭据不会回显，留空保存将保留现有 Token。'
                   : '首次配置必须填写 Bot JWT。'
               }
             >
@@ -315,16 +283,18 @@ const MetadataEngineConfigPage: React.FC = () => {
           ) : null}
 
           <div className="meta-engine-config-action-bar">
-            <Text type="secondary">Token 仅用于服务端连接测试与保存，不会回显到页面。</Text>
+            <span role="status" aria-atomic="true" data-phase={submission.feedback?.phase}>
+              {submission.feedback?.text}
+            </span>
             <Space>
-              <Button icon={<LinkOutlined />} loading={testing} disabled={saving || loading} onClick={() => void handleTest()}>
+              <Button icon={<LinkOutlined />} loading={testing} disabled={submission.locked || loading} onClick={() => void handleTest()}>
                 连接测试
               </Button>
               <Button
                 type="primary"
                 icon={<SafetyCertificateOutlined />}
-                loading={saving}
-                disabled={testing || loading}
+                loading={submission.saving}
+                disabled={testing || loading || submission.locked}
                 onClick={() => void handleSave()}
               >
                 保存
