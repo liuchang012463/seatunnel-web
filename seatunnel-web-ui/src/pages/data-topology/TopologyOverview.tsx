@@ -1,5 +1,6 @@
+import { DATA_SOURCE_REGISTRY } from '@/pages/data-source/dataSourceRegistry';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
-import { DatabaseOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
 import { Empty, Input, Spin, Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import type { CatalogSource, Topology } from './service';
@@ -13,10 +14,26 @@ export default function TopologyOverview({ sources, topology, busy, unit, system
   onOpen: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
+  const [selectedType, setSelectedType] = useState<string>();
   const term = search.trim().toLowerCase();
-  const visible = useMemo(() => sources.filter((source) => !term
-    || [source.name, source.dbType, source.unitName, source.systemName]
-      .some((value) => value?.toLowerCase().includes(term))), [sources, term]);
+  const types = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { dbType } of sources) {
+      if (!dbType) continue;
+      const key = dbType.toUpperCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    // 按实际有血缘目录的数据源分组，不展示空类型或尚未支持的类型。
+    return DATA_SOURCE_REGISTRY.flatMap(({ dbType, label }) => {
+      const count = counts.get(dbType);
+      return count ? [{ dbType, label, shortLabel: label.split("（")[0], count }] : [];
+    });
+  }, [sources]);
+  const activeType = types.find(({ dbType }) => dbType === selectedType);
+  const visible = useMemo(() => sources.filter((source) =>
+    (!activeType || source.dbType?.toUpperCase() === activeType.dbType)
+    && (!term || [source.name, source.dbType, source.unitName, source.systemName]
+      .some((value) => value?.toLowerCase().includes(term)))), [activeType, sources, term]);
   const stats = useMemo(() => {
     const ids = new Set(visible.map(({ id }) => id));
     const ownerByAsset = new Map(topology?.assets.map(({ id, dataSourceId }) => [id, dataSourceId]));
@@ -47,13 +64,24 @@ export default function TopologyOverview({ sources, topology, busy, unit, system
 
   return (
     <div className="data-topology-workspace data-topology-results">
-      <nav className="data-topology-browser" aria-label="血缘类型导航">
+      <nav className="data-topology-browser data-topology-type-nav" aria-label="血缘类型导航">
         <div className="data-topology-overview-heading">
           <h2>血缘导航</h2><span>{sources.length} 个数据源</span>
         </div>
-        <div className="data-topology-type-item">
-          <DatabaseOutlined /><strong>数据库</strong><small>{sources.length}</small>
-        </div>
+        <button type="button" className="data-topology-type-item"
+          aria-pressed={!activeType} onClick={() => setSelectedType(undefined)}>
+          <span className="data-topology-overview-icon"><ApartmentOutlined /></span>
+          <strong>全部类型</strong><small>{sources.length}</small>
+        </button>
+        {types.length > 0 && <div className="data-topology-type-list">
+          {types.map(({ dbType, label, shortLabel, count }) => (
+            <button type="button" key={dbType} className="data-topology-type-item"
+              title={label} aria-pressed={activeType?.dbType === dbType} onClick={() => setSelectedType(dbType)}>
+              <span className="data-topology-overview-icon"><DatabaseIcons dbType={dbType} /></span>
+              <strong>{shortLabel}</strong><small>{count}</small>
+            </button>
+          ))}
+        </div>}
       </nav>
       <section className="data-topology-results-main" aria-label="数据源血缘总览">
         <header className="data-topology-overview-heading">
@@ -86,7 +114,7 @@ export default function TopologyOverview({ sources, topology, busy, unit, system
           <dl className="data-topology-panel-values">
             <div><dt>单位</dt><dd>{unit}</dd></div>
             <div><dt>业务系统</dt><dd>{system}</dd></div>
-            <div><dt>数据源类型</dt><dd>数据库</dd></div>
+            <div><dt>数据源类型</dt><dd>{activeType?.shortLabel ?? '全部类型'}</dd></div>
           </dl>
         </section>
         <section className="data-topology-panel-section">

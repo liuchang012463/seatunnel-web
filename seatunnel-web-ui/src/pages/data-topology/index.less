@@ -159,12 +159,48 @@
     > .ant-input-affix-wrapper { max-width: 260px; }
   }
 
-  .data-topology-type-item {
-    display: flex;
-    align-items: center;
+  .data-topology-type-nav {
     gap: 8px;
-    padding: 10px 11px;
-    small { margin-left: auto; color: var(--st-color-text-muted); }
+    background: var(--st-color-bg-control);
+
+    > .data-topology-overview-heading {
+      flex: none;
+      padding-bottom: 8px;
+      > span { font-size: 14px; }
+    }
+  }
+
+  .data-topology-type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--st-color-divider);
+  }
+
+  .data-topology-type-item {
+    display: grid;
+    flex: none;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px;
+    text-align: left;
+    color: var(--st-color-text-primary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--st-radius-md);
+    cursor: pointer;
+
+    &:hover, &[aria-pressed='true'] {
+      background: var(--st-color-hover);
+      border-color: var(--st-color-divider);
+    }
+
+    &:focus-visible { outline: 2px solid var(--st-color-accent); }
+    strong { overflow-wrap: anywhere; }
+    small { font-size: 14px; color: var(--st-color-text-muted); font-variant-numeric: tabular-nums; }
   }
 
   .data-topology-overview-icon {
