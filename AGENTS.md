@@ -34,6 +34,10 @@
 * OpenMetadata ingestion 扩展维护在 `../workspace/OpenMetadata/ingestion/extensions` 的版本匹配分支；新增数据库在该处实现 source/connection、`sourcePythonClass`、驱动路径和依赖，运行 `package-bundle.sh` 验证。本仓库不保存 OM 扩展源码或打包脚本。
 * 不得使用破坏性 Git 操作。
 
+## 前端设计
+
+* 修改桌面界面、主题或交互前，先阅读 [`seatunnel-web-ui/DESIGN.md`](./seatunnel-web-ui/DESIGN.md) 和前端 [`AGENTS.md`](./seatunnel-web-ui/AGENTS.md)。
+
 ## 验收
 
 * 涉及用户可操作 Web 行为的新增或修改，在宣称完成前必须使用 Chrome dev/Playwright 实际完成受影响的 happy path 验收。
