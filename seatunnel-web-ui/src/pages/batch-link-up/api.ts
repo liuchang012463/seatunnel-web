@@ -63,8 +63,8 @@ export const seatunnelJobDefinitionApi = {
     return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`, options);
   },
 
-  selectSingleConfigDetail: (id: string): Promise<{ code: number; data: any; message?: string; msg?: string }> =>
-    HttpUtils.get(`${apiPrefix}/${encodeURIComponent(id)}/config-detail`),
+  selectSingleConfigDetail: (id: string, options?: RequestOptions): Promise<{ code: number; data: any; message?: string; msg?: string }> =>
+    HttpUtils.get(`${apiPrefix}/${encodeURIComponent(id)}/config-detail`, options),
 
   getUniqueId: (): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
     return HttpUtils.get(`${apiPrefix}/get-unique-id`);

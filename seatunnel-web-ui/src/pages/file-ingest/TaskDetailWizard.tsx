@@ -1,3 +1,4 @@
+import { returnToTrigger } from '@/pages/common/utils/returnFocus';
 import { FileOutlined } from '@ant-design/icons';
 import { history, useLocation, useParams } from '@umijs/max';
 import { Button, Form, Input } from 'antd';
@@ -193,7 +194,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
   const canGoNextFromClient = (isSourceManaged || sourceTestStatus === 'success')
     && targetTestStatus === 'success';
 
-  const goBack = () => history.push(config.listPath);
+  const goBack = () => returnToTrigger(config.listPath);
 
   const goBaseStep = () => setActiveStep('base');
 
@@ -324,7 +325,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
               type="button"
               onClick={goBaseStep}
               className={[
-                'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200',
+                'flex items-center gap-2 rounded-full px-3 py-1.5 text-base transition-all duration-200',
                 basePillClass,
               ].join(' ')}
             >
@@ -353,7 +354,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
               type="button"
               onClick={() => void goClientStep()}
               className={[
-                'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200',
+                'flex items-center gap-2 rounded-full px-3 py-1.5 text-base transition-all duration-200',
                 clientPillClass,
               ].join(' ')}
             >
@@ -442,7 +443,7 @@ const TaskDetailWizard: React.FC<TaskDetailWizardProps> = ({ config }) => {
                     </div>
                     {params.datapackCsvImport && (
                       <div>
-                        <div className="mb-3 text-sm font-medium">配置模式</div>
+                        <div className="mb-3 text-base font-medium">配置模式</div>
                         <div className="grid grid-cols-2 gap-3">
                           <ModeCard
                             value="GUIDE_SINGLE"

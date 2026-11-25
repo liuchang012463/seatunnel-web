@@ -1,6 +1,7 @@
 import { history, useLocation, useParams } from '@umijs/max';
-import { App, Empty, Spin } from 'antd';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import TaskConfigStatusPanel from '@/pages/common/components/TaskConfigStatusPanel';
+import useTaskConfig, { cachedOrSavedScene } from '@/pages/common/hooks/useTaskConfig';
 import { seatunnelJobDefinitionApi } from '../../api';
 import {
   defaultEnvConfig,
@@ -146,7 +147,6 @@ const buildPageParamsForEdit = (editData?: any) => {
 };
 
 const FileSyncWorkflowPage: React.FC = () => {
-  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
 
@@ -155,40 +155,24 @@ const FileSyncWorkflowPage: React.FC = () => {
   const [basicConfig, setBasicConfig] = useState<any>(defaultBasicConfig);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig>(defaultScheduleConfig);
   const [envConfig, setEnvConfig] = useState<EnvConfig>(defaultEnvConfig);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get('scene');
-    const cacheKey = `batch-link-up-detail-${id}`;
-
-    const applyCreate = (cache: string) => {
-      try {
-        const data = JSON.parse(cache);
-        setPageScene('create');
-        setParams(buildPageParamsForCreate(data, id));
-        setBasicConfig({
-          ...defaultBasicConfig,
-          jobName: data?.jobName || '',
-          jobDesc: data?.jobDesc || '',
-          clientId: data?.clientId ? String(data.clientId) : '',
-          mode: 'FILE_SYNC',
-          sourceType: data?.sourceType?.dbType || 'WEB_UPLOAD',
-          targetType: data?.targetType?.dbType || 'FTP',
-          sourceDataSourceId: data?.sourceDataSourceId || '',
-          targetDataSourceId: data?.targetDataSourceId || '',
-        });
-        setScheduleConfig(defaultScheduleConfig);
-        setEnvConfig({ ...defaultEnvConfig, jobMode: 'BATCH' });
-      } catch (error) {
-        message.error('读取配置缓存失败，请返回重新配置');
-        setParams(null);
-      }
-    };
-
-    const applyEdit = (data: any) => {
+  const initialize = useCallback((data: any, source: PageScene, taskId: string) => {
+    setPageScene(source);
+    if (source === 'create') {
+      setParams(buildPageParamsForCreate(data, taskId));
+      setBasicConfig({
+        ...defaultBasicConfig,
+        jobName: data?.jobName || '',
+        jobDesc: data?.jobDesc || '',
+        clientId: data?.clientId ? String(data.clientId) : '',
+        mode: 'FILE_SYNC',
+        sourceType: data?.sourceType?.dbType || 'WEB_UPLOAD',
+        targetType: data?.targetType?.dbType || 'FTP',
+        sourceDataSourceId: data?.sourceDataSourceId || '',
+        targetDataSourceId: data?.targetDataSourceId || '',
+      });
+      setScheduleConfig(defaultScheduleConfig);
+      setEnvConfig({ ...defaultEnvConfig, jobMode: 'BATCH' });
+    } else {
       const editParams = buildPageParamsForEdit(data);
       setParams(editParams);
       setBasicConfig({
@@ -202,54 +186,15 @@ const FileSyncWorkflowPage: React.FC = () => {
       });
       setScheduleConfig(buildInitialScheduleConfig(data?.schedule));
       setEnvConfig({ ...defaultEnvConfig, ...(data?.env || {}) });
-    };
-
-    const initCreate = () => {
-      const cache = sessionStorage.getItem(cacheKey);
-      if (!cache) {
-        setParams(null);
-        return;
-      }
-      applyCreate(cache);
-    };
-
-    const initEdit = async () => {
-      try {
-        setLoading(true);
-        setPageScene('edit');
-
-        const res = await seatunnelJobDefinitionApi.selectEditDetail(id);
-        if (res?.code !== 0 || !res?.data) {
-          message.error(res?.message || res?.msg || '获取编辑详情失败');
-          setParams(null);
-          return;
-        }
-        applyEdit(res.data);
-      } catch (error) {
-        message.error('获取编辑详情失败');
-        setParams(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (scene === 'create') {
-      initCreate();
-      return;
     }
-
-    if (scene === 'edit') {
-      initEdit();
-      return;
-    }
-
-    const cache = sessionStorage.getItem(cacheKey);
-    if (cache) {
-      initCreate();
-    } else {
-      initEdit();
-    }
-  }, [id, location.search]);
+  }, []);
+  const { status, retry } = useTaskConfig({
+    id,
+    scene: cachedOrSavedScene(new URLSearchParams(location.search).get('scene')),
+    draftKey: `batch-link-up-detail-${id}`,
+    readSaved: seatunnelJobDefinitionApi.selectEditDetail,
+    initialize,
+  });
 
   const goBack = () => {
     // The same page serves batch, file link-up and file transfer; return to the list it was opened
@@ -268,20 +213,8 @@ const FileSyncWorkflowPage: React.FC = () => {
     goBack();
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Spin />
-      </div>
-    );
-  }
-
-  if (!params) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Empty description="未找到配置数据，请从任务列表重新进入" />
-      </div>
-    );
+  if (status !== 'ready') {
+    return <TaskConfigStatusPanel status={status} onBack={goBack} onRetry={retry} />;
   }
 
   const actualPageScene = (params?.__pageScene || pageScene) as PageScene;

@@ -55,7 +55,7 @@ const ModeCard: React.FC<Props> = ({
             top: 12,
             borderRadius: 2,
             padding: '2px 6px',
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: 500,
             color: 'var(--st-color-accent, #00c4e5)',
             background: 'rgba(0, 196, 229, 0.12)',
@@ -92,7 +92,7 @@ const ModeCard: React.FC<Props> = ({
           <div
             style={{
               marginTop: 4,
-              fontSize: 13,
+              fontSize: 14,
               lineHeight: '20px',
               color: 'var(--st-color-text-secondary, #d5d5d5)',
             }}

@@ -24,14 +24,14 @@ const TableTransferPanel: React.FC<Props> = ({
 
     if (info?.direction === "left") {
       return (
-        <div className="px-3 py-2 text-sm text-slate-500">
+        <div className="px-3 py-2 text-base text-slate-500">
           共 {totalTables} 张表
         </div>
       );
     }
 
     return (
-      <div className="px-3 py-2 text-sm">
+      <div className="px-3 py-2 text-base">
         <span className="text-slate-500">已选 {selectedTables} 张表</span>
       </div>
     );
@@ -40,8 +40,8 @@ const TableTransferPanel: React.FC<Props> = ({
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium text-slate-800">选择同步表</div>
-        <div className="text-sm text-slate-400">
+        <div className="text-base font-medium text-slate-800">选择同步表</div>
+        <div className="text-base text-slate-400">
           {matchMode === "4" ? "整库模式下自动全选" : "支持手动筛选与勾选"}
         </div>
       </div>
@@ -64,11 +64,11 @@ const TableTransferPanel: React.FC<Props> = ({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-slate-700">
+                  <div className="truncate text-base font-medium text-slate-700">
                     {item.key}
                   </div>
                   {item.title ? (
-                    <div className="truncate text-sm text-slate-400">
+                    <div className="truncate text-base text-slate-400">
                       {item.title}
                     </div>
                   ) : null}

@@ -153,7 +153,7 @@ const DetailPage = () => {
               type="button"
               onClick={() => goStep("base")}
               className={[
-                "flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-sm transition-all duration-200",
+                "flex items-center gap-2 rounded-[4px] px-3 py-1.5 text-base transition-all duration-200",
                 basePillClass,
               ].join(" ")}
             >
@@ -182,7 +182,7 @@ const DetailPage = () => {
               type="button"
               onClick={() => goStep("client")}
               className={[
-                "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition-all duration-200",
+                "flex items-center gap-2 rounded-full px-3 py-1.5 text-base transition-all duration-200",
                 clientPillClass,
               ].join(" ")}
             >

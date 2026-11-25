@@ -12,6 +12,7 @@ export interface SeatunnelJobDefinition {
   jobDesc?: any;
   jobDefinitionInfo?: any;
   jobVersion?: any;
+  releaseState?: string | number;
   clientId?: any;
   clientType?: any;
   createTime?: any;
@@ -153,8 +154,9 @@ export const seatunnelJobDefinitionApi = {
 
   selectById: (
     id: any,
+    options?: RequestOptions,
   ): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {
-    return HttpUtils.get(`${apiPrefix}/${id}`);
+    return HttpUtils.get(`${apiPrefix}/${id}`, options);
   },
 
   /**
@@ -162,8 +164,9 @@ export const seatunnelJobDefinitionApi = {
   */
   selectEditDetail: (
     id: any,
+    options?: RequestOptions,
   ): Promise<{ code: number; data: any; message?: string; msg?: string }> => {
-    return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`);
+    return HttpUtils.get(`${apiPrefix}/${id}/edit-detail`, options);
   },
 
   getUniqueId: (): Promise<{ code: number; data: SeatunnelJobDefinition; message?: string }> => {

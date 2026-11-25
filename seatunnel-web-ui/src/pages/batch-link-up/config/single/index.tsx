@@ -1,6 +1,7 @@
 import { history, useLocation, useParams } from "@umijs/max";
-import { Button, Empty, Spin } from "antd";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import TaskConfigStatusPanel from "@/pages/common/components/TaskConfigStatusPanel";
+import useTaskConfig from "@/pages/common/hooks/useTaskConfig";
 import { seatunnelJobDefinitionApi } from "../../api";
 import Workflow from "../../workflow";
 import {
@@ -251,15 +252,19 @@ const buildPageParamsForEdit = (editData?: any) => {
   };
 };
 
-const ONLY_OFFLINE_JOB_EDITABLE_ERROR =
-  "only offline job definition can be edited";
-const EDIT_DETAIL_FALLBACK_MESSAGE = "获取编辑详情失败";
-const EDIT_ONLINE_BLOCKED_MESSAGE = "任务已上线，请先下线任务再编辑配置";
+const buildInitialEnvConfigForCreate = (rawData?: any): EnvConfig => {
+  return {
+    ...defaultEnvConfig,
+    ...(rawData?.env || rawData?.envConfig || {}),
+  };
+};
 
-const isOnlyOfflineJobEditableError = (rawMessage?: unknown) =>
-  String(rawMessage || "")
-    .toLowerCase()
-    .includes(ONLY_OFFLINE_JOB_EDITABLE_ERROR);
+const buildInitialEnvConfigForEdit = (editData?: any): EnvConfig => {
+  return {
+    ...defaultEnvConfig,
+    ...(editData?.env || {}),
+  };
+};
 
 export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {}) {
   const { id } = useParams<{ id: string }>();
@@ -282,114 +287,31 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
   const [envConfig, setEnvConfig] = useState<EnvConfig>(defaultEnvConfig);
   const [basicConfig, setBasicConfig] =
     useState<BasicConfig>(defaultBasicConfig);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [loadError, setLoadError] = useState<string>();
-
-  const buildInitialEnvConfigForCreate = (rawData?: any): EnvConfig => {
-    return {
-      ...defaultEnvConfig,
-      ...(rawData?.env || rawData?.envConfig || {}),
-    };
-  };
-
-  const buildInitialEnvConfigForEdit = (editData?: any): EnvConfig => {
-    return {
-      ...defaultEnvConfig,
-      ...(editData?.env || {}),
-    };
-  };
-
-  useEffect(() => {
-    if (!id) return;
-
-    const cacheKey = `batch-link-up-detail-${id}`;
-    let active = true;
-
-    const initCreate = () => {
-      setPageScene("create");
-      setLoading(false);
-      setLoadError(undefined);
-
-      const cache = sessionStorage.getItem(cacheKey);
-      if (!cache) {
-        setParams(null);
-        setLoadError("创建草稿已失效，请返回任务详情重新进入配置。");
-        return;
-      }
-
-      try {
-        const data = JSON.parse(cache);
-        const pageParams = buildPageParamsForCreate(data, id);
-
-        setParams(pageParams);
-        setSourceType(data?.sourceType || null);
-        setTargetType(data?.targetType || null);
-        setBasicConfig(buildInitialBasicConfigForCreate(data, modeOverride));
-        setScheduleConfig(buildInitialScheduleConfigForCreate(data, modeOverride));
-        setEnvConfig(buildInitialEnvConfigForCreate(data));
-      } catch {
-        setParams(null);
-        setLoadError("创建配置读取失败，请返回任务详情重新进入配置。");
-      }
-    };
-
-    const initSavedConfig = async () => {
-      try {
-        setLoading(true);
-        setLoadError(undefined);
-        setPageScene("edit");
-
-        const res = viewing
-          ? await seatunnelJobDefinitionApi.selectSingleConfigDetail(id)
-          : await seatunnelJobDefinitionApi.selectEditDetail(id);
-        if (!active) return;
-        if (res?.code !== 0 || !res?.data) {
-          const rawMessage = res?.message || res?.msg;
-          setLoadError(
-            isOnlyOfflineJobEditableError(rawMessage)
-              ? EDIT_ONLINE_BLOCKED_MESSAGE
-              : rawMessage || EDIT_DETAIL_FALLBACK_MESSAGE,
-          );
-          setParams(null);
-          return;
-        }
-
-        const data = res.data;
-        const pageParams = buildPageParamsForEdit(data);
-
-        setParams(pageParams);
-        setSourceType(data?.workflow?.sourceType || null);
-        setTargetType(data?.workflow?.targetType || null);
-        setBasicConfig(buildInitialBasicConfigForEdit(data, modeOverride));
-        setScheduleConfig(buildInitialScheduleConfigForEdit(data, modeOverride));
-        setEnvConfig(buildInitialEnvConfigForEdit(data));
-      } catch (error) {
-        if (!active) return;
-        const rawMessage =
-          (error as any)?.message ||
-          (error as any)?.response?.msg ||
-          (error as any)?.response?.message;
-        setLoadError(
-          isOnlyOfflineJobEditableError(rawMessage)
-            ? EDIT_ONLINE_BLOCKED_MESSAGE
-            : EDIT_DETAIL_FALLBACK_MESSAGE,
-        );
-        setParams(null);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    if (resolveConfigPageScene(scene) === "create") {
-      initCreate();
-      return;
+  const initialize = useCallback((data: any, source: ConfigPageScene, taskId: string) => {
+    setPageScene(source);
+    if (source === "create") {
+      setParams(buildPageParamsForCreate(data, taskId));
+      setSourceType(data?.sourceType || null);
+      setTargetType(data?.targetType || null);
+      setBasicConfig(buildInitialBasicConfigForCreate(data, modeOverride));
+      setScheduleConfig(buildInitialScheduleConfigForCreate(data, modeOverride));
+      setEnvConfig(buildInitialEnvConfigForCreate(data));
+    } else {
+      setParams(buildPageParamsForEdit(data));
+      setSourceType(data?.workflow?.sourceType || null);
+      setTargetType(data?.workflow?.targetType || null);
+      setBasicConfig(buildInitialBasicConfigForEdit(data, modeOverride));
+      setScheduleConfig(buildInitialScheduleConfigForEdit(data, modeOverride));
+      setEnvConfig(buildInitialEnvConfigForEdit(data));
     }
-
-    // Missing scene values are legacy edit links. Never let a stale create
-    // draft in sessionStorage replace the saved definition from the server.
-    void initSavedConfig();
-    return () => { active = false; };
-  }, [id, scene, viewing]);
+  }, [modeOverride]);
+  const { status, retry } = useTaskConfig({
+    id,
+    scene: viewing ? "view" : resolveConfigPageScene(scene),
+    draftKey: `batch-link-up-detail-${id}`,
+    readSaved: viewing ? seatunnelJobDefinitionApi.selectSingleConfigDetail : seatunnelJobDefinitionApi.selectEditDetail,
+    initialize,
+  });
 
   const goBack = () => {
     history.push(lakeTablePath || "/sync/batch-link-up");
@@ -405,21 +327,20 @@ export function SingleConfigPage({ modeOverride }: { modeOverride?: string } = {
     history.push("/sync/batch-link-up");
   };
 
-  if (loading) {
+  if (status !== "ready") {
+    const viewConfig = () => {
+      const query = new URLSearchParams(location.search);
+      query.set("scene", "view");
+      history.push({ pathname: location.pathname, search: `?${query}` });
+    };
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Spin />
-      </div>
-    );
-  }
-
-  if (!params) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Empty description={loadError || "任务配置加载失败，请返回列表重试。"}>
-          <Button type="primary" onClick={goBack}>{backLabel}</Button>
-        </Empty>
-      </div>
+      <TaskConfigStatusPanel
+        status={status}
+        onBack={goBack}
+        backLabel={backLabel}
+        onRetry={retry}
+        onView={viewing ? undefined : viewConfig}
+      />
     );
   }
 

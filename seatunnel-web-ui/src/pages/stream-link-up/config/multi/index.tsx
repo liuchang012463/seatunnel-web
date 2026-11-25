@@ -1,6 +1,8 @@
 import { history, useLocation, useParams } from "@umijs/max";
-import { Empty, message, Spin } from "antd";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import TaskConfigStatusPanel from "@/pages/common/components/TaskConfigStatusPanel";
+import useTaskConfig, { cachedOrSavedScene } from "@/pages/common/hooks/useTaskConfig";
+import type { ConfigPageScene } from "@/pages/common/utils/configPageScene";
 import { seatunnelJobDefinitionApi } from "../../api";
 import {
   BasicConfig,
@@ -251,99 +253,34 @@ export default function MultiConfigPage() {
   const [envConfig, setEnvConfig] = useState<EnvConfig>(defaultEnvConfig);
   const [basicConfig, setBasicConfig] =
     useState<BasicConfig>(defaultBasicConfig);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!id) return;
-
-    const searchParams = new URLSearchParams(location.search);
-    const scene = searchParams.get("scene");
-    const cacheKey = `stream-link-up-detail-${id}`;
-
-    const initCreate = () => {
-      const cache = sessionStorage.getItem(cacheKey);
-      if (!cache) {
-        setParams(null);
-        return;
-      }
-
-      try {
-        const data = JSON.parse(cache);
-        const pageParams = buildPageParamsForCreate(data);
-
-        setParams(pageParams);
-        setBasicConfig(buildInitialBasicConfigForCreate(data));
-        setScheduleConfig(buildInitialScheduleConfigForCreate(data));
-        setEnvConfig(buildInitialEnvConfigForCreate(data));
-      } catch (error) {
-        console.error("解析缓存失败:", error);
-        message.error("读取缓存配置失败");
-        setParams(null);
-      }
-    };
-
-    const initEdit = async () => {
-      try {
-        setLoading(true);
-
-        const res = await seatunnelJobDefinitionApi.selectEditDetail(id);
-        if (res?.code !== 0 || !res?.data) {
-          message.error(res?.message || res?.msg || "获取编辑详情失败");
-          setParams(null);
-          return;
-        }
-
-        const data = res.data;
-
-        setParams(buildPageParamsForEdit(data));
-        setBasicConfig(buildInitialBasicConfigForEdit(data));
-        setScheduleConfig(buildInitialScheduleConfigForEdit(data));
-        setEnvConfig(buildInitialEnvConfigForEdit(data));
-      } catch (error) {
-        console.error(error);
-        message.error("获取编辑详情失败");
-        setParams(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (scene === "edit") {
-      initEdit();
-      return;
-    }
-
-    if (scene === "create") {
-      initCreate();
-      return;
-    }
-
-    const cache = sessionStorage.getItem(cacheKey);
-    if (cache) {
-      initCreate();
+  const initialize = useCallback((data: any, source: ConfigPageScene) => {
+    if (source === "create") {
+      setParams(buildPageParamsForCreate(data));
+      setBasicConfig(buildInitialBasicConfigForCreate(data));
+      setScheduleConfig(buildInitialScheduleConfigForCreate(data));
+      setEnvConfig(buildInitialEnvConfigForCreate(data));
     } else {
-      initEdit();
+      setParams(buildPageParamsForEdit(data));
+      setBasicConfig(buildInitialBasicConfigForEdit(data));
+      setScheduleConfig(buildInitialScheduleConfigForEdit(data));
+      setEnvConfig(buildInitialEnvConfigForEdit(data));
     }
-  }, [id, location.search]);
+  }, []);
+  const { status, retry } = useTaskConfig({
+    id,
+    scene: cachedOrSavedScene(new URLSearchParams(location.search).get("scene")),
+    draftKey: `stream-link-up-detail-${id}`,
+    readSaved: seatunnelJobDefinitionApi.selectEditDetail,
+    readReleaseState: seatunnelJobDefinitionApi.selectById,
+    initialize,
+  });
 
   const goBack = () => {
     history.push("/sync/stream-link-up");
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Spin />
-      </div>
-    );
-  }
-
-  if (!params) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <Empty description="未找到配置数据，请检查任务是否存在" />
-      </div>
-    );
+  if (status !== "ready") {
+    return <TaskConfigStatusPanel status={status} onBack={goBack} onRetry={retry} />;
   }
 
   return (

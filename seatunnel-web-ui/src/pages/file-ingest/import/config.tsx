@@ -1,8 +1,10 @@
 import { ArrowLeftOutlined, InboxOutlined, UploadOutlined } from '@ant-design/icons';
 import { history, useParams } from '@umijs/max';
-import { Alert, App, Button, Form, Input, Popover, Select, Spin, Tooltip, Upload } from 'antd';
+import { Alert, App, Button, Form, Input, Popover, Select, Tooltip, Upload } from 'antd';
 import { Blocks, Check, CheckCircle2, Eye, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import TaskConfigStatusPanel from '@/pages/common/components/TaskConfigStatusPanel';
+import { readTaskConfig, type TaskConfigProblem } from '@/pages/common/utils/taskConfigLoad';
 import { generateDataSourceOptions } from '@/pages/batch-link-up/DataSourceSelect';
 import RightConfigPanel from '@/pages/batch-link-up/workflow/RightConfigPanel';
 import { getScheduleValidationMessage } from '@/pages/batch-link-up/workflow/components/ScheduleConfigContent/types';
@@ -60,6 +62,8 @@ const OfflineImportConfigPage: React.FC = () => {
   const [databaseLoading, setDatabaseLoading] = useState(false);
   const [schemaLoading, setSchemaLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadProblem, setLoadProblem] = useState<TaskConfigProblem>();
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -111,20 +115,24 @@ const OfflineImportConfigPage: React.FC = () => {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      setTask(undefined);
+      setLoadProblem(undefined);
       if (!id) {
+        setLoadProblem('missing');
         setLoading(false);
         return;
       }
       setLoading(true);
       try {
-        const response = await offlineImportTaskApi.get(id, { skipErrorHandler: true });
-        if (response?.code !== 0 || !response?.data) {
-          throw new Error(response?.message || response?.msg || '获取离线导入任务失败');
+        const result = await readTaskConfig(id, offlineImportTaskApi.get);
+        if (!active) return;
+        if ('problem' in result) {
+          setLoadProblem(result.problem);
+          return;
         }
-        const currentTask = response.data as OfflineImportTask;
+        const currentTask = result.data as OfflineImportTask;
         const currentIsDatapack = currentTask.importType === 'DATAPACK';
         const currentIsDmp = currentTask.importType === 'KINGBASE_DMP' || currentTask.importType === 'DAMENG_DMP';
-        if (!active) return;
         setTask(currentTask);
         setBasicConfig({
           jobName: currentTask.name,
@@ -192,7 +200,7 @@ const OfflineImportConfigPage: React.FC = () => {
     return () => { active = false; };
     // target option derives from the loaded task's supported database type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, form]);
+  }, [id, form, loadAttempt]);
 
   useEffect(() => {
     if (!needsTargetDatabase || !targetDataSourceId || !supportsDatabaseScope(targetDbType)) {
@@ -671,11 +679,14 @@ const OfflineImportConfigPage: React.FC = () => {
 
   const backToList = () => history.push('/sync/file-ingest?tab=offline-import');
 
-  if (loading) {
-    return <div className="flex min-h-[360px] items-center justify-center"><Spin /></div>;
-  }
-  if (!task) {
-    return <div className="p-8"><Alert type="error" showIcon message="无法读取离线导入任务" action={<Button onClick={backToList}>返回任务列表</Button>} /></div>;
+  if (loading || loadProblem || !task) {
+    return (
+      <TaskConfigStatusPanel
+        status={loading ? 'loading' : loadProblem || 'unavailable'}
+        onBack={backToList}
+        onRetry={() => setLoadAttempt((previous) => previous + 1)}
+      />
+    );
   }
 
   const sourceConfig = (
