@@ -1,5 +1,5 @@
-import { CopyOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, App, Button, Divider, Empty, Table, Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Divider, Table } from 'antd';
 import type { TablePaginationConfig } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -8,6 +8,9 @@ import { fileIngestTaskApi, fileTransferTaskApi } from './api';
 import type { FileTaskType } from './types';
 import type { TaskSortField, TaskSortOrder } from '@/pages/common/components/TaskSortControls';
 import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
+import CatalogText from '@/pages/data-source/components/CatalogText';
+import TaskListEmpty from '@/pages/batch-link-up/components/SyncTaskList/components/TaskListEmpty';
+import TaskNameCell from '@/pages/batch-link-up/components/SyncTaskList/components/TaskNameCell';
 import AdvancedSearchForm, {
   TaskFilterOption,
 } from '@/pages/batch-link-up/components/SyncTaskList/components/AdvancedSearchForm';
@@ -174,37 +177,17 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         }),
         dataIndex: 'jobName',
         width: TASK_TABLE_COLUMN_WIDTHS.name,
-        ellipsis: true,
+        fixed: 'left',
+        ellipsis: { showTitle: false },
         sorter: true,
         sortOrder: sort.field === 'name' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
         render: (_value: unknown, record: any) => (
-          <div className="sync-task-name-cell">
-            <div className="sync-task-name-cell__title" title={record?.jobName}>
-              {record?.jobName || '-'}
-            </div>
-            <div className="sync-task-name-cell__id">
-              <span>{record?.id || '-'}</span>
-              <Tooltip title="复制任务定义 ID">
-                <button
-                  type="button"
-                  className="sync-task-copy-btn"
-                  aria-label={`复制任务定义 ID ${record?.id ?? ""}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void copyId(record?.id);
-                  }}
-                >
-                  <CopyOutlined style={{ fontSize: 14 }} />
-                </button>
-              </Tooltip>
-            </div>
-          <div
-            className="sync-task-name-cell__engine-id"
-            title={record?.engineJobId ? String(record.engineJobId) : undefined}
-          >
-            引擎 Job ID：{record?.engineJobId || '-'}
-          </div>
-          </div>
+          <TaskNameCell
+            name={record.jobName || '-'}
+            id={record.id}
+            engineJobId={record.engineJobId || '-'}
+            onCopy={() => void copyId(record.id)}
+          />
         ),
       },
       {
@@ -214,6 +197,7 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         }),
         dataIndex: 'lastJobStatus',
         width: TASK_TABLE_COLUMN_WIDTHS.status,
+        fixed: 'left',
         render: (_value: unknown, record: any) => (
           <div className="sync-task-status-cell flex w-full justify-center">
             <TaskStatus status={record?.lastJobStatus} errorMessage={record?.lastErrorMessage} />
@@ -256,9 +240,9 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         width: TASK_TABLE_COLUMN_WIDTHS.createTime,
         sorter: true,
         sortOrder: sort.field === 'createTime' ? (sort.order === 'asc' ? 'ascend' : 'descend') : undefined,
-        ellipsis: true,
+        ellipsis: { showTitle: false },
         render: (value: string) => (
-          <span className="sync-task-time" title={value || undefined}>{value || '-'}</span>
+          <CatalogText className="sync-task-time" text={value || '-'} />
         ),
       },
       {
@@ -268,9 +252,9 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
         }),
         dataIndex: 'updateTime',
         width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
-        ellipsis: true,
+        ellipsis: { showTitle: false },
         render: (value: string) => (
-          <span className="sync-task-time" title={value || undefined}>{value || '-'}</span>
+          <CatalogText className="sync-task-time" text={value || '-'} />
         ),
       },
       {
@@ -342,24 +326,27 @@ const FileTaskList: React.FC<FileTaskListProps> = ({
             className="task-table"
             locale={{
               emptyText: (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={error ? '请重试加载任务列表' : emptyDescription} />
+                <TaskListEmpty
+                  filters={searchParams}
+                  description={emptyDescription}
+                  error={error}
+                  onClear={() => handleSearch({})}
+                />
               ),
             }}
           />
-          {pagination.total > 0 ? (
-            <div className="task-list-footer">
-              <div className="task-pagination">
-                <CustomPagination
-                  total={pagination.total}
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  onChange={(current, pageSize) => {
-                    setPagination((previous) => ({ ...previous, current, pageSize }));
-                  }}
-                />
-              </div>
+          <div className="task-list-footer">
+            <div className="task-pagination">
+              <CustomPagination
+                total={pagination.total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                onChange={(current, pageSize) => {
+                  setPagination((previous) => ({ ...previous, current, pageSize }));
+                }}
+              />
             </div>
-          ) : null}
+          </div>
         </div>
       </div>
     </div>

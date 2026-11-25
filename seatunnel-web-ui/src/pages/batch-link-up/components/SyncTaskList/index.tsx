@@ -1,6 +1,5 @@
-import { CopyOutlined } from "@ant-design/icons";
 import { history, useIntl } from "@umijs/max";
-import { Alert, Button, Divider, Empty, Modal, Table, Tooltip, message } from "antd";
+import { Alert, Button, Divider, Modal, Table, message } from "antd";
 import { TableRowSelection } from "antd/es/table/interface";
 import moment from "moment";
 import { useEffect, useRef, useState } from "react";
@@ -14,8 +13,11 @@ import useTaskListAutoRefresh, {
 } from "@/pages/common/hooks/useTaskListAutoRefresh";
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
+import CatalogText from "@/pages/data-source/components/CatalogText";
 import { batchJobExecutorApi } from "../../type";
 import ActionColumn from "./components/ActionColumn";
+import TaskListEmpty from "./components/TaskListEmpty";
+import TaskNameCell from "./components/TaskNameCell";
 import AdvancedSearchForm from "./components/AdvancedSearchForm";
 import BottomActionBar from "./components/BottomActionBar";
 import DataSourceSyncPlan from "./components/DataSourceSyncPlan";
@@ -276,37 +278,17 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "jobName",
       width: TASK_TABLE_COLUMN_WIDTHS.name,
-      ellipsis: true,
+      fixed: "left",
+      ellipsis: { showTitle: false },
       sorter: true,
       sortOrder: sort.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content: any, record: any) => (
-        <div className="sync-task-name-cell">
-          <div className="sync-task-name-cell__title" title={record?.jobName}>
-            {record?.jobName}
-          </div>
-          <div className="sync-task-name-cell__id">
-            <span>{record?.id}</span>{" "}
-            <Tooltip title="复制任务定义ID">
-              <button
-                type="button"
-                className="sync-task-copy-btn"
-                aria-label={`复制任务定义 ID ${record?.id ?? ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyToClipboard(record?.id);
-                }}
-              >
-                <CopyOutlined style={{ fontSize: 14 }} />
-              </button>
-            </Tooltip>
-          </div>
-          <div
-            className="sync-task-name-cell__engine-id"
-            title={record?.engineJobId ? String(record.engineJobId) : undefined}
-          >
-            引擎 Job ID：{record?.engineJobId || "-"}
-          </div>
-        </div>
+        <TaskNameCell
+          name={record.jobName || "-"}
+          id={record.id}
+          engineJobId={record.engineJobId || "-"}
+          onCopy={() => copyToClipboard(record.id)}
+        />
       ),
     },
     {
@@ -316,6 +298,7 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "taskParams",
       width: TASK_TABLE_COLUMN_WIDTHS.status,
+      fixed: "left",
       render: (_content: any, record: any) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -332,9 +315,6 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "",
       width: TASK_TABLE_COLUMN_WIDTHS.plan,
-      // Narrow viewports keep name/status/execution/timestamps/action visible; the fixed action
-      // column otherwise covers the time columns at 1366px.
-      responsive: ["xxl"],
       render: (_content: any, record: any) => (
         <div className="sync-task-plan-cell">
           <DataSourceSyncPlan record={record} />
@@ -357,7 +337,6 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "taskName",
       width: TASK_TABLE_COLUMN_WIDTHS.schedule,
-      responsive: ["xxl"],
       render: (_content: any, record: any) => <ScheduleInfo record={record} />,
     },
     {
@@ -369,11 +348,9 @@ const App: React.FC<Props> = ({
       width: TASK_TABLE_COLUMN_WIDTHS.createTime,
       sorter: true,
       sortOrder: sort.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
-      ellipsis: true,
+      ellipsis: { showTitle: false },
       render: (createTime: string) => (
-        <span className="sync-task-time" title={createTime || undefined}>
-          {createTime || "-"}
-        </span>
+        <CatalogText className="sync-task-time" text={createTime || "-"} />
       ),
     },
     {
@@ -383,11 +360,9 @@ const App: React.FC<Props> = ({
       }),
       dataIndex: "updateTime",
       width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
-      ellipsis: true,
+      ellipsis: { showTitle: false },
       render: (updateTime: string) => (
-        <span className="sync-task-time" title={updateTime || undefined}>
-          {updateTime || "-"}
-        </span>
+        <CatalogText className="sync-task-time" text={updateTime || "-"} />
       ),
     },
     {
@@ -409,6 +384,7 @@ const App: React.FC<Props> = ({
   };
 
   const rowSelection: TableRowSelection<any> = {
+    fixed: true,
     selectedRowKeys,
     onChange: onSelectChange,
     getCheckboxProps: (record) => ({
@@ -903,9 +879,11 @@ const App: React.FC<Props> = ({
               className="task-table"
               locale={{
                 emptyText: (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={listError ? "请重试加载任务列表" : emptyDescription}
+                  <TaskListEmpty
+                    filters={searchParams}
+                    description={emptyDescription}
+                    error={listError}
+                    onClear={() => handleSearch({})}
                   />
                 ),
               }}
@@ -931,16 +909,14 @@ const App: React.FC<Props> = ({
                 deleteDisabled={batchActionState.deleteDisabled}
                 deleteTooltip={batchActionState.deleteTooltip}
               />
-              {pagination.total > 0 ? (
-                <div className="task-pagination">
-                  <CustomPagination
-                    total={pagination.total}
-                    current={pagination.current}
-                    pageSize={pagination.pageSize}
-                    onChange={handlePaginationChange}
-                  />
-                </div>
-              ) : null}
+              <div className="task-pagination">
+                <CustomPagination
+                  total={pagination.total}
+                  current={pagination.current}
+                  pageSize={pagination.pageSize}
+                  onChange={handlePaginationChange}
+                />
+              </div>
             </div>
           </div>
         </div>

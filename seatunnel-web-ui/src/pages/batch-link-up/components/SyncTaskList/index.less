@@ -129,10 +129,10 @@
       min-height: 0;
     }
 
-    .task-pagination {
+    .task-list-footer .task-pagination {
       flex: 0 0 auto;
-      margin-top: auto !important;
-      padding: 12px 16px;
+      margin: 0 0 0 auto !important;
+      padding: 0;
     }
   }
 
@@ -173,13 +173,13 @@
     }
 
 
-    .ant-table-tbody > tr:hover > td {
+    .ant-table-tbody > tr:not(.ant-table-row-selected):hover > td {
       background: var(--st-color-hover) !important;
     }
 
-    .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
-    .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left {
-      background: var(--st-color-hover) !important;
+    // 全局悬停规则优先级较高，已勾选行的固定列和中间列应继续保持选中色。
+    .ant-table-tbody > tr.ant-table-row.ant-table-row-selected:hover > td {
+      background: var(--st-color-selected) !important;
     }
 
     .ant-table-tbody > tr:last-child > td {
@@ -207,7 +207,7 @@
 
     th.ant-table-cell-fix-right,
     th.ant-table-cell-fix-left {
-      background: #2187a8 !important;
+      background: var(--st-color-header) !important;
       border-left: 1px solid var(--st-color-divider-subtle);
     }
 
@@ -250,6 +250,15 @@
     white-space: nowrap;
   }
 
+  button.sync-task-name-cell__title {
+    padding: 0;
+    color: var(--st-color-accent);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+
   .sync-task-name-cell__id {
     display: flex;
     align-items: center;
@@ -278,6 +287,7 @@
 
   .sync-task-copy-btn {
     display: inline-flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     margin-left: 2px;
@@ -331,6 +341,12 @@
     gap: 4px;
     max-width: 100%;
     cursor: default;
+  }
+
+  .sync-plan-compact:focus-visible,
+  .offline-import-sync-plan:focus-visible {
+    outline: 2px solid var(--st-color-focus);
+    outline-offset: 2px;
   }
 
   .sync-plan-compact__badge {
@@ -467,7 +483,7 @@
   }
 
   .sync-task-time {
-    display: inline-block;
+    display: block;
     color: var(--st-color-text-secondary);
     font-size: 14px;
     line-height: 20px;

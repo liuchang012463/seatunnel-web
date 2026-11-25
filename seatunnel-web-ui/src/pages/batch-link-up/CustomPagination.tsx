@@ -1,5 +1,4 @@
-import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import { Pagination, PaginationProps } from "antd";
+import { Pagination } from "antd";
 import React from "react";
 
 interface CustomPaginationProps {
@@ -15,21 +14,6 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
   pageSize,
   onChange,
 }) => {
-  const itemRender: PaginationProps["itemRender"] = (
-    _page,
-    type,
-    originalElement
-  ) => {
-    if (type === "prev") {
-      return <LeftOutlined />;
-    }
-    if (type === "next") {
-      return <RightOutlined />;
-    }
-
-    return originalElement;
-  };
-
   return (
     <div className="custom-pagination flex items-center gap-4">
       <span className="custom-pagination__total">共 {total} 条</span>
@@ -39,9 +23,9 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
         total={total}
         current={current}
         pageSize={pageSize}
+        disabled={total === 0}
         showSizeChanger
         pageSizeOptions={[10, 20, 50]}
-        itemRender={itemRender}
         onChange={onChange}
       />
     </div>

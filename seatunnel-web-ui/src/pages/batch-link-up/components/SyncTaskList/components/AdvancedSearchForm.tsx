@@ -8,7 +8,6 @@ import {
 } from "@ant-design/icons";
 import { useIntl } from "@umijs/max";
 import { Button, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
-import moment from "moment";
 import { useEffect, useMemo, useState } from "react";
 import DatabaseIcons from "../../../../data-source/icon/DatabaseIcons";
 
@@ -32,6 +31,17 @@ interface AdvancedSearchFormProps {
 
 const { RangePicker } = DatePicker;
 
+const emptyFilters = {
+  jobName: undefined,
+  createTime: [],
+  id: undefined,
+  status: undefined,
+  sourceType: undefined,
+  sinkType: undefined,
+  sourceTable: undefined,
+  sinkTable: undefined,
+};
+
 const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   onSearch,
   onReset,
@@ -48,17 +58,10 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   const [form] = Form.useForm();
   const [expand, setExpand] = useState(false);
 
-  const defaultTimeRange = useMemo<moment.Moment[]>(() => [], []);
   const text = (messageId: string, defaultMessage: string, chineseMessage: string) =>
     forceChineseLabels ? chineseMessage : intl.formatMessage({ id: messageId, defaultMessage });
 
-  const mergedInitialValues = useMemo(
-    () => ({
-      createTime: defaultTimeRange,
-      ...initialValues,
-    }),
-    [defaultTimeRange, initialValues],
-  );
+  const mergedInitialValues = useMemo(() => ({ ...emptyFilters, ...initialValues }), [initialValues]);
 
   useEffect(() => {
     form.setFieldsValue(mergedInitialValues);
@@ -84,18 +87,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
   };
 
   const handleReset = () => {
-    const resetValues = {
-      createTime: defaultTimeRange,
-      jobName: undefined,
-      id: undefined,
-      status: undefined,
-      sourceType: undefined,
-      sinkType: undefined,
-      sourceTable: undefined,
-      sinkTable: undefined,
-    };
-
-    form.setFieldsValue(resetValues);
+    form.setFieldsValue(emptyFilters);
     onReset();
   };
 
@@ -200,7 +192,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
         initialValues={mergedInitialValues}
       >
         <Row gutter={[16, 14]} align="bottom">
-          <Col xs={24} md={12} xl={6}>
+          <Col flex="1 1 190px">
             <Form.Item
               {...commonFormItemProps}
               name="jobName"
@@ -219,7 +211,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={6}>
+          <Col flex="1.25 1 248px">
             <Form.Item
               {...commonFormItemProps}
               name="createTime"
@@ -238,7 +230,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={4}>
+          <Col flex="1 1 148px">
             <Form.Item
               {...commonFormItemProps}
               name="status"
@@ -258,7 +250,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12} xl={8}>
+          <Col flex="1 0 auto">
             <div className="task-search-actions">
               <Space size={8}>
                 <Button
@@ -278,7 +270,7 @@ const AdvancedSearchForm: React.FC<AdvancedSearchFormProps> = ({
 
                 {!hideAdvancedFilters && <button
                   type="button"
-                  className="task-search-expand inline-flex h-8 items-center gap-1 px-2 text-sm font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
+                  className="task-search-expand inline-flex h-8 items-center gap-1 whitespace-nowrap px-2 text-base font-medium text-[color:var(--st-color-accent)] transition hover:bg-[rgba(63,198,255,0.08)]"
                   aria-expanded={expand}
                   aria-controls="task-advanced-search-filters"
                   onClick={() => setExpand((prev) => !prev)}

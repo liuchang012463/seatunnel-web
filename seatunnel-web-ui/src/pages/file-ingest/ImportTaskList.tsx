@@ -1,7 +1,6 @@
 import {
   CloudDownloadOutlined,
   CloudUploadOutlined,
-  CopyOutlined,
   DeleteOutlined,
   DownOutlined,
   DoubleRightOutlined,
@@ -14,10 +13,14 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { history, useIntl } from '@umijs/max';
-import { Alert, App, Button, Divider, Dropdown, Empty, Popconfirm, Space, Table, Tooltip } from 'antd';
+import { Alert, App, Button, Divider, Dropdown, Popconfirm, Space, Table } from 'antd';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TASK_TABLE_COLUMN_WIDTHS } from '@/pages/common/components/taskTableLayout';
+import CatalogText from '@/pages/data-source/components/CatalogText';
+import TaskListEmpty from '@/pages/batch-link-up/components/SyncTaskList/components/TaskListEmpty';
+import TaskNameCell from '@/pages/batch-link-up/components/SyncTaskList/components/TaskNameCell';
+import TaskPlanTooltip from '@/pages/batch-link-up/components/SyncTaskList/components/TaskPlanTooltip';
 import AdvancedSearchForm from '@/pages/batch-link-up/components/SyncTaskList/components/AdvancedSearchForm';
 import ActionColumn from '@/pages/batch-link-up/components/SyncTaskList/components/ActionColumn';
 import DataSourceSyncPlan from '@/pages/batch-link-up/components/SyncTaskList/components/DataSourceSyncPlan';
@@ -60,11 +63,11 @@ const OFFLINE_STATUS_FILTERS: Record<string, string[]> = {
 };
 
 // Keep import task actions aligned with the shared task-list action buttons.
-const offlineActionBaseClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-sm font-medium transition-all duration-150';
+const offlineActionBaseClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-base font-medium transition-all duration-150';
 const offlinePrimaryActionClass = `${offlineActionBaseClass} sync-action-btn is-primary`;
 const offlineSecondaryActionClass = `${offlineActionBaseClass} sync-action-btn is-secondary`;
 const offlineDisabledActionClass = `${offlineActionBaseClass} sync-action-btn is-disabled`;
-const offlineMoreActionClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary';
+const offlineMoreActionClass = 'inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-base font-medium transition-all duration-150 sync-action-btn is-secondary';
 
 const parsePage = (response: any) => {
   if (response?.code !== undefined && response.code !== 0) {
@@ -339,38 +342,28 @@ const ImportTaskList: React.FC<{
       title: '任务名称/ID',
       dataIndex: 'jobName',
       width: TASK_TABLE_COLUMN_WIDTHS.name,
-      ellipsis: true,
+      fixed: 'left' as const,
+      ellipsis: { showTitle: false },
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <div className="sync-task-name-cell">
-          <a className="sync-task-name-cell__title" onClick={() => openOfflineImportHistory(record.id)}>
-            {record.name || '-'}
-          </a>
-          <div className="sync-task-name-cell__id"><span>{record.id}</span></div>
-        </div>
+        <TaskNameCell name={record.name || '-'} id={record.id} onOpen={() => openOfflineImportHistory(record.id)} />
       ) : (
-        <div className="sync-task-name-cell">
-          <div className="sync-task-name-cell__title" title={record?.jobName}>{record?.jobName || '-'}</div>
-          <div className="sync-task-name-cell__id">
-            <span>{record?.id || '-'}</span>
-            <Tooltip title="复制任务定义 ID">
-              <button type="button" className="sync-task-copy-btn" aria-label={`复制任务定义 ID ${record?.id ?? ''}`} onClick={(event) => {
-                event.stopPropagation();
-                navigator.clipboard.writeText(String(record?.id ?? '')).then(() => message.success('任务定义 ID 已复制')).catch(() => message.error('复制失败，请手动复制'));
-              }}>
-                <CopyOutlined style={{ fontSize: 14 }} />
-              </button>
-            </Tooltip>
-          </div>
-          <div className="sync-task-name-cell__engine-id" title={record?.engineJobId ? String(record.engineJobId) : undefined}>
-            引擎 Job ID：{record?.engineJobId || '-'}
-          </div>
-        </div>
+        <TaskNameCell
+          name={record.jobName || '-'}
+          id={record.id}
+          engineJobId={record.engineJobId || '-'}
+          onCopy={() => {
+            navigator.clipboard.writeText(String(record.id ?? ''))
+              .then(() => message.success('任务定义 ID 已复制'))
+              .catch(() => message.error('复制失败，请手动复制'));
+          }}
+        />
       ),
     },
     {
       title: '健康状态',
       dataIndex: 'lastJobStatus',
       width: TASK_TABLE_COLUMN_WIDTHS.status,
+      fixed: 'left' as const,
       render: (_: unknown, record: UnifiedTask) => (
         <div className="sync-task-status-cell flex w-full justify-center">
           <TaskStatus
@@ -390,25 +383,26 @@ const ImportTaskList: React.FC<{
       key: 'syncPlan',
       width: TASK_TABLE_COLUMN_WIDTHS.plan,
       render: (_: unknown, record: UnifiedTask) => record.taskKind === 'OFFLINE_IMPORT' ? (
-        <Tooltip title={`来源：${record.fileName || '湖文件'}；目标：${record.targetDatasourceName || '-'}${record.targetSchema ? ` / ${record.targetSchema}` : ''}`}>
-          <div className="offline-import-sync-plan">
-            <div className="offline-import-sync-plan__type">
-              <span className="sync-plan-compact__badge">
-                {String(record.importType).endsWith('_SQL') ? 'SQL' : 'DMP'}
-              </span>
-              <span>{String(record.importType).startsWith('KINGBASE') ? '人大金仓' : '达梦'}</span>
-            </div>
-            <div className="offline-import-sync-plan__flow">
-              <FileOutlined />
-              <span className="offline-import-sync-plan__source">湖文件</span>
-              <DoubleRightOutlined className="sync-plan-compact__arrow" />
-              <DatabaseIcons dbType={offlineImportTargetDbType(record.importType)} width="16" height="16" />
-              <span className="offline-import-sync-plan__target">
-                {record.targetDatasourceName || '-'}{record.targetSchema ? ` / ${record.targetSchema}` : ''}
-              </span>
-            </div>
+        <TaskPlanTooltip
+          className="offline-import-sync-plan"
+          title={`来源：${record.fileName || '湖文件'}；目标：${record.targetDatasourceName || '-'}${record.targetSchema ? ` / ${record.targetSchema}` : ''}`}
+        >
+          <div className="offline-import-sync-plan__type">
+            <span className="sync-plan-compact__badge">
+              {String(record.importType).endsWith('_SQL') ? 'SQL' : 'DMP'}
+            </span>
+            <span>{String(record.importType).startsWith('KINGBASE') ? '人大金仓' : '达梦'}</span>
           </div>
-        </Tooltip>
+          <div className="offline-import-sync-plan__flow">
+            <FileOutlined />
+            <span className="offline-import-sync-plan__source">湖文件</span>
+            <DoubleRightOutlined className="sync-plan-compact__arrow" />
+            <DatabaseIcons dbType={offlineImportTargetDbType(record.importType)} width="16" height="16" />
+            <span className="offline-import-sync-plan__target" data-plan-label>
+              {record.targetDatasourceName || '-'}{record.targetSchema ? ` / ${record.targetSchema}` : ''}
+            </span>
+          </div>
+        </TaskPlanTooltip>
       ) : <DataSourceSyncPlan record={record} />,
     },
     {
@@ -442,15 +436,15 @@ const ImportTaskList: React.FC<{
       title: '创建时间',
       dataIndex: 'createTime',
       width: TASK_TABLE_COLUMN_WIDTHS.createTime,
-      ellipsis: true,
-      render: (value: string) => <span className="sync-task-time" title={value || undefined}>{formatTime(value)}</span>,
+      ellipsis: { showTitle: false },
+      render: (value: string) => <CatalogText className="sync-task-time" text={formatTime(value)} />,
     },
     {
       title: '最近更新时间',
       dataIndex: 'updateTime',
       width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
-      ellipsis: true,
-      render: (value: string) => <span className="sync-task-time" title={value || undefined}>{formatTime(value)}</span>,
+      ellipsis: { showTitle: false },
+      render: (value: string) => <CatalogText className="sync-task-time" text={formatTime(value)} />,
     },
     {
       title: '操作',
@@ -619,7 +613,16 @@ const ImportTaskList: React.FC<{
             tableLayout="fixed"
             scroll={{ x: '100%' }}
             className="task-table"
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError ? '请重试加载任务列表' : taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'} /> }}
+            locale={{
+              emptyText: (
+                <TaskListEmpty
+                  filters={filters}
+                  description={taskKind === 'OFFLINE_IMPORT' ? '暂无 DMP/SQL 导入任务' : '暂无文件导入任务'}
+                  error={loadError}
+                  onClear={reset}
+                />
+              ),
+            }}
           />
           <div className="task-list-footer">
             <div className="task-pagination">

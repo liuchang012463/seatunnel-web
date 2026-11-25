@@ -255,7 +255,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
   if (!points.length) {
     return (
       <div className="group relative min-h-[54px] w-[350px]">
-        <span className="text-sm text-[#D5D5D5]">
+        <span className="text-base text-[#D5D5D5]">
           {record?.latestMetrics?.metricsAvailable === false ? "当前指标暂不可用" : "暂无负载数据"}
         </span>
         {renderDashboardIcon()}
@@ -267,8 +267,8 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
     <div className="group relative w-[350px]">
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-bold text-slate-700">条数</div>
-          <div className="truncate text-sm text-[#D5D5D5]">
+          <div className="text-base font-bold text-slate-700">条数</div>
+          <div className="truncate text-base text-[#D5D5D5]">
             {!hasCurrentMetrics ? (
               "当前指标暂不可用"
             ) : latestWriteRows !== undefined ? (
@@ -283,7 +283,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
         </div>
 
         <div className="min-w-0 text-right">
-          <div className="text-sm font-bold text-slate-700">速度</div>
+          <div className="text-base font-bold text-slate-700">速度</div>
           <Tooltip
             title={
               hasCurrentMetrics
@@ -291,7 +291,7 @@ const RealtimeMetricsTrend: React.FC<RealtimeMetricsTrendProps> = ({
                 : undefined
             }
           >
-            <div className="truncate text-sm text-[#D5D5D5]">
+            <div className="truncate text-base text-[#D5D5D5]">
               {!hasCurrentMetrics ? (
                 "当前指标暂不可用"
               ) : (

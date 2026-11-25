@@ -26,7 +26,7 @@ interface ActionColumnProps {
 }
 
 const actionBaseClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-sm font-medium transition-all duration-150";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1.5 border px-2.5 text-base font-medium transition-all duration-150";
 
 /* 动作按钮配色走 SyncTaskList/index.less 的令牌类，深浅主题自适应 */
 const primaryActionClass = `${actionBaseClass} sync-action-btn is-primary`;
@@ -38,7 +38,7 @@ const secondaryActionClass = `${actionBaseClass} sync-action-btn is-secondary`;
 const disabledActionClass = `${actionBaseClass} sync-action-btn is-disabled`;
 
 const moreActionClass =
-  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-sm font-medium transition-all duration-150 sync-action-btn is-secondary";
+  "inline-flex h-8 min-w-[64px] items-center justify-center gap-1 border px-2 text-base font-medium transition-all duration-150 sync-action-btn is-secondary";
 
 const isReleaseOnline = (releaseState?: string | number) => {
   return releaseState === "ONLINE" || releaseState === 1;
@@ -225,7 +225,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
     });
   };
 
-  const handleEdit = async () => {
+  const handleEdit = () => {
     if (!canEdit) {
       if (isOnline) {
         message.warning("任务已上线，请先下线后再编辑");
@@ -243,13 +243,8 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
       return;
     }
 
-    const data = await seatunnelJobDefinitionApi.selectEditDetail(record.id);
-
-    if (data?.code === 0) {
-      goDetail(record.id, record);
-    } else {
-      message.error(data?.msg || data?.message || "获取任务详情失败");
-    }
+    // 配置页负责读取并呈现权限、状态变化或可重试的加载错误。
+    goDetail(record.id, record);
   };
 
   const handleMenuClick = (info: any) => {

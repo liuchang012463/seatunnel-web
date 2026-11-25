@@ -3,11 +3,13 @@ import {
   DEFAULT_TASK_TARGET_DATASOURCE_TYPE,
 } from '@/pages/data-source/dataSourceRegistry';
 import { PlusOutlined } from '@ant-design/icons';
-import { Alert, Button, Divider, Pagination, message, Modal } from 'antd';
+import { Alert, Button, Divider, message, Modal } from 'antd';
 import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history } from 'umi';
 
+import CustomPagination from '../batch-link-up/CustomPagination';
+import TaskListEmpty from '../batch-link-up/components/SyncTaskList/components/TaskListEmpty';
 import RunLogDrawer from '../batch-link-up/components/SyncTaskList/components/RunLogDrawer';
 import {
   seatunnelCheckpointApi,
@@ -1078,7 +1080,20 @@ const RealtimeSyncPage: React.FC = () => {
             onDelete={handleDelete}
             onLog={handleLog}
             onCheckpoint={handleCheckpoint}
-            onCreate={() => void handleCreate()}
+            emptyText={(
+              <TaskListEmpty
+                filters={searchValues}
+                error={listError}
+                onClear={() => handleSearch({})}
+                description={(
+                  <div className="stream-link-empty-state">
+                    <div>暂无实时数据引接任务</div>
+                    <span>创建后，实时任务会在这里显示运行状态和最近一次执行结果。</span>
+                    <Button type="link" onClick={() => void handleCreate()}>创建实时任务</Button>
+                  </div>
+                )}
+              />
+            )}
           />
 
           <div className="task-list-footer">
@@ -1108,20 +1123,14 @@ const RealtimeSyncPage: React.FC = () => {
               deleteDisabled={batchActionState.deleteDisabled}
               deleteTooltip={batchActionState.deleteTooltip}
             />
-            {pagination.total > 0 ? (
-              <div className="stream-link-pagination task-pagination">
-                <Pagination
-                  size="small"
-                  total={pagination.total}
-                  current={pagination.current}
-                  pageSize={pagination.pageSize}
-                  showSizeChanger
-                  pageSizeOptions={[10, 20, 50]}
-                  onChange={handlePaginationChange}
-                  onShowSizeChange={handlePaginationChange}
-                />
-              </div>
-            ) : null}
+            <div className="stream-link-pagination task-pagination">
+              <CustomPagination
+                total={pagination.total}
+                current={pagination.current}
+                pageSize={pagination.pageSize}
+                onChange={handlePaginationChange}
+              />
+            </div>
           </div>
         </div>
       </div>

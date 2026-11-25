@@ -1,9 +1,10 @@
-import { Button, Empty, message, Table, Tooltip } from "antd";
+import { message, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useIntl } from "@umijs/max";
 import React from "react";
 
-import { CopyOutlined } from "@ant-design/icons";
+import CatalogText from "@/pages/data-source/components/CatalogText";
+import TaskNameCell from "@/pages/batch-link-up/components/SyncTaskList/components/TaskNameCell";
 
 import type { TaskSortField, TaskSortOrder } from "@/pages/common/components/TaskSortControls";
 import { TASK_TABLE_COLUMN_WIDTHS } from "@/pages/common/components/taskTableLayout";
@@ -40,7 +41,7 @@ interface RealtimeTaskTableProps {
   onDelete?: (record: StreamingJobDefinitionVO) => Promise<void> | void;
   onLog?: (record: StreamingJobDefinitionVO) => void;
   onCheckpoint?: (record: StreamingJobDefinitionVO) => void;
-  onCreate?: () => void;
+  emptyText: React.ReactNode;
 }
 
 const formatDateTime = (value?: string) => {
@@ -66,9 +67,10 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
   onDelete,
   onLog,
   onCheckpoint,
-  onCreate,
+  emptyText,
   sort,
-  onSortChange,}) => {
+  onSortChange,
+}) => {
   const intl = useIntl();
   const copyToClipboard = async (text: string | number) => {
     const value = String(text);
@@ -103,38 +105,17 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "jobName",
       width: TASK_TABLE_COLUMN_WIDTHS.name,
-      ellipsis: true,
+      fixed: "left",
+      ellipsis: { showTitle: false },
       sorter: true,
       sortOrder: sort?.field === "name" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       render: (_content, record) => (
-        <div className="sync-task-name-cell">
-          <div className="sync-task-name-cell__title" title={record.jobName || String(record.id)}>
-            {record.jobName || "未命名实时任务"}
-          </div>
-          <div className="sync-task-name-cell__id">
-            <span>{record.id}</span>
-
-            <Tooltip title="复制任务定义 ID">
-              <button
-                type="button"
-                className="sync-task-copy-btn"
-                aria-label="复制任务定义 ID"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyToClipboard(record.id);
-                }}
-              >
-                <CopyOutlined className="text-[14px]" />
-              </button>
-            </Tooltip>
-          </div>
-          <div
-            className="sync-task-name-cell__engine-id"
-            title={record.engineJobId ? String(record.engineJobId) : undefined}
-          >
-            引擎 Job ID：{record.engineJobId || "-"}
-          </div>
-        </div>
+        <TaskNameCell
+          name={record.jobName || "未命名实时任务"}
+          id={record.id}
+          engineJobId={record.engineJobId || "-"}
+          onCopy={() => void copyToClipboard(record.id)}
+        />
       ),
     },
     {
@@ -145,6 +126,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "taskParams",
       width: TASK_TABLE_COLUMN_WIDTHS.status,
+      fixed: "left",
       render: (_content, record) => (
         <div className="stream-link-status-cell">
           <TaskStatus
@@ -204,9 +186,9 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       sorter: true,
       sortOrder: sort?.field === "createTime" ? (sort.order === "asc" ? "ascend" : "descend") : null,
       width: TASK_TABLE_COLUMN_WIDTHS.createTime,
-      ellipsis: true,
+      ellipsis: { showTitle: false },
       render: (value: string | undefined) => (
-        <span className="sync-task-time">{formatDateTime(value)}</span>
+        <CatalogText className="sync-task-time" text={formatDateTime(value)} />
       ),
     },
     {
@@ -217,11 +199,9 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       }),
       dataIndex: "updateTime",
       width: TASK_TABLE_COLUMN_WIDTHS.updateTime,
-      ellipsis: true,
+      ellipsis: { showTitle: false },
       render: (value: string | undefined) => (
-        <span className="sync-task-time" title={value || undefined}>
-          {formatDateTime(value)}
-        </span>
+        <CatalogText className="sync-task-time" text={formatDateTime(value)} />
       ),
     },
     {
@@ -269,6 +249,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       pagination={false}
       tableLayout="fixed"
       rowSelection={{
+        fixed: true,
         selectedRowKeys,
         onChange: onSelectedRowKeysChange,
         columnWidth: TASK_TABLE_COLUMN_WIDTHS.selection,
@@ -282,24 +263,7 @@ const RealtimeTaskTable: React.FC<RealtimeTaskTableProps> = ({
       size="middle"
       scroll={{ x: "100%" }}
       className="task-table"
-      locale={{
-        emptyText: (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <div className="stream-link-empty-state">
-                <div>暂无实时数据引接任务</div>
-                <span>创建后，实时任务会在这里显示运行状态和最近一次执行结果。</span>
-                {onCreate ? (
-                  <Button type="link" onClick={onCreate}>
-                    创建实时任务
-                  </Button>
-                ) : null}
-              </div>
-            }
-          />
-        ),
-      }}
+      locale={{ emptyText }}
     />
   );
 };
