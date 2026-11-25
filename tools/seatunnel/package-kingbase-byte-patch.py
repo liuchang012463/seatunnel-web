@@ -6,24 +6,56 @@ from copy import copy
 import hashlib
 import json
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
 CLASS = (
     "org/apache/seatunnel/connectors/seatunnel/jdbc/internal/dialect/kingbase/"
     "KingbaseTypeConverter.class"
 )
+BYTE_ALIASES = (b"VARCHARBYTE", b"CHARBYTE", b"BPCHARBYTE")
 
 
 def sha256(content):
     return hashlib.sha256(content).hexdigest()
 
 
+def missing_aliases(converter):
+    # Match a complete CONSTANT_Utf8 entry: CHARBYTE is also a suffix of VARCHARBYTE.
+    return [
+        alias.decode("ascii") for alias in BYTE_ALIASES
+        if b"\x01" + len(alias).to_bytes(2, "big") + alias not in converter
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-jar", type=Path, required=True)
-    parser.add_argument("--fixed-jar", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--check-jar", type=Path,
+                        help="read-only check for the Kingbase BYTE mapping in an installed JAR")
+    parser.add_argument("--base-jar", type=Path)
+    parser.add_argument("--fixed-jar", type=Path)
+    parser.add_argument("--output-dir", type=Path)
     args = parser.parse_args()
+    patch_args = (args.base_jar, args.fixed_jar, args.output_dir)
+
+    if args.check_jar is not None:
+        if any(patch_args):
+            parser.error("--check-jar cannot be combined with packaging arguments")
+        try:
+            with ZipFile(args.check_jar) as jar:
+                converter = jar.read(CLASS)
+            missing = missing_aliases(converter)
+            print(json.dumps({
+                "jarSha256": sha256(args.check_jar.read_bytes()),
+                "classSha256": sha256(converter),
+                "missingAliases": missing,
+            }, indent=2))
+        except (OSError, BadZipFile, KeyError) as error:
+            parser.error(f"cannot read Kingbase converter: {error}")
+        return 1 if missing else 0
+
+    if not all(patch_args):
+        parser.error("packaging requires --base-jar, --fixed-jar and --output-dir")
+
     output = args.output_dir / "connector-jdbc-3.0.0.jar"
     if output.resolve() in {args.base_jar.resolve(), args.fixed_jar.resolve()}:
         parser.error("output must not overwrite an input JAR")
@@ -33,9 +65,10 @@ def main():
     with ZipFile(args.base_jar) as base, ZipFile(args.fixed_jar) as fixed:
         replacement = fixed.read(CLASS)
         original = base.read(CLASS)
-        for alias in (b"VARCHARBYTE", b"CHARBYTE", b"BPCHARBYTE"):
-            if alias not in replacement:
-                parser.error("fixed JAR does not contain the Kingbase BYTE aliases")
+        if missing_aliases(replacement):
+            parser.error("fixed JAR does not contain the Kingbase BYTE aliases")
+        if original == replacement:
+            parser.error("baseline already contains the same Kingbase converter")
         if int.from_bytes(replacement[6:8], "big") > int.from_bytes(original[6:8], "big"):
             parser.error("replacement requires a newer Java runtime than the baseline")
         if any(name.upper().endswith((".SF", ".RSA", ".DSA", ".EC"))
@@ -69,4 +102,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
