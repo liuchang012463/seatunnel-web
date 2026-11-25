@@ -1,5 +1,4 @@
-import { FileSearchOutlined } from "@ant-design/icons";
-import { Empty, Modal, Tooltip } from "antd";
+import { Empty, Modal } from "antd";
 import React, { FC, ReactNode } from "react";
 
 import TaskLogObservability from "@/pages/batch-link-up/components/TaskLogObservability";
@@ -11,8 +10,7 @@ type RunLogInstanceType = "BATCH" | "STREAMING" | string;
 interface RunLogDrawerProps {
   open: boolean;
   onClose: () => void;
-  title?: string;
-  subtitle?: string;
+  jobName?: string;
   footer?: ReactNode;
   children?: ReactNode;
   instanceId?: string | number;
@@ -31,35 +29,18 @@ interface RunLogDrawerProps {
 const RunLogDrawer: FC<RunLogDrawerProps> = ({
   open,
   onClose,
-  title = "运行日志",
-  subtitle = "查看任务运行输出",
+  jobName,
   footer,
   children,
   instanceId,
   jobMode = "BATCH",
   instanceStatus,
 }) => {
-  const modalTitle = (
-    <div className="flex min-w-0 items-center justify-between gap-3 pr-8">
-      <div className="flex min-w-0 items-center gap-3">
-        <Tooltip title="当前任务实例的实时原始日志">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color:var(--st-color-bg-control)] text-[color:var(--st-color-accent)]">
-            <FileSearchOutlined className="text-[15px]" />
-          </div>
-        </Tooltip>
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold text-[color:var(--st-color-text-primary)]">
-            {title}
-          </div>
-          <div className="truncate text-sm text-[color:var(--st-color-text-secondary)]">{subtitle}</div>
-        </div>
-      </div>
-    </div>
-  );
+  const title = jobName ? `运行日志 · ${jobName}` : "运行日志";
 
   return (
     <Modal
-      title={modalTitle}
+      title={<span className="block truncate" title={title}>{title}</span>}
       open={open}
       onCancel={onClose}
       styles={{
@@ -71,9 +52,8 @@ const RunLogDrawer: FC<RunLogDrawerProps> = ({
           minHeight: 0,
         },
         header: {
-          marginBottom: 0,
-          padding: "16px 20px",
-          borderBottom: "1px solid var(--st-color-border)",
+          // 日志区可以滚动，但不能挤压标题栏。
+          flexShrink: 0,
         },
         body: {
           display: "flex",

@@ -1,15 +1,8 @@
 import { SearchOutlined } from "@ant-design/icons";
 import { DatePicker, Input, Segmented, Space } from "antd";
-import dayjs from "dayjs";
-import {
-  CalendarClock,
-  CalendarDays,
-  Clock3,
-  SlidersHorizontal,
-} from "lucide-react";
 import React from "react";
 import type { IntlShape } from "react-intl";
-import type { TimeRangeType } from "../hooks/useTaskHistory";
+import type { CustomHistoryTimeRange, TimeRangeType } from "@/pages/common/utils/taskHistoryTime";
 
 interface HistoryFilterBarProps {
   intl: IntlShape;
@@ -17,9 +10,9 @@ interface HistoryFilterBarProps {
   onKeywordChange: (value: string) => void;
   timeRangeType: TimeRangeType;
   onTimeRangeTypeChange: (value: TimeRangeType) => void;
-  customTimeRange: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null;
+  customTimeRange: CustomHistoryTimeRange;
   onCustomTimeRangeChange: (
-    value: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
+    value: CustomHistoryTimeRange
   ) => void;
 }
 
@@ -52,42 +45,10 @@ const HistoryFilterBar: React.FC<HistoryFilterBarProps> = ({
         block
         className="time-range-segmented"
         options={[
-          {
-            label: (
-              <div className="time-range-option">
-                <Clock3 size={14} />
-                <span className="time-range-option__title">最近一天</span>
-              </div>
-            ),
-            value: "最近一天",
-          },
-          {
-            label: (
-              <div className="time-range-option">
-                <CalendarClock size={14} />
-                <span className="time-range-option__title">最近三天</span>
-              </div>
-            ),
-            value: "最近三天",
-          },
-          {
-            label: (
-              <div className="time-range-option">
-                <CalendarDays size={14} />
-                <span className="time-range-option__title">最近一周</span>
-              </div>
-            ),
-            value: "最近一周",
-          },
-          {
-            label: (
-              <div className="time-range-option">
-                <SlidersHorizontal size={14} />
-                <span className="time-range-option__title">自定义</span>
-              </div>
-            ),
-            value: "自定义",
-          },
+          { label: "最近一天", value: "最近一天", title: "从昨天 00:00 至今（北京时间）" },
+          { label: "最近三天", value: "最近三天", title: "从三天前 00:00 至今（北京时间）" },
+          { label: "最近一周", value: "最近一周", title: "从七天前 00:00 至今（北京时间）" },
+          { label: "自定义", value: "自定义", title: "按北京时间选择起止时间" },
         ]}
       />
 
@@ -96,7 +57,7 @@ const HistoryFilterBar: React.FC<HistoryFilterBarProps> = ({
           showTime
           className="history-filter-picker"
           style={{ width: "100%" }}
-          value={customTimeRange as any}
+          value={customTimeRange}
           onChange={(values) => {
             onCustomTimeRangeChange(
               values ? [values[0] ?? null, values[1] ?? null] : null

@@ -1,12 +1,13 @@
 import { streamingSeatunnelJobInstanceApi } from "@/pages/batch-link-up/api";
 import { HistoryItem } from "@/pages/batch-link-up/type";
 import { normalizeJobStatus } from "@/pages/common/utils/jobStatus";
-import { message } from "antd";
-import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-
-export type TimeRangeType = "最近一天" | "最近三天" | "最近一周" | "自定义";
+import {
+  getTaskHistoryTimeParams,
+  type CustomHistoryTimeRange,
+  type TimeRangeType,
+} from "@/pages/common/utils/taskHistoryTime";
 
 interface UseTaskHistoryParams {
   selectedItem: any;
@@ -25,9 +26,7 @@ export const useTaskHistory = ({
   const [timeRangeType, setTimeRangeType] =
     useState<TimeRangeType>("最近一天");
 
-  const [customTimeRange, setCustomTimeRange] = useState<
-    [dayjs.Dayjs | null, dayjs.Dayjs | null] | null
-  >(null);
+  const [customTimeRange, setCustomTimeRange] = useState<CustomHistoryTimeRange>(null);
 
   // 快速切换筛选/任务时，慢响应不能覆盖新请求的结果：只有最新请求可以写状态。
   const requestSeqRef = useRef(0);
@@ -40,46 +39,6 @@ export const useTaskHistory = ({
     return () => window.clearTimeout(timer);
   }, [keyword]);
 
-  const getTimeRangeParams = useCallback(() => {
-    const now = dayjs();
-
-    switch (timeRangeType) {
-      case "最近一天":
-        return {
-          queryStartTime: now.subtract(1, "day").format("YYYY-MM-DD HH:mm:ss"),
-          queryEndTime: now.format("YYYY-MM-DD HH:mm:ss"),
-        };
-
-      case "最近三天":
-        return {
-          queryStartTime: now.subtract(3, "day").format("YYYY-MM-DD HH:mm:ss"),
-          queryEndTime: now.format("YYYY-MM-DD HH:mm:ss"),
-        };
-
-      case "最近一周":
-        return {
-          queryStartTime: now.subtract(7, "day").format("YYYY-MM-DD HH:mm:ss"),
-          queryEndTime: now.format("YYYY-MM-DD HH:mm:ss"),
-        };
-
-      case "自定义":
-        return {
-          queryStartTime: customTimeRange?.[0]
-            ?.startOf("day")
-            .format("YYYY-MM-DD HH:mm:ss"),
-          queryEndTime: customTimeRange?.[1]
-            ?.endOf("day")
-            .format("YYYY-MM-DD HH:mm:ss"),
-        };
-
-      default:
-        return {
-          queryStartTime: undefined,
-          queryEndTime: undefined,
-        };
-    }
-  }, [timeRangeType, customTimeRange]);
-
   const fetchHistory = useCallback(async () => {
     if (!selectedItem?.id) {
       requestSeqRef.current += 1;
@@ -87,7 +46,7 @@ export const useTaskHistory = ({
       return;
     }
 
-    const { queryStartTime, queryEndTime } = getTimeRangeParams();
+    const { queryStartTime, queryEndTime } = getTaskHistoryTimeParams(timeRangeType, customTimeRange);
     const requestSeq = ++requestSeqRef.current;
 
     setLoading(true);
@@ -110,10 +69,14 @@ export const useTaskHistory = ({
       if (data?.code === 0) {
         setHistoryItems(data?.data?.bizData || []);
       } else {
-
+        setHistoryItems([]);
+        console.warn("运行历史查询失败", { jobDefinitionId: selectedItem.id, code: data?.code });
       }
-    } catch (error) {
-
+    } catch {
+      if (requestSeq === requestSeqRef.current) {
+        setHistoryItems([]);
+        console.warn("运行历史请求异常", { jobDefinitionId: selectedItem.id });
+      }
     } finally {
       if (requestSeq === requestSeqRef.current) {
         setLoading(false);
@@ -123,7 +86,8 @@ export const useTaskHistory = ({
     selectedItem?.id,
     debouncedKeyword,
     statusFilter,
-    getTimeRangeParams,
+    timeRangeType,
+    customTimeRange,
   ]);
 
   useEffect(() => {

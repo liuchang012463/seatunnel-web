@@ -513,10 +513,7 @@ const ActionColumn: React.FC<ActionColumnProps> = ({
         instanceId={record?.instanceId}
         instanceStatus={record?.jobStatus || record?.lastJobStatus}
         onClose={() => setLogOpen(false)}
-        title="运行日志"
-        subtitle={
-          record?.jobName ? `任务：${record.jobName}` : "查看任务运行输出"
-        }
+        jobName={record?.jobName}
       />
     </>
   );

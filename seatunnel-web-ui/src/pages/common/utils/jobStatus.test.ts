@@ -63,6 +63,14 @@ describe("任务状态展示", () => {
     expect(view.label.defaultMessage).toBe("状态未知");
   });
 
+  it.each(["INITIALIZING", "CREATED", "PENDING", "SCHEDULED", "RUNNING", "CANCELING"])(
+    "%s 在批量和实时视图都使用运行中颜色",
+    (status) => {
+      expect(getJobStatusView(status, "batch").tone).toBe("processing");
+      expect(getJobStatusView(status, "stream").tone).toBe("processing");
+    },
+  );
+
   it("失败中是运行中分类，但用错误色提示", () => {
     const batch = getJobStatusView("FAILING", "batch");
     const stream = getJobStatusView("FAILING", "stream");

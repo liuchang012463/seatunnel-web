@@ -10,7 +10,7 @@ import HistoryFilterBar from '@/pages/batch-link-up/components/TaskHistoryPanel/
 import HistoryList from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryList';
 import HistoryPanelHeader from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryPanelHeader';
 import HistoryStatusFilters from '@/pages/batch-link-up/components/TaskHistoryPanel/components/HistoryStatusFilters';
-import type { TimeRangeType } from '@/pages/batch-link-up/components/TaskHistoryPanel/hooks/useTaskHistory';
+import type { TimeRangeType } from '@/pages/common/utils/taskHistoryTime';
 import TaskDetailHeader from '@/pages/batch-link-up/TaskHeader';
 import DatabaseIcons from '@/pages/data-source/icon/DatabaseIcons';
 import {

@@ -75,12 +75,12 @@ const STATUS_TONES: Record<
   RUNNING: { category: "RUNNING", tone: "processing" },
   STARTING: { category: "RUNNING", tone: "processing" },
   FAILING: { category: "RUNNING", tone: "error" },
-  INITIALIZING: { category: "RUNNING", tone: "neutral" },
-  CREATED: { category: "RUNNING", tone: "neutral" },
-  PENDING: { category: "RUNNING", tone: "neutral" },
-  SCHEDULED: { category: "RUNNING", tone: "neutral" },
+  INITIALIZING: { category: "RUNNING", tone: "processing" },
+  CREATED: { category: "RUNNING", tone: "processing" },
+  PENDING: { category: "RUNNING", tone: "processing" },
+  SCHEDULED: { category: "RUNNING", tone: "processing" },
   DOING_SAVEPOINT: { category: "RUNNING", tone: "warning" },
-  CANCELING: { category: "RUNNING", tone: "neutral" },
+  CANCELING: { category: "RUNNING", tone: "processing" },
   PAUSED: { category: "RUNNING", tone: "warning" },
 };
 

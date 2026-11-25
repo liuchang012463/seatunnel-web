@@ -1156,8 +1156,7 @@ const RealtimeSyncPage: React.FC = () => {
           setLogOpen(false);
           setLogRecord(null);
         }}
-        title="运行日志"
-        subtitle={logRecord?.jobName ? `任务：${logRecord.jobName}` : '查看任务运行输出'}
+        jobName={logRecord?.jobName}
       />
 
       <RealtimeCheckpointModal

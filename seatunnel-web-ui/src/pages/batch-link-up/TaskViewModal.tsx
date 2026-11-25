@@ -95,7 +95,7 @@ const TaskViewModal = forwardRef(({}: CreateModalProps, ref) => {
               boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Splitter.Panel defaultSize="22%" min="22%" max="70%">
+            <Splitter.Panel defaultSize={280} min={260} max="70%">
               <TaskHistoryPanel
                 selectedItem={jobItem}
                 statusFilter={statusFilter}
