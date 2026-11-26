@@ -108,7 +108,7 @@ const App: React.FC<Props> = ({
   mode,
   excludeMode,
   taskType,
-  emptyDescription = "暂无批量数据引接任务",
+  emptyDescription = "暂无批量同步任务",
 }) => {
   const intl = useIntl();
 

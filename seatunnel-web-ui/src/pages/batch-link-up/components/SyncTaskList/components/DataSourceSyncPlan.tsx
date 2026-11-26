@@ -36,7 +36,7 @@ const DataSourceSyncPlan: React.FC<DataSourceSyncPlanProps> = ({ record }) => {
   };
 
   const getPlanTitle = () => {
-    if (taskType === "FILE_TRANSFER" || isFileSync) return "文件同步任务";
+    if (taskType === "FILE_TRANSFER" || isFileSync) return "文件同步";
     if (taskType === "FILE_INGEST" || isFileResourceSource) return "离线文件导入";
     if (record?.jobType === "BATCH") {
       if (record?.mode === "GUIDE_SINGLE") return "单表同步";

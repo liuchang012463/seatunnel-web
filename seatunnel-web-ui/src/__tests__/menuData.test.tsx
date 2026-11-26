@@ -1,3 +1,4 @@
+import zhCNMenu from '../locales/zh-CN/menu';
 import { menuData } from '../menuData';
 
 const summarizeMenu = (items: any[]): any[] =>
@@ -81,5 +82,10 @@ describe('application navigation menu', () => {
       { path: '/data-source', disabledTooltip: true, collapsedHoverPanel: true },
       { path: '/reporting/forms', disabledTooltip: true, collapsedHoverPanel: true },
     ]);
+  });
+
+  it('provides zh-CN locale entries for the merged online ingestion menu', () => {
+    expect(zhCNMenu['menu.数据引接.在线数据引接']).toBe('在线数据引接');
+    expect(zhCNMenu['menu.ingestion.online']).toBe('在线数据引接');
   });
 });

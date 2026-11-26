@@ -1087,7 +1087,7 @@ const RealtimeSyncPage: React.FC = () => {
                 onClear={() => handleSearch({})}
                 description={(
                   <div className="stream-link-empty-state">
-                    <div>暂无实时数据引接任务</div>
+                    <div>暂无实时同步任务</div>
                     <span>创建后，实时任务会在这里显示运行状态和最近一次执行结果。</span>
                     <Button type="link" onClick={() => void handleCreate()}>创建实时任务</Button>
                   </div>
