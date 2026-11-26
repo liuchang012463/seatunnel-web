@@ -2,6 +2,7 @@ import { ArrowRightOutlined } from '@ant-design/icons';
 import { App } from 'antd';
 import { useMemo } from 'react';
 import background from '@/assets/offline-import/background.png';
+import network from '@/assets/offline-import/network.png';
 import structuredArt from '@/assets/offline-import/structured.png';
 import dmpArt from '@/assets/offline-import/dmp.png';
 import sqlArt from '@/assets/offline-import/sql.png';
@@ -208,6 +209,26 @@ const ImportSelectPage: React.FC = () => {
   return (
     <div className="import-select-page" style={{ backgroundImage: `url(${background})` }}>
       <main className="import-select-page__body" aria-label="离线数据导入类型">
+        <div className="import-select-page__hero">
+          <div className="import-select-page__heading">
+            <h1 className="import-select-page__title">离线数据导入</h1>
+            <p className="import-select-page__subtitle">多格式文件 · 多类型数据库 · 一个统一的数据入口</p>
+          </div>
+
+          <img className="import-select-page__network" src={network} alt="" />
+
+          <div className="import-select-page__stats" aria-label="5 种导入类型，12 个数据入口">
+            <div className="import-select-page__stat">
+              <strong>05</strong>
+              <span>导入类型</span>
+            </div>
+            <div className="import-select-page__stat">
+              <strong>12</strong>
+              <span>数据入口</span>
+            </div>
+          </div>
+        </div>
+
         <div className="import-select-page__grid">
           {choices.map((choice) => (
             <article className={`import-select-card import-select-card--${choice.key}`} key={choice.key}>
@@ -224,7 +245,8 @@ const ImportSelectPage: React.FC = () => {
                   <div className={`import-select-card__entry${entry.disabled ? ' import-select-card__entry--disabled' : ''}`} key={entry.key}>
                     <div className="import-select-card__entry-copy">
                       <strong>{entry.label}</strong>
-                      <span id={entry.disabled ? `import-hint-${entry.key}` : undefined}>{entry.disabledHint || entry.detail}</span>
+                      <span>{entry.detail}</span>
+                      {entry.disabledHint && <span id={`import-hint-${entry.key}`} hidden>{entry.disabledHint}</span>}
                     </div>
                     <button
                       className="import-select-card__enter"
