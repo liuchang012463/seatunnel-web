@@ -32,9 +32,8 @@ const ModeSection: React.FC<Props> = ({ mode, setMode }) => {
             <ModeCard
               value="GUIDE_MULTI"
               current={mode}
-              title="多表批量引接"
-              desc="一次勾选多张表批量配置映射，适合表多、结构相近的库表迁移。"
-              tag="批量"
+              title="多表引接"
+              desc="一次选择多张表并配置映射，适合同步结构相近的表。"
               onSelect={setMode}
             />
 

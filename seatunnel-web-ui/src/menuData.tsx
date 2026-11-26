@@ -16,6 +16,10 @@ import {
 } from '@ant-design/icons';
 import type { MenuDataItem } from '@ant-design/pro-components';
 import React from 'react';
+import { ONLINE_INGESTION_LABEL, ONLINE_INGESTION_PATH, onlineIngestionTabs } from '../config/onlineIngestion';
+
+// ProLayout 用 key 匹配菜单项，可让旧列表和它们的详情/配置路由点亮同一个菜单。
+const onlineIngestionMenuKey = `/sync/:onlineTask(${onlineIngestionTabs.map(({ path }) => path.slice('/sync/'.length)).join('|')})`;
 
 export const menuData: MenuDataItem[] = [
   {
@@ -55,10 +59,13 @@ export const menuData: MenuDataItem[] = [
     icon: <SwapOutlined />,
     children: [
       { path: '/metrics', name: '运行效率分析', icon: <MonitorOutlined /> },
-      { path: '/sync/batch-link-up', name: '批量数据引接', icon: <SwapOutlined /> },
-      { path: '/sync/stream-link-up', name: '实时数据引接', icon: <ThunderboltOutlined /> },
+      {
+        path: ONLINE_INGESTION_PATH,
+        key: onlineIngestionMenuKey,
+        name: ONLINE_INGESTION_LABEL,
+        icon: <SwapOutlined />,
+      },
       { path: '/sync/file-ingest', name: '离线文件导入', icon: <FolderOpenOutlined /> },
-      { path: '/sync/file-transfer', name: '文件同步任务', icon: <SwapOutlined /> },
       { path: '/sync/cloud-edge-tasks', name: '云边协同任务', icon: <CloudServerOutlined /> },
       {
         path: '/sync/edge-access-tasks',

@@ -1,3 +1,4 @@
+import { onlineIngestionTabs } from '../../config/onlineIngestion';
 import { menuData } from '../menuData';
 
 export const SITE_NAME = 'Aircas Web';
@@ -16,6 +17,7 @@ export const routeTitles = (() => {
   };
   visit(menuData);
   // Hidden or secondary pages that do not have their own menu entry.
+  onlineIngestionTabs.forEach(({ path, label }) => titles.set(path, label));
   titles.set('/data-source/master-data', '主数据管理');
   titles.set('/sync/file-link-up', '文件引接任务');
   titles.set('/sync/file-resources', '湖文件管理');

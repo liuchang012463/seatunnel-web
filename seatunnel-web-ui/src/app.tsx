@@ -8,6 +8,7 @@ import { Alert, Spin, Tooltip } from 'antd';
 import { isValidElement, Suspense } from 'react';
 import 'd3-transition';
 import defaultSettings from '../config/defaultSettings';
+import { findOnlineIngestionTab, ONLINE_INGESTION_PATH } from '../config/onlineIngestion';
 import { Knowledge } from './components/RightContent';
 import { menuData } from './menuData';
 import { errorConfig } from './requestErrorConfig';
@@ -18,6 +19,7 @@ import { installIframeHistoryGuard } from './utils/iframeHistoryGuard';
 import {
   applyLayoutVisibility,
   shouldHideLayout,
+  stripLayoutPrefix,
   withLayoutPrefix,
 } from './utils/iframeLayout';
 
@@ -128,14 +130,17 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
       const itemPath = menuItemProps.path
         ? withLayoutPrefix(menuItemProps.path.replace('/*', ''))
         : menuItemProps.path;
-      const isCurrent = Boolean(itemPath && menuProps.location?.pathname === itemPath);
+      const currentPath = menuProps.location?.pathname || '';
+      const isCurrent = Boolean(itemPath && currentPath === itemPath);
+      const isOnlineIngestionSection = menuItemProps.path === ONLINE_INGESTION_PATH
+        && findOnlineIngestionTab(stripLayoutPrefix(currentPath));
       // Always keep link semantics, including the current item: rendering the current item as a
       // bare span removes it from the keyboard tab order and loses aria-current.
       const menuItem = itemPath ? (
         <Link
           to={itemPath}
           target={menuItemProps.target}
-          aria-current={isCurrent ? 'page' : undefined}
+          aria-current={isCurrent ? 'page' : isOnlineIngestionSection ? 'location' : undefined}
         >
           {defaultDom}
         </Link>

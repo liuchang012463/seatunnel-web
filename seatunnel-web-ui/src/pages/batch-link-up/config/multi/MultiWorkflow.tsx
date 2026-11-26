@@ -236,7 +236,7 @@ export default function MultiWorkflow({
 
             <div>
               <div className="mb-0 text-[20px] font-bold leading-[1.2] text-slate-900">
-                逻辑关系配置（多表批量引接）
+                逻辑关系配置（多表引接）
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { HIDDEN_LAYOUT_ROUTE_PREFIX } from './routePrefix';
+import { findOnlineIngestionTab, ONLINE_INGESTION_PATH } from './onlineIngestion';
 
 const hiddenLayoutRoutePrefix = HIDDEN_LAYOUT_ROUTE_PREFIX;
 const withHiddenLayoutPrefix = (path: string) =>
@@ -31,6 +32,7 @@ const businessRoutes = [
   ['/operations/metadata-engine', './operations/metadata-engine'],
   ['/operations/unified-users', './operations/unified-users'],
   ['/resources/data-discovery', './data-exploration/overview'],
+  [ONLINE_INGESTION_PATH, './batch-link-up'],
   ['/sync/batch-link-up', './batch-link-up'],
   ['/sync/file-ingest', './file-ingest'],
   ['/sync/file-transfer', './file-transfer'],
@@ -56,7 +58,12 @@ const businessRoutes = [
 ].map(([path, routeComponent]) => ({
   path,
   component: routeComponent,
-  wrappers: path.startsWith('/lake/') ? ['@/wrappers/LakeLocale'] : [],
+  wrappers: [
+    ...(path.startsWith('/lake/') ? ['@/wrappers/LakeLocale'] : []),
+    ...(path === ONLINE_INGESTION_PATH || findOnlineIngestionTab(path)
+      ? ['@/wrappers/OnlineIngestionTabs']
+      : []),
+  ],
   hideInMenu: true,
 }));
 
@@ -96,7 +103,7 @@ const hiddenRoutes = [
   component: existing,
   wrappers: path.startsWith('/lake/') ? ['@/wrappers/LakeLocale'] : [],
   hideInMenu: true,
-  parentKeys: [parentPath],
+  parentKeys: [findOnlineIngestionTab(parentPath) ? ONLINE_INGESTION_PATH : parentPath],
 }));
 
 const framedRoutes = [

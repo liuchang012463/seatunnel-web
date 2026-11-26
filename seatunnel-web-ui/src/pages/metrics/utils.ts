@@ -1,3 +1,4 @@
+import { onlineIngestionTabs } from '../../../config/onlineIngestion';
 import { ChartDataItem, TimeRange } from './types';
 
 
@@ -20,8 +21,6 @@ export const timeRangeMap = {
 };
 
 export const taskTypeOptions = [
-  { label: '批量数据引接', value: 'BATCH' },
-  { label: '实时数据引接', value: 'STREAM' },
+  ...onlineIngestionTabs.map(({ label, taskType }) => ({ label, value: taskType })),
   { label: '离线文件导入', value: 'FILE_INGEST' },
-  { label: '文件同步任务', value: 'FILE_TRANSFER' },
 ];

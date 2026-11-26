@@ -25,10 +25,8 @@ describe('application navigation menu', () => {
         name: '数据引接',
         children: [
           { path: '/metrics', name: '运行效率分析' },
-          { path: '/sync/batch-link-up', name: '批量数据引接' },
-          { path: '/sync/stream-link-up', name: '实时数据引接' },
+          { path: '/sync/online-ingestion', name: '在线数据引接' },
           { path: '/sync/file-ingest', name: '离线文件导入' },
-          { path: '/sync/file-transfer', name: '文件同步任务' },
           { path: '/sync/cloud-edge-tasks', name: '云边协同任务' },
           { path: '/sync/edge-access-tasks', name: '边缘接入任务' },
           { path: '/sync/topology', name: '数据拓扑' },
